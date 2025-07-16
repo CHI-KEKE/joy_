@@ -560,6 +560,14 @@ PS C:\91APP\nineyi.webstore.mobilewebmall\WebStore\Frontend\MobileWebMallV2\Clie
 
 <br>
 
+**重要說明**：
+
+<br>
+
+connectionString 只有 V1 proj & WebAPI proj 有
+
+<br>
+
 WEBAPI & MVC 要一起加：
 
 <br>
