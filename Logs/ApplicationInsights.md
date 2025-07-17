@@ -2,10 +2,6 @@
 
 <br>
 
-## 📖 目錄
-
-- [📊 Application Insights 監控文件](#-application-insights-監控文件)
-  - [📖 目錄](#-目錄)
   - [🔗 Url](#-監控面板存取)
   - [📈 效能差異評估方法](#-效能差異評估方法)
   - [Latency 延遲評估](#latency-延遲評估)
