@@ -1,14 +1,12 @@
 # 📊 Application Insights 監控文件
 
-> 📚 這是 Application Insights 效能監控系統的完整使用指南，包含效能分析和回應時間評估等重要資訊
-
 <br>
 
 ## 📖 目錄
 
 - [📊 Application Insights 監控文件](#-application-insights-監控文件)
   - [📖 目錄](#-目錄)
-  - [🔗 監控面板存取](#-監控面板存取)
+  - [🔗 Url](#-監控面板存取)
   - [📈 效能差異評估方法](#-效能差異評估方法)
   - [Latency 延遲評估](#latency-延遲評估)
 
@@ -18,9 +16,9 @@
 
 
 
-## 🔗 監控面板存取
+## 🔗 Url
 
-**HK SMS 效能監控 URL**：
+**HK SMS **：
 
 <br>
 
