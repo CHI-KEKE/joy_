@@ -1,13 +1,9 @@
 # 🚀 MWeb 維護文件
 
-> 📚 這是 MWeb 系統的完整維護指南，包含異常處理排查、部署流程、健康檢查、Web API 和本機開發環境等重要資訊
-
 <br>
 
 ## 📖 目錄
 
-- [🚀 MWeb 維護文件](#-mweb-維護文件)
-  - [📖 目錄](#-目錄)
   - [🔍 異常處理與排查](#-異常處理與排查)
     - [📋 ELMAH 異常分析](#-elmah-異常分析)
     - [📋 異常案例紀錄](#-異常案例紀錄)
@@ -557,6 +553,14 @@ PS C:\91APP\nineyi.webstore.mobilewebmall\WebStore\Frontend\MobileWebMallV2\Clie
 <br>
 
 **MY MWeb Config 設定**：
+
+<br>
+
+**重要說明**：
+
+<br>
+
+connectionString 只有 V1 proj & WebAPI proj 有
 
 <br>
 
