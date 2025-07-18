@@ -1,7 +1,5 @@
 # 📧 NotificationTemplateWorker 維護文件
 
-> 📚 這是 NotificationTemplateWorker 系統的完整維護指南，包含本機開發問題排除和常見設定問題等重要資訊
-
 <br>
 
 ## 📖 目錄
