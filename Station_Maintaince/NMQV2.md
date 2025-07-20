@@ -9,7 +9,8 @@
   - [🧪 本機開發測試步驟](#-本機開發測試步驟)
   - [🔄 更新線上 NMQ 狀態](#-更新線上-nmq-狀態)
   - [🚀 NMQ V2 的 QA 部署步驟](#-nmq-v2-的-qa-部署步驟)
-  - [🔀 切換環境測試方法](#-切換環境測試方法)
+  - [� NMQV2 部署後版號確認位置](#-nmqv2-部署後版號確認位置)
+  - [�🔀 切換環境測試方法](#-切換環境測試方法)
 
 <br>
 
@@ -336,7 +337,62 @@ VALUES
 
 ---
 
-## 🔀 切換環境測試方法
+## � NMQV2 部署後版號確認位置
+
+**部署後版號更新檢查路徑**：
+
+<br>
+
+**位置 1：Worker Configs**
+
+<br>
+
+路徑：`D:\nmq\artifacts\worker-configs`
+
+<br>
+
+此位置包含 NMQ Worker 的設定檔資訊
+
+<br>
+
+**位置 2：Worker Modules Jobs**
+
+<br>
+
+路徑：`D:\nmq\artifacts\worker-modules\jobs\Prod\NineYi\SCM.NMQV2`
+
+<br>
+
+此位置包含生產環境 SCM NMQV2 的作業模組
+
+<br>
+
+**位置 3：NMQV2 Library**
+
+<br>
+
+路徑：`D:\Prod\NineYi\NMQV2\Library\NineYi.Scm.Frontend`
+
+<br>
+
+此位置包含 NMQV2 前端函式庫檔案
+
+<br>
+
+**版號確認重要提醒**：
+
+<br>
+
+- 部署完成後應逐一檢查以上三個位置的版號
+- 確保所有位置的版號都已正確更新
+- 如發現版號不一致，請重新執行部署程序
+- 建議在部署完成後建立檢查清單以確保版號一致性
+
+<br>
+
+---
+
+## �🔀 切換環境測試方法
 
 **切換 V2 / V3 Group Mapping**
 

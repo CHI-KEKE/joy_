@@ -10,6 +10,8 @@
   - [📊 Athena 資料查詢](#-athena-資料查詢)
   - [🗄️ 資料庫查詢](#️-資料庫查詢)
   - [🔗 API 相關資源](#-api-相關資源)
+  - [💻 開發用關鍵字](#-開發用關鍵字)
+  - [🏥 HealthCheck 健康檢查](#-healthcheck-健康檢查)
   - [⚠️ 常見問題排除](#️-常見問題排除)
 
 <br>
@@ -335,6 +337,55 @@ https://portal.azure.com/#@91app.biz/resource/subscriptions/a23bf8eb-057f-4ad3-8
 當 API 出現區間流量異常時，可以查閱 CloudWatch 的 SUMREQUEST 指標來分析流量模式：
 
 ![alt text](./image-11.png)
+
+<br>
+
+---
+
+## 💻 開發用關鍵字
+
+在進行 SCM API V2 開發和維護時，以下關鍵字是重要的程式碼搜尋和定位參考：
+
+<br>
+
+**核心元件關鍵字**：
+
+<br>
+
+- `GlobalExceptionHandler` - 全域例外處理器
+- `WebApiConfig` - Web API 設定檔
+- `UnifiedResultHandler` - 統一回應處理器
+- `AutofacConfig` - 相依性注入設定
+
+<br>
+
+---
+
+## 🏥 HealthCheck 健康檢查
+
+**SG-HK-OSMAPI21 健康檢查**：
+
+<br>
+
+若需要對 SG-HK-OSMAPI21 進行健康檢查，可以使用以下 PowerShell 指令：
+
+<br>
+
+**SCM V1 健康檢查**：
+
+<br>
+
+```powershell
+Invoke-WebRequest 'http://api.9lapp.hk/scm/v1/ops/healthcheck' -Proxy 'http://10.32.20.123'
+```
+
+<br>
+
+**SCM V2 健康檢查**：
+
+```powershell
+Invoke-WebRequest 'http://api.91app.hk/scm/v2/ops/healthcheck' -Proxy 'http://10.32.20.121'
+```
 
 <br>
 
