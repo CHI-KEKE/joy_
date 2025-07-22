@@ -1,17 +1,12 @@
 # 🚀 OSM 維護文件
 
-> 📚 這是 OSM 系統的完整維護指南，包含部署流程、API 測試和問題排除等重要資訊
-
-
 ## 📖 目錄
 
-- [🚀 OSM 維護文件](#-osm-維護文件)
-  - [📖 目錄](#-目錄)
   - [⚙️ TypeScript 檔案產生](#️-typescript-檔案產生)
   - [🔐 API 測試與驗證](#-api-測試與驗證)
   - [🚀 部署流程](#-部署流程)
   - [📊 Athena LOG 查詢](#-athena-log-查詢)
-  - [](#)
+  - [🩺 Health Check 檢查方式](#-health-check-檢查方式)
   - [⚠️ 異常紀錄](#️-異常紀錄)
         - [MachineConfig 咬檔問題](#machineconfig-咬檔問題)
         - [DbContext 新增後 CrmdbUser 權限問題](#dbcontext-新增後-crmdbuser-權限問題)
@@ -171,6 +166,69 @@ limit 100;
 ```
 
 <br>
+---
+
+## 🩺 Health Check 檢查方式
+
+**OSM Health Check 方式**：
+
+<br>
+
+```powershell
+# HK OSM
+Invoke-WebRequest 'http://store.91app.hk/ops/healthcheck' -Proxy 'http://10.32.20.53'
+
+# MY OSM Web
+Invoke-WebRequest 'http://osm2.91app.com.my/api/health/check' -Proxy 'http://10.1.20.63'
+```
+
+<br>
+
+**Auth SSO Health Check 方式**：
+
+<br>
+
+```powershell
+Invoke-WebRequest -Uri "http://auth.91app.hk/api/ops/healthcheck" -Proxy 'http://10.32.21.221'
+invoke-webrequest -Uri 'http://erp.hk.91app.biz/v2/api/health/check' -Proxy 'http://10.32.21.211/v2/api/health/check'
+Test-Connection -ComputerName "SG-HK-SSO3" -Count "1" -Quiet
+```
+
+<br>
+
+**ERP Health Check 方式**：
+
+<br>
+
+```powershell
+# MY ERP
+Invoke-WebRequest -Uri "http://erp2.my.91app.biz/v2/api/Ops/healthcheck" -Proxy "http://10.1.21.105"
+
+# HK ERP - 方式 1
+Invoke-WebRequest -Uri "http://erp.hk.91app.biz/Health/Check" -Proxy "http://10.2.18.57"
+
+# HK ERP - 方式 1.2
+Invoke-WebRequest -Uri "http://erp.hk.91app.biz/ops/healthcheck" -Proxy "http://10.32.21.211"
+
+# HK ERP - 方式 2
+Invoke-WebRequest -Uri 'http://erp.hk.91app.biz/v2/api/health/check' -Proxy 'http://10.32.21.211/v2/api/health/check'
+
+# HK ERP - 方式 1.2 (V2 版本)
+Invoke-WebRequest -Uri 'http://erp.hk.91app.biz/v2/api/ops/healthcheck' -Proxy 'http://10.32.21.211/v2/api/ops/healthcheck'
+```
+
+<br>
+
+**Expense Health Check 方式**：
+
+<br>
+
+```powershell
+invoke-webrequest -Uri http://erp.hk.91app.biz/v2/api/health/check -Proxy http://10.32.25.215/v2/api/health/check
+```
+
+<br>
+
 ---
 
 <br>

@@ -1,19 +1,16 @@
 # 🔄 NMQV3 維護文件
 
-> 📚 這是 NMQV3 系統的完整維護指南，包含開發環境設定、語系工具和測試配置等重要資訊
-
 <br>
 
 ## 📖 目錄
 
-- [🔄 NMQV3 維護文件](#-nmqv3-維護文件)
-  - [📖 目錄](#-目錄)
   - [🌐 語系工具設定](#-語系工具設定)
   - [🛠️ Debug 屬性設定](#️-debug-屬性設定)
   - [🎯 Event 設定相關](#-event-設定相關)
   - [🖥️ 加開機器流程](#️-加開機器流程)
   - [🧪 測試資料模板](#-測試資料模板)
-  - [🔄 Batch Redo NMQ Job 程式碼](#-batch-redo-nmq-job-程式碼)
+  - [� 架構分析關鍵字](#-架構分析關鍵字)
+  - [�🔄 Batch Redo NMQ Job 程式碼](#-batch-redo-nmq-job-程式碼)
 
 <br>
 
@@ -166,7 +163,75 @@ cc @jessewang @knighthuang
 
 ---
 
-## 🔄 Batch Redo NMQ Job 程式碼
+## � 架構分析關鍵字
+
+**NMQV3 核心架構元件**：
+
+<br>
+
+**Host Builder 擴充方法**：
+
+<br>
+
+```csharp
+IHostBuilderExtensions.UseNMQv3
+```
+
+<br>
+
+**服務註冊**：
+
+<br>
+
+```csharp
+services.AddSingleton<IHostedService, WorkerProcess>();
+```
+
+<br>
+
+**Worker 處理類別**：
+
+<br>
+
+```csharp
+internal class WorkerProcess : BackgroundService
+```
+
+<br>
+
+**Worker 處理任務**：
+
+<br>
+
+```csharp
+ask workerProcessTask = GetWorkerProcessTask();
+```
+
+<br>
+
+**任務執行輸出**：
+
+<br>
+
+```csharp
+Console.WriteLine(DoJob(text).ToWorkerState().GetWorkerStateCode());
+```
+
+<br>
+
+**處理器執行**：
+
+<br>
+
+```csharp
+return _processExecutor.Execute(service, task, _stoppingToken);
+```
+
+<br>
+
+---
+
+## �🔄 Batch Redo NMQ Job 程式碼
 
 **參考文件**：
 
