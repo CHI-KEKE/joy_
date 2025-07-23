@@ -203,6 +203,13 @@ promotionRequest.RelatedOrderSlaveIdList.Add(request.CrmSalesOrderSlaveId);
 
 ## 3. PromotionRecycleOrderDataEntity
 
+
+- OrderCode : CrmSalesOrderOuterOrderCode1~5
+- OrderSlaveCode : OuterOrderSlaveCode1~6
+- OrderSlaveStatus : Finish
+- MemberId : NineYiMemberId
+
+
 ### 實體屬性說明
 
 | 屬性名稱 | 來源 | 說明 |
