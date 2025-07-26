@@ -11,9 +11,9 @@
   - [🚀 NMQ V2 的 QA 部署步驟](#-nmq-v2-的-qa-部署步驟)
   - [� NMQV2 部署後版號確認位置](#-nmqv2-部署後版號確認位置)
   - [�🔀 切換環境測試方法](#-切換環境測試方法)
+  - [📊 Athena Log](#-athena-log)
 
 <br>
-
 ---
 
 ## 🔧 .NET Framework 安裝
@@ -497,6 +497,44 @@ RewardLoyaltyPoint
 將 JobGroupMapping 從 QA 切至 QA8
 如有問題再麻煩於此 thread 底下留言，謝謝
 ```
+
+<br>
+
+---
+
+## 📊 Athena Log
+
+**Workgroup 設定**：
+
+<br>
+
+**nmqv3_hk：** 要使用 workgroup UPD-UPD2-B2E6
+
+**nmqv3_my：** 要使用 workgroup UPD-UPD2-B2E8
+
+<br>
+
+**查詢語法範例**：
+
+<br>
+
+```sql
+SELECT * FROM "nmqv3_my"."archive_task"
+--where 1 =1
+--and controller = 'tradesOrderLite'
+--and action = 'CompleteForNewCart'
+--and date = '2025/06/24'
+--and message like '%MG250624J00008%'
+where job_name = 'OnlineBankingRazerRefundRequestFinish'
+--and requestid = '{"message":"202506160110276106'
+and date = '2025/07/14'
+and id = 'd0b8de76-683b-4ed7-8a00-232ea1f90623'
+limit 100;
+```
+
+<br>
+
+![alt text](./image-13.png)
 
 <br>
 

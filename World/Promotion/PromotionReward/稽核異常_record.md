@@ -2,6 +2,8 @@
 
 ## 目錄
 1. [DDB已發券序號為空](#1-ddb已發券序號為空)
+2. [攤提結果因重算不符預期](#2-攤提結果因重算不符預期)
+3. [找不到對應的退貨訂單明細](#3-找不到對應的退貨訂單明細)
 
 <br>
 
@@ -69,5 +71,80 @@ where ECoupon_ValidFlag = 1
 and ECoupon_ShopId = 200009
 and ECoupon_Id = 222755
 ```
+
+<br>
+
+---
+
+## 2. 攤提結果因重算不符預期
+
+### 訊息
+
+```
+給點紀錄稽核監控到異常
+市場環境: TW-Prod
+TG Code: TG250722QA00W6
+稽核到下列異常:
+應給點數(200)與實際點數(0)不同
+活動:472232 攤提結果不符預期
+應給點數(60)與實際點數(0)不同
+活動:472125 攤提結果不符預期
+```
+
+<br>
+
+### 釐清
+
+確認 8 號店 7/16 以後走重算
+
+<br>
+
+**ShopStaticSetting 設定：**
+```
+ShopStaticSetting_ShopId: 8
+ShopStaticSetting_Value: {"ShopIds": [], "SwitchDateTime": "2025-07-16T00:00:00"}
+```
+
+<br>
+
+看起來其中兩個 task Id 是為贈品不退點的紀錄：
+
+<br>
+
+**Task 1：** `b9ff4f3e-4723-4b1f-a182-c0f417707a27`
+- TS250722QA0020F, IsGift:True, IsSalePageGift:False, IsMajor:False 為贈品，不需要執行退點
+
+<br>
+
+**Task 2：** `01d23f85-a0f7-430c-9a6e-134f8b25c19d`
+- IsGift:True, IsSalePageGift:False, IsMajor:False 為贈品，不需要執行退點
+
+<br>
+
+**Task 3：** `21b6ad8c-6af5-4575-9157-cdf036936c1e`
+- 重算後整單不滿額，更新回饋狀態為 Cancel
+
+<br>
+
+---
+
+## 3. 找不到對應的退貨訂單明細
+
+### 訊息
+
+```
+給券回收紀錄稽核監控到異常
+市場環境: HK-Prod
+TS250722Q000299
+稽核到下列異常:
+DDB Detail找不到對應的退貨訂單明細crmSalesOrderSlaveId：0
+DDB Keys：34743_TG250722Q00126
+```
+
+<br>
+
+### 釐清
+
+看起來是想稽核 detail 是不是在走逆流程時有紀錄到子單，但這邊是線上單在找是否有線下的子單且要 = 0，為誤判
 
 <br>
