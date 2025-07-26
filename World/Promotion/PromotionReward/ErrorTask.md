@@ -4,6 +4,7 @@
 1. [Lock 失敗](#1-lock-失敗)
 2. [呼叫 ECoupon API失敗](#2-呼叫-ecoupon-api失敗)
 3. [The JSON value is not in a supported DateTime format](#3-the-json-value-is-not-in-a-supported-datetime-format)
+4. [SalepageCollectionException](#4-salepagecollectionexception)
 
 <br>
 
@@ -91,5 +92,23 @@ JSON 欄位內容中 `"OrderDateTime":"2025-05-08 20:00:00.000"` 無法被 Syste
 <br>
 
 DateTime 少了 T 格式問題
+
+<br>
+
+---
+
+## 4. SalepageCollectionException
+
+### 訊息
+
+```
+{"errorCode":"SalepageCollectionException","message":"HttpRequestException","data":"Response status code does not indicate success: 400 (Bad Request)."}
+```
+
+<br>
+
+### 原因
+
+為 salepage Collection 的 API 掛掉
 
 <br>
