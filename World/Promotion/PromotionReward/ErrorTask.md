@@ -5,6 +5,7 @@
 2. [呼叫 ECoupon API失敗](#2-呼叫-ecoupon-api失敗)
 3. [The JSON value is not in a supported DateTime format](#3-the-json-value-is-not-in-a-supported-datetime-format)
 4. [SalepageCollectionException](#4-salepagecollectionexception)
+5. [PromotionRecycleCoupon 找不到 DDB 資料](#5-promotionrecyclecoupon-找不到-ddb-資料)
 
 <br>
 
@@ -110,5 +111,49 @@ DateTime 少了 T 格式問題
 ### 原因
 
 為 salepage Collection 的 API 掛掉
+
+<br>
+
+---
+
+## 5. PromotionRecycleCoupon 找不到 DDB 資料
+
+https://91app.slack.com/archives/C08BE4B4KQW/p1753756490298899
+
+### 問題分析
+
+<br>
+
+- PromotionRewardLoyaltyPointsDispatcherV2Job 沒有被觸發
+- OrderCreated Event 沒看到對應的TG
+
+Athena 可以查
+
+```SQL
+SELECT * FROM "hk_prod_nmqv3"."archive_event"
+WHERE event_name = 'OrderCreated'
+AND date = '2025/06/15'
+AND event LIKE '%TG250616A00008%'
+LIMIT 10;
+```
+
+- 18:20 OrderCancelled event 觸發
+- 有 OrderFailed 紀錄
+
+<br>
+
+### 處理過程
+
+<br>
+
+從17:45開始打OrderRecheck 直到18:20 timeout 回傳 Failed
+
+<br>
+
+### 結論
+
+<br>
+
+DDB 給券應該要檢查訂單狀態做噴錯
 
 <br>
