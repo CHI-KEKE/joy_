@@ -9,6 +9,7 @@
 6. [Unhandled](#6-unhandled)
 7. [ErrorCode](#7-errorcode)
 8. [狀態](#8-狀態)
+9. [Dashboard](#9-dashboard)
 
 <br>
 
@@ -101,5 +102,17 @@ RefundRequestProcessing
 <br>
 
 RefundRequestFail
+
+<br>
+
+---
+
+## 9. Dashboard
+
+https://monitoring-dashboard.91app.io/d/Wc3ALtv4k/payment-middleware-monitor?orgId=2&refresh=1m
+
+<br>
+
+![alt text](./image-9.png)
 
 <br>
