@@ -5,6 +5,7 @@
 2. [PromotionRewardLoyaltyPointsV2](#promotionrewardloyaltypointsv2)
 3. [ValidTypeMemos](#validtypememos)
 4. [線下訂單資料流程](#4-線下訂單資料流程)
+5. [開關](#5-開關)
 
 <br>
 
@@ -323,5 +324,33 @@ rewardDays = 0
 - BookingTime = DateTime.Now.AddMinutes(-1)
 - IsMatch
 - TotalPayment
+
+<br>
+
+---
+
+## 5. 開關
+
+### 計算給點大開關
+
+<br>
+
+**Group:** LoyaltyPoints
+
+<br>
+
+**Key:** IsCalculateRewardPoint
+
+<br>
+
+### 計算給券大開關
+
+<br>
+
+**Group:** PromotionReward
+
+<br>
+
+**Key:** IsCalculateRewardCoupon
 
 <br>

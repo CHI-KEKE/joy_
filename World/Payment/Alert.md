@@ -111,6 +111,8 @@ VSTS : https://91appinc.visualstudio.com/G11n/_workitems/edit/499919
 
 ## 4. 付款成功率
 
+ETL : Flow_CheckThirdPartyPaymentOrders
+
 <br>
 
 為 ETL, ShopEtlFlow_Name = Flow_CheckThirdPartyPaymentOrders
