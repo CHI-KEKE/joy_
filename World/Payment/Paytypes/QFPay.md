@@ -1,8 +1,17 @@
 # QFPay 文件
 
+![alt text](./image.png)
+
+
 ## 目錄
 1. [異常紀錄](#1-異常紀錄)
 2. [正常發動付款頁面的相關資訊](#2-正常發動付款頁面的相關資訊)
+3. [商戶後台與登入資料](#3-商戶後台與登入資料)
+4. [環境URL](#4-環境url)
+5. [測試卡](#5-測試卡)
+6. [三方頁面處理](#6-三方頁面處理)
+7. [金額限制](#7-金額限制)
+8. [逆流程](#8-逆流程)
 
 <br>
 
@@ -433,5 +442,128 @@ https://openapi-int.qfapi.com/checkstand/#/?appcode=51E1B3648E92428A8507BFE0918E
   }
 }
 ```
+
+<br>
+
+---
+
+## 3. 商戶後台與登入資料
+
+### sandbox
+
+<br>
+
+**URL:** https://sh-int-hk.qfapi.com/
+
+<br>
+
+**username:** 891837678
+**pw:** 837678
+**API code:** 51E1B3648E92428A8507BFE0918ED042
+**AP key:** 443B3AC3BD2647D2810D4CEE4F3E6912
+
+<br>
+
+### testing
+
+<br>
+
+**URL:** https://sh-hk.qfapi.com/#/login
+
+<br>
+
+**username:** 7188079981
+**pw:** 079981
+**API code:** B10EA2F62F024A7DA7530A3A7FB096CB
+**AP key:** 0EBB7D7AC791441E94E7B0580210713C
+
+<br>
+
+---
+
+## 4. 環境URL
+
+| Environment Name | Prod. URL |
+|------------------|-----------|
+| Sandbox (Only for credit card simulations) | https://openapi-int.qfapi.com |
+| Live Testing Environment | https://test-openapi-hk.qfapi.com |
+| Production | https://openapi-hk.qfapi.com |
+
+<br>
+
+---
+
+## 5. 測試卡
+
+| 卡別 | Value | 預期結果 |
+|------|-------|----------|
+| MasterCard | 5200000000001096 | 付款成功 |
+| Visa | 4000000000001091 | 付款成功 |
+| MasterCard | 5200000000001005 | 付款成功 (免 3D 驗證) |
+| Visa | 4000000000001000 | 付款成功 (免 3D 驗證) |
+| MasterCard | 5200000000001120 | 付款失敗 (at verification) ==> 1145, 處理中，請稍等 ==> 再到相同付款頁仍然可以用正確卡號結帳轉導 ==> QFPay會有兩筆紀錄 ==> 屬於交易進行中情境 |
+| Visa | 4000000000001125 | 付款失敗 (at verification) |
+| MasterCard | 5200000000001013 | 付款失敗 (at 3DS frictionless)  ==> 1205, 交易失敗，請稍後重试(填卡頁會直接阻擋，停留在填卡頁不轉導) |
+| Visa | 4000000000001018 | 付款失敗 (at 3DS frictionless) |
+
+<br>
+
+---
+
+## 6. 三方頁面處理
+
+### 6.1 OTP 亂打
+
+<br>
+
+在OTP頁阻擋
+
+<br>
+
+### 6.2 逾期
+
+<br>
+
+會跳轉但訂單沒有 StatusCode
+
+<br>
+
+### 6.3 付過款的訂單
+
+<br>
+
+發現該訂單已經付過款會直接跳轉
+
+<br>
+
+---
+
+## 7. 金額限制
+
+### 7.1 交易金額官方說沒有限制
+
+<br>
+
+目前測試 0.5 也可以
+
+<br>
+
+### 7.2 金額有上限
+
+<br>
+
+訊息：銀行系統繁忙，請耐心等待，建議稍後重試或使用其他支付方式(1297)
+
+<br>
+
+---
+
+## 8. 逆流程
+
+<br>
+
+- 信用卡付款無法Cancel
+- 部分付款方式當天退款必須要全額退款，無法部分退
+- 退款金費是扣除當天交易金額，所以可能會發生退款餘額不足的問題
 
 <br>
