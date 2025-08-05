@@ -2,6 +2,8 @@
 
 ## 目錄
 1. [異常案例紀錄](#1-異常案例紀錄)
+2. [帳戶類型](#2-帳戶類型)
+3. [ApplicationFee / Refund / TransferReversal](#3-applicationfee--refund--transferreversal)
 
 <br>
 
@@ -137,5 +139,118 @@ AND PayTypeExpress_MemberId = 1751836
 <br>
 
 需要詢問 Stripe 該交易的問題
+
+<br>
+
+---
+
+## 2. 帳戶類型
+
+### Customer vs Standard
+
+<br>
+
+**Customer：** 我們這邊收錢算好費率，用戶只要在osm按按鈕就可以開一個account建立shop
+
+**Standard：** 大型商店，自己去談費率，ex. SASA
+
+<br>
+
+### 帳戶類型清單
+
+<br>
+
+- Custom
+- CustomTest
+- CustomUAT
+- CustomUATTest
+- Standard
+- StandardUAT
+
+<br>
+
+### 查詢語法
+
+<br>
+
+```sql
+select *
+from ShopDefault(nolock)
+where ShopDefault_ValidFlag = 1
+and ShopDefault_ShopId = @shopId
+and ShopDefault_Key = 'StripeAccountType'
+```
+
+<br>
+
+---
+
+## 3. ApplicationFee / Refund / TransferReversal
+
+### 適用範圍
+
+<br>
+
+- DestinationCharge 專用
+
+<br>
+
+### 功能說明
+
+<br>
+
+**Refund：** 退款給客戶
+
+<br>
+
+**Transfer Reversal：** 從關聯賬戶收回資金到平台賬戶，可以同時指定是否退還相關的 Application Fee，結果會是增加平台餘額，減少目標賬戶餘額
+
+<br>
+
+### 限制條件
+
+<br>
+
+- 對於目標收費（destination charge），撤銷金額不能超過原始收費金額
+- 對於轉賬組（transfer_group），只有在目標賬戶有足夠餘額時才能撤銷
+
+<br>
+
+### 實際案例
+
+<br>
+
+一個電商平台，賣家售出商品價值 $100：
+
+<br>
+
+- 平台收取 10% 應用程式費用（$10）
+- 轉給賣家 $90
+
+<br>
+
+**情況 1：需要全額撤銷**
+
+<br>
+
+執行 Transfer Reversal：從賣家賬戶撤回 $90，可以選擇是否同時退還 $10 應用程式費用
+
+<br>
+
+**情況 2：部分撤銷**
+
+<br>
+
+執行部分 Transfer Reversal：比如從賣家賬戶撤回 $45，可以選擇是否按比例退還部分應用程式費用
+
+<br>
+
+### 資金流向說明
+
+<br>
+
+- **Refund：** 客戶 ↔ 商家
+- **Application Fee Refund：** 平台 → 賣家（僅涉及費用）
+- **Transfer Reversal：** 賣家 → 平台（可包括主要金額和費用）
 
 <br>
