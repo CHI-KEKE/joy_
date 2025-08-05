@@ -1,5 +1,7 @@
 # Cybersource 文件
 
+![alt text](./image-1.png)
+
 ## 目錄
 1. [domain](#1-domain)
 2. [關鍵字](#2-關鍵字)
@@ -7,6 +9,8 @@
 4. [Query](#4-query)
 5. [RefundQuery](#5-refundquery)
 6. [寄信](#6-寄信)
+7. [異常紀錄](#7-異常紀錄)
+8. [Refund](#8-refund)
 
 <br>
 
@@ -400,6 +404,116 @@ Allen
 Tel: 02-2653-8091#532
 Email: allenlin@91app.com
 Site: www.91app.com
+```
+
+<br>
+
+---
+
+## 7. 異常紀錄
+
+### 7.1 RefundQuery 4003 斷掉
+
+<br>
+
+Refund 完壓 RefundProcesing 之後 RefundQuery 斷掉
+
+<br>
+
+- 1:02 執行 Refund
+- 之後每一小時問 RefundQuery 問到斷掉
+- 最後一次問 refund query 的結果是 Pending 4003
+- 因此進行 redo
+- 成行成功 finish
+- 最後 refundquery 結果為 Transmitted 成功
+
+<br>
+
+---
+
+## 8. Refund
+
+<br>
+
+/Refund/CreditCardOnce_Cybersource
+
+<br>
+
+**Request Body**
+
+<br>
+
+```json
+{
+  "request_id": "b27e0095-6ad9-4770-a9c4-c95239cbea1b",
+  "transaction_id": "7408093272826953803034",
+  "amount": 0.0,
+  "currency": null,
+  "extend_info": {
+    "RefundRequestTransactionId": "7425333499856428303980"
+  }
+}
+```
+
+<br>
+
+**Response**
+
+<br>
+
+```json
+{
+  "request_id": "9f701345-da48-424f-9f95-c963e241c2f3",
+  "transaction_id": "7425333499856428303980",
+  "return_code": "4003",
+  "return_message": null,
+  "extend_info": {}
+}
+```
+
+<br>
+
+```json
+{
+  "request_id": "df00d580-e932-4901-b719-62235dd38ec4",
+  "transaction_id": "7425333499856428303980",
+  "return_code": "4003",
+  "return_message": "Request was processed successfully.",
+  "extend_info": {}
+}
+```
+
+<br>
+
+```json
+{
+  "_links": {
+    "void": {
+      "method": "POST",
+      "href": "/pts/v2/refunds/7425333499856428303980/voids"
+    },
+    "self": {
+      "method": "GET",
+      "href": "/pts/v2/refunds/7425333499856428303980"
+    }
+  },
+  "clientReferenceInformation": {
+    "code": "TG250301Q00010"
+  },
+  "id": "7425333499856428303980",
+  "orderInformation": {
+    "amountDetails": {
+      "currency": "HKD"
+    }
+  },
+  "reconciliationId": "7408093272826953803034",
+  "refundAmountDetails": {
+    "currency": "HKD",
+    "refundAmount": "764.15"
+  },
+  "status": "PENDING",
+  "submitTimeUtc": "2025-03-21T05:02:30Z"
+}
 ```
 
 <br>

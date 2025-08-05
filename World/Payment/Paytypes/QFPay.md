@@ -12,6 +12,11 @@
 6. [三方頁面處理](#6-三方頁面處理)
 7. [金額限制](#7-金額限制)
 8. [逆流程](#8-逆流程)
+9.  [Paytypes](#10-paytypes)
+10. [Currency](#11-currency)
+11. [Transaction Status Codes](#12-transaction-status-codes)
+12. [Refund](#13-refund)
+13. [問題清單](#14-問題清單)
 
 <br>
 
@@ -166,15 +171,23 @@ RefundRequest_StatusUpdatedDateTime:
 
 <br>
 
-### 1.2 重複的退款申請
+### 1.2 QFPay Sign_Error
 
-#### 1.2.1 訊息
+<br>
+
+ReturnUrl 要 Encode過
+
+<br>
+
+### 1.3 重複的退款申請
+
+#### 1.3.1 訊息
 
 76 out_trade_no is used - Do not use duplicate out_trade_no for request(1251)
 
 <br>
 
-#### 1.2.2 過程
+#### 1.3.2 過程
 
 QFPay 退款不可帶相同的單號，因此以 RefundRuestId 作為依據
 
@@ -350,7 +363,7 @@ RefundRequest_TransactionId 20250604155300020059948058
 
 <br>
 
-#### 1.2.3 釐清
+#### 1.3.3 釐清
 
 QFPay payment 抱錯失敗變成處理中，結果清空 RefundRequest_TransactionId 重新觸發退款，再試一次會因為不能帶一模一樣的 request 因此阻擋，要請商家到後台退款
 
@@ -388,6 +401,8 @@ API: `/api/v1.0/pay/QFPay/TG240618K00002`
 ```
 
 <br>
+
+我們要對接一個第三方金流（QFPay），他們要求你把付款資訊（例如金額、商品名稱、通知網址）包成一段網址參數，並且用你們雙方約定好的 API Key 做 SHA256 加密簽名。
 
 **Payload:**
 
@@ -565,5 +580,324 @@ https://openapi-int.qfapi.com/checkstand/#/?appcode=51E1B3648E92428A8507BFE0918E
 - 信用卡付款無法Cancel
 - 部分付款方式當天退款必須要全額退款，無法部分退
 - 退款金費是扣除當天交易金額，所以可能會發生退款餘額不足的問題
+
+<br>
+
+---
+
+## 10. Paytypes
+
+<br>
+
+| Code | Description |
+|------|-------------|
+| 800008 | Consumer Present QR Code Mode (CPM) for WeChat, Alipay, UNIONPAY Quick Pass |
+| 800101 | Alipay Merchant Presented QR Code Payment in store (MPM) (Overseas Merchants) |
+| 800108 | Alipay Consumer Presented QR Code Payment (CPM) (Overseas & HK Merchants) |
+| 801101 | Alipay Online WEB (in browser Chrome etc.) Payment (Overseas Merchants) ** |
+| 801107 | Alipay Online WAP (in mobile browser Chrome etc.) Payment (Overseas Merchants) |
+| 801110 | Alipay in-APP Payments (Overseas Merchants) |
+| 800107 | Alipay Service Window H5 Payment (in Alipay APP H5 payments) |
+| 801501 | Alipay Merchant Presented QR Code (MPM) Payment (HK Merchants) |
+| 801510 | Alipay In-App Payment (HK Merchants) |
+| 801512 | Alipay Online WAP Payment (HK Merchants) |
+| 801514 | Alipay Online WEB Payment (HK Merchants) |
+| 800201 | WeChat Merchant Presented QR Code Payment (MPM) (Overseas & HK Merchants) |
+| 800208 | WeChat Consumer Presented QR Code Payment (CPM) (Overseas & HK Merchants) |
+| 800207 | WeChat JSAPI Payment - WeChat Official Account Payment (in Wechat App)(Overseas & HK Merchants) |
+| 800212 | WeChat H5 Payment (In mobile browser) |
+| 800210 | WeChat in-APP Payment (Overseas & HK Merchants) |
+| 800213 | WeChat Mini-Program Payment (Overseas & HK Merchants) |
+| 801008 | WeChat Pay HK Consumer Presented QR Code Payment (CPM) (Direct Settlement, HK Merchants) |
+| 801010 | WeChat Pay HK In-App Payment (Direct Settlement, HK Merchants) |
+| 805801 | PayMe Merchant Presented QR Code Payment in store (MPM) (HK Merchants) |
+| 805808 | PayMe Consumer Presented QR Code Payment (CPM) (HK Merchants) |
+| 805814 | PayMe Online WEB (in browser Chrome etc.) Payment (HK Merchants) |
+| 805812 | PayMe Online WAP (in mobile browser Chrome etc.) Payment (HK Merchants) |
+| 800701 | UNIONPAY Quick Pass Merchant Presented QR Code Payment (MPM) |
+| 800708 | UNIONPAY Quick Pass Consumer Presented QR Code Payment (CPM) |
+| 800712 | UNIONPAY WAP Payment (HK Merchants) |
+| 800714 | UNIONPAY PC-Web Payment (HK Merchants) |
+| 802001 | FPS Merchant Presented QR Code Payment (MPM) (HK Merchants)*** |
+| 803701 | Octopus dynamic QRC Payment - Merchant Present Mode (MPM) (HK Merchants) |
+| 802801 | Visa / Mastercard Online Payments |
+| 802808 | Visa / Mastercard Offline Payments |
+| 806527 | ApplePay Online Payments |
+| 806708 | UnionPay Card Offline Payments |
+| 806808 | American Express Card Offline Payments |
+
+<br>
+
+---
+
+## 11. Currency
+
+<br>
+
+| Code | Description |
+|------|-------------|
+| AED | Arab Emirates Dirham |
+| CNY | Chinese Yuan |
+| EUR | Euro |
+| HKD | Hong Kong Dollar |
+| IDR | Indonesian Rupiah |
+| JPY | Japanese Yen |
+| MMK | Myanmar Kyat |
+| MYR | Malaysian Ringgit |
+| SGD | Singapore Dollar |
+| THB | Thai Baht |
+| USD | United States Dollar |
+| CAD | Canadian Dollar |
+| AUD | Australian Dollar |
+
+<br>
+
+---
+
+## 12. Transaction Status Codes
+
+<br>
+
+https://sdk.qfapi.com/docs/preparation/paycode#transaction-status-codes
+
+<br>
+
+| Return code | Description |
+|-------------|-------------|
+| 0000 | Transaction successful |
+| 1100 | System under maintenance (1100) |
+| 1101 | Reversal error (1101) |
+| 1102 | Duplicate request (1102) |
+| 1103 | Request format error (1103) |
+| 1104 | Request parameter error (1104) |
+| 1105 | Device not activated (1105) |
+| 1106 | Invalid device (1106) |
+| 1107 | Device not allowed (1107) |
+| 1108 | Signature error (1108) |
+| 1125 | Transaction has been refunded already (1125) |
+| 1136 | The transaction does not exist or is not operational (1136) |
+| 1142 | Order already closed (1142) |
+| 1143 | The order has not been paid for, the password is currently being entered (1143) |
+| 1145 | Please wait while processing (1145) |
+| 1147 | Wechat pay transaction error (1147) |
+| 1150 | Your billing method is T0 and does not support canceling transactions. (1150) |
+| 1155 | Refund request denied (1155) |
+| 1181 | Order expired (1181) |
+| 1201 | Insufficient balance, please use a different payment method (1201) |
+| 1202 | Incorrect or expired payment code, please show the correct payment code or refresh the payment code and retry (1202) |
+| 1203 | Merchant account error, confirm that the payment account is configured correctly (1203) |
+| 1204 | Bank error, confirm that the payment wallet is functionable (1204) |
+| 1205 | The transaction failed. Please try again later (1205) |
+| 1212 | Please use the UnionPay overseas payment code (1212) |
+| 1241 | The store does not exist or the status is incorrect. Do not conduct payments (1241) |
+| 1242 | The store has not been configured correctly, unable to conduct payments (1242) |
+| 1243 | The store has been disabled. Do not conduct payments, contact the owner to confirm (1243) |
+| 1250 | The transaction is forbidden. For more information please contact QFPay Customer Service Team (1250) |
+| 1251 | The store has not been configured correctly, we are currently working to fix this problem (1251) |
+| 1252 | System error when making the order request (1252) |
+| 1254 | A problem occured. We are currently resolving the issue (1254) |
+| 1260 | The order has already been paid for, please confirm the transaction result before conducting more transactions (1260) |
+| 1261 | The order has not been paid for, please confirm the transaction result before conducting more transactions (1261) |
+| 1262 | The order has been refunded, please confirm the order status before conducting more transactions (1262) |
+| 1263 | The order has been cancelled, please confirm the order status before conducting more transactions (1263) |
+| 1264 | The order has been closed, please confirm the order status before conducting more transactions (1264) |
+| 1265 | The transaction cannot be refunded. Refunds for transactions between 11:30pm to 0:30am and special promotions cannot be processed. (1265) |
+| 1266 | The transaction amount is wrong, please confirm the order status (1266) |
+| 1267 | The order information does not match, please confirm the order status (1267) |
+| 1268 | The order does not exist, please confirm the order status (1268) |
+| 1269 | Today's unsettled transaction amount is insufficient. Refunds cannot be processed. Please confirm that the balance is sufficient (1269) |
+| 1270 | This currency does not support partial refunds (1270) |
+| 1271 | The selected transaction does not support partial refunds (1271) |
+| 1272 | The refund amount is greater than the maximum amount that can be refunded for the original transaction (1272) |
+| 1294 | The transaction may be non-compliant and has been prohibited by the bank (1294) |
+| 1295 | The connection is slow, waiting for a network response (1295) |
+| 1296 | The connection is slow, waiting for a network response. Please try again later or use other payment methods (1296) |
+| 1297 | The banking system is busy. Please try again later or use other payment methods (1297) |
+| 1298 | The connection is slow, waiting for a network response. In case you have already paid, do not repeat the payment. Please confirm the result later (1298) |
+| 2005 | The customer payment code is incorrect or has expired, please refresh and restart the transaction process (2005) |
+| 2011 | Transaction serial number repeats (2011) |
+
+<br>
+
+---
+
+## 13. Refund
+
+<br>
+
+QFPay API：https://test-openapi-th.qfapi.com/trade/v1/refund
+
+<br>
+
+### 13.1 餘額不足
+
+<br>
+
+```json
+{
+  "request_id": "6de092a5-023a-41f8-8922-1858050597fa",
+  "transaction_id": null,
+  "return_code": "3000",
+  "return_message": "",
+  "extend_info": {
+    "syssn": null,
+    "orig_syssn": "20240704180500020000018223",
+    "txamt": null,
+    "sysdtm": null,
+    "respcd": "1269",
+    "resperr": "Today this payment method refundable balance is 0 HKD, not enough.Please try it again when you have enough incomes.(1269)",
+    "paydtm": null,
+    "txdtm": null,
+    "udid": null,
+    "txcurrcd": "HKD",
+    "respmsg": "",
+    "out_trade_no": "0704Test_2_biiei2eo2i_1",
+    "chnlsn": null,
+    "cardcd": null
+  }
+}
+```
+
+<br>
+
+### 13.2 Visa / Mastercard卡交易，系统规定，若是当日交易当日退款，需要全额申请，隔日退款才可以用部分退款
+
+<br>
+
+```json
+{
+  "request_id": "6adb5622-132b-4719-926a-1eeb5cfb315d",
+  "transaction_id": null,
+  "return_code": "3000",
+  "return_message": "",
+  "extend_info": {
+    "syssn": null,
+    "orig_syssn": "20240705180500020000018229",
+    "txamt": null,
+    "sysdtm": null,
+    "respcd": "1124",
+    "resperr": "For void request, it must be a full refund, please correct refund amount and re-initiate it",
+    "paydtm": null,
+    "txdtm": null,
+    "udid": null,
+    "txcurrcd": null,
+    "respmsg": "",
+    "out_trade_no": "0705Test",
+    "chnlsn": null,
+    "cardcd": null
+  }
+}
+```
+
+<br>
+
+### 13.3 退款成功
+
+<br>
+
+```json
+{
+  "request_id": "00abd607-af40-4984-9f60-2679fb727a91",
+  "transaction_id": "20240705180500020000018231",
+  "return_code": "0000",
+  "return_message": "Void received",
+  "extend_info": {
+    "syssn": "20240705180500020000018231",
+    "orig_syssn": "20240705180500020000018229",
+    "txamt": "1000000",
+    "sysdtm": "2024-07-05 10:16:05",
+    "respcd": "0000",
+    "resperr": "交易成功",
+    "paydtm": "2024-07-05 10:16:06",
+    "txdtm": "2024-07-05 10:14:00",
+    "udid": "qiantai2",
+    "txcurrcd": "HKD",
+    "respmsg": "Void received",
+    "out_trade_no": "0705Test",
+    "chnlsn": "",
+    "cardcd": ""
+  }
+}
+```
+
+<br>
+
+### 13.4 退款成功後 QUERY
+
+<br>
+
+```json
+{
+  "request_id": "0817f27c-9575-47cf-841b-4c08514ce696",
+  "transaction_id": null,
+  "return_code": "3000",
+  "return_message": "wrong cancel",
+  "extend_info": {
+    "syssn": null,
+    "orig_syssn": "20240703155300020040434464",
+    "txamt": null,
+    "sysdtm": null,
+    "respcd": "1264",
+    "resperr": "Order closed, please confirm the order status before continuing(1264)",
+    "paydtm": null,
+    "txdtm": null,
+    "udid": null,
+    "txcurrcd": "HKD",
+    "respmsg": "wrong cancel",
+    "out_trade_no": "c",
+    "chnlsn": null,
+    "cardcd": null
+  }
+}
+```
+
+<br>
+
+### 13.5 退完再退
+
+<br>
+
+```json
+{
+  "request_id": "d4bedc24-7a61-4668-84f8-095d9aee4f13",
+  "transaction_id": null,
+  "return_code": "3000",
+  "return_message": "wrong cancel",
+  "extend_info": {
+    "syssn": null,
+    "orig_syssn": "20240703155300020040434464",
+    "txamt": null,
+    "sysdtm": null,
+    "respcd": "1264",
+    "resperr": "Order closed, please confirm the order status before continuing(1264)",
+    "paydtm": null,
+    "txdtm": null,
+    "udid": null,
+    "txcurrcd": "HKD",
+    "respmsg": "wrong cancel",
+    "out_trade_no": "c",
+    "chnlsn": null,
+    "cardcd": null
+  }
+}
+```
+
+<br>
+
+### 13.6 其他退款測試方向
+
+<br>
+
+要確定退款是打完API當天就會直接退給你錢嗎?
+
+<br>
+
+---
+
+## 14. 問題清單
+
+<br>
+
+https://docs.google.com/spreadsheets/d/1F5wXCP7-w-_u2C7vpVbIP_GgMe75Y9kH2HM-rJH7vAQ/edit?gid=1016597365#gid=1016597365
 
 <br>
