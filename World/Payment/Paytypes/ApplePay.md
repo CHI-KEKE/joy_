@@ -2,6 +2,11 @@
 
 ## 目錄
 1. [異常紀錄](#1-異常紀錄)
+2. [轉單問題](#2-轉單問題)
+3. [PSP (PaymentServiceProfile)](#3-psp-paymentserviceprofile)
+4. [PaymentMethodId 傳遞](#4-paymentmethodid-傳遞)
+5. [取消按鈕消失的問題](#5-取消按鈕消失的問題)
+6. [PublishableKey 位置](#6-publishablekey-位置)
 
 <br>
 
@@ -64,5 +69,346 @@ https://bitbucket.org/nineyi/nineyi.database.operation/pull-requests/22492/dif
 /api/v1.0/pay/ApplePay_Stripe/TG250702T00022
 RESPONSE BODY:\n{\n  \"request_id\":
 ```
+
+<br>
+
+### 1.2 ApplePay 沒有憑證
+
+<br>
+
+ApplePay 沒有憑證，會跳「Apple Pay 無法使用」的 pop up
+
+<br>
+
+### 1.3 需要回傳 ClientSecret 給 SDK
+
+<br>
+
+![alt text](./image-3.png)
+
+<br>
+
+#### 原因
+
+<br>
+
+如果不回傳，使用者會在 ApplePay UI 看到紅色驚嘆號付款失敗，但實際上在後台是有成單的，這應該是會被投訴
+
+<br>
+
+#### 實現邏輯
+
+<br>
+
+結帳完成後，PMW 會把 ClientSecret 帶給 MWeb，並使用方法：`StripePayChannelService.ChangeExtendInfoAfterPaymentResult`，附加在 `context.ThirdPartyPayment.ExtendInfo` 節點，`CompleteForNewCart` 回給前端完成付款流程
+
+<br>
+
+#### 相關討論串
+
+<br>
+
+https://91app.slack.com/archives/C017G0YFPPH/p1727083602646129
+
+<br>
+
+---
+
+## 2. 轉單問題
+
+### 2.1 釐清
+
+<br>
+
+一般金流轉單會在對應的金流 Process 註冊 TransferOrderProcessor，例如 RegisterGooglePayProcess 就會有，但 RegisterApplePayProcess 並未獨立處理轉單 Processor，而是寫在 CreateApplePayRequestProcessor 這個付款 Processor 內部，原邏輯是 PaymentConfirm（確認授權結果）後建立 TransferOrderToErp
+
+<br>
+
+### 2.2 作法
+
+<br>
+
+CreateApplePayRequestProcessor 內部會切 PSP，若為 PaymentMiddleware 則會新增我們自己的轉單 Task
+
+<br>
+
+**PR**：https://bitbucket.org/nineyi/nineyi.webstore.mobilewebmall/pull-requests/43190/overview
+
+<br>
+
+---
+
+## 3. PSP (PaymentServiceProfile)
+
+### 3.1 說明簡報參考
+
+<br>
+
+https://docs.google.com/presentation/d/1cFJPCnIvn5Xd0Vs8l0wYP82uhw_jfvYkf5A__RcQ8-w/edit?slide=id.g2c3bcb5dadc_2_0#slide=id.g2c3bcb5dadc_2_0
+
+<br>
+
+### 3.2 PaymentServiceProvider DB 設定處理
+
+<br>
+
+| 金流 | 商店 | 設定內容 |
+|------|------|----------|
+| ApplePay | 0 | {"PaymentServiceProvider":"NCCC","AppVer": null,"Acquiring":"NCCC"} |
+| ApplePay | 1 | {"PaymentServiceProvider":"TapPay", "AppVer": "24.3.0","Acquiring":"808"} |
+| ApplePay | 2 | {"PaymentServiceProvider":"TapPay", "AppVer": "24.4.0","Acquiring":"822"} |
+| GooglePay | 0 | {"PaymentServiceProvider":"TapPay","AppVer":null,"Acquiring":"NCCC"} |
+| GooglePay | 1 | {"PaymentServiceProvider":"TapPay","AppVer":null,"Acquiring":"808"} |
+
+<br>
+
+**ShopStaticSetting 格式**：PaymentServiceProviderProfile/ApplePay/0
+
+<br>
+
+**AppVer為null表示不指定**
+
+<br>
+
+### 3.3 資料儲存
+
+<br>
+
+| 項目 | 說明 |
+|------|------|
+| **Table** | ShopStaticSetting |
+| **PSP 撈取站台** | Shopping, context.Data.CheckoutPaymentServiceProvider |
+| **MWeb 節點** | context.CheckoutPaymentServiceProvider |
+| **相關 API** | pay-set，邏輯是若金流選項為 ApplePay / GooglePay 則會進入是否要取得 PSP Profile 的判斷式，目前版本 > 24.4.0 則會去 DB 撈取當下的 PSP Profile |
+| **版本說明** | 目前使用 24.13 版才可正常付款，PSPPayProfile 版本須更新為 24.13 |
+
+<br>
+
+### 3.4 APP 版本
+
+<br>
+
+如果過舊（24.4 以前）不會抓 PSP，有可能導致預設的 NCCC 傳入
+
+<br>
+
+```csharp
+private async Task SetCheckoutPaymentServiceProvider(CheckoutContext context, string key, CheckoutPaymentServiceProviderEntity checkoutPSP)
+{
+    var profile = await GetPaymentServiceProviderProfile(context.ShopId, key);
+    if (profile == null)
+    {
+        return;
+    }
+
+    var userClientTrack = context.Data.UserClientTrack;
+    if (userClientTrack.IsApp == false
+        || profile!.AppVer == null
+        || IsAppVerSupported())
+    {
+        checkoutPSP.PaymentServiceProvider = profile!.PaymentServiceProvider;
+        checkoutPSP.Acquiring = profile!.Acquiring;
+    }
+
+    bool IsAppVerSupported()
+    {
+        return string.IsNullOrWhiteSpace(userClientTrack.AppVersion) == false &&
+        Version.TryParse(userClientTrack.AppVersion, out _) &&
+        userClientTrack.CheckAppVersionIsUnsupported(profile!.AppVer!) == false;
+    }
+}
+```
+
+<br>
+
+### 3.5 History
+
+<br>
+
+#### 3.5.1 案件說明
+
+<br>
+VSTS :　https://91appinc.visualstudio.com/G11n/_workitems/edit/453982
+2024/12/23 Luke 反應 4 & 12 店偶發出現戳到 TW ApplePay Decrypt 的結帳需求
+
+<br>
+
+**Elmah**：http://elmahdashboard.91app.hk/Log/Details/a4e8cba2-f1a1-4398-8e1d-d1c63774b2bb
+
+<br>
+
+無法取得 Apple Pay Decrypt 結果，回傳狀態：ProtocolError
+
+<br>
+
+#### 3.5.2 釐清過程
+
+<br>
+
+**Athena 查詢**
+
+<br>
+
+```sql
+-- 4 店的錯誤
+select * from "hk_prod_webstore"."webstore_web_nlog"
+where date = '2024/12/23'
+and controller = 'tradesOrderLite'
+and action = 'CompleteForNewCart'
+and requestid = '{"message":"202412230856540938'
+limit 100;
+
+-- 12 店的錯誤
+select * from "hk_prod_webstore"."webstore_web_nlog"
+where date = '2024/12/21'
+and controller = 'tradesOrderLite'
+and action = 'CompleteForNewCart'
+and requestid = '{"message":"202412211334273896'
+limit 100;
+```
+
+<br>
+
+可以得到 MemberId：'2216075','2275917'
+
+<br>
+
+查 TradesOrderGroup_TrackAppVersion 後發現，4號店隨機找一張 ApplePay 成功的單：
+
+<br>
+
+- **TradesOrderGroup_TrackAppVersion**：24.13.0
+- **TG**：TG241223A00010
+
+<br>
+
+而 Luke 反應以上有問題的單查看 TradesOrderGroup_TrackAppVersion 都是 24.11.5
+
+測試 HK 2 號店 24.11.5，選了 Apple Pay，前端 JSI 會傳來, paymentServiceProvider: NCCC, 前端有個三元判斷
+
+有 : 就帶後端給的  `paymentServiceProvider`
+沒有 : (null or undefined or '') 就是預設帶 PaymentServiceProviderEnum.NCCC
+<br>
+
+**結論**：為版本不該出現 ApplePay 的問題
+![alt text](./image-4.png)
+
+<br>
+
+---
+
+## 4. PaymentMethodId 傳遞
+
+### 4.1 Shopping / Cart 新增節點用來接前端給的 PaymentMethodId
+
+<br>
+
+**Shopping**：PaymentMiddlewareCreditCardInfoEntity.ExtendInfo
+
+<br>
+
+**Cart**：TradesOrderThirdPartyPaymentInfoEntity.ExtendInfo
+
+<br>
+
+### 4.2 實現邏輯
+
+<br>
+
+- **Checkout / Complete**：前端會在 PaymentMiddlewareCreditCardInfoEntity.ExtendInfo 帶上 paymentMethodId
+
+<br>
+
+- **Cart 處理**：在 GetPayDataProcessor.AssignPayProcessFlowTypeAsync 判斷是 GooglePay 後從 ExtendInfo 去 Resolve 出 paymentMethodId ==> payment_method，放在 checkoutContext.OldPayProcessContext.ThirdPartyPaymentInfo.ExtendInfo
+
+<br>
+
+- **前台付款**：GetMobileWalletPayExtendInfo 取出送到 PMW
+
+<br>
+
+---
+
+## 5. 取消按鈕消失的問題
+
+### 5.1 釐清
+
+<br>
+
+OrderSlaveFlow 有個欄位是 CanCancel，當初似乎為了解決待付款就跑出取消按鈕而在 StripePayChannelService 新增「若是 G/A Pay 要多壓一次大表狀態」的邏輯，導致後來取消按鈕都長不出來
+
+<br>
+
+### 5.2 解法
+
+<br>
+
+因為跨國本身就會在 Query 後根據結果壓大表狀態，因此應是讓 Stripe G/A Pay 從成立訂單就走跨國的邏輯
+
+<br>
+
+#### 5.2.1 移除多壓狀態邏輯
+
+<br>
+
+移除該判斷式避免「永遠長不出按鈕」且「多壓一次大表」
+
+<br>
+
+**PR**：https://bitbucket.org/nineyi/nineyi.webstore.mobilewebmall/pull-requests/43855/overview
+
+<br>
+
+#### 5.2.2 修改成立訂單邏輯
+
+<br>
+
+在成立訂單時（CreateTradesOrderProcessor）修改 Stripe GooglePay / ApplePay 進入跨國的判斷式，讓該出現取消按鈕時才出現
+
+<br>
+
+---
+
+## 6. PublishableKey 位置
+
+### 6.1 先確認帳戶類型
+
+<br>
+
+```sql
+select ShopDefault_ShopId,ShopDefault_GroupTypeDef,ShopDefault_Key,ShopDefault_NewValue,*
+from ShopDefault(nolock)
+where ShopDefault_ValidFlag = 1
+and ShopDefault_ShopId = 125  -- 幾號店??? 
+and ShopDefault_GroupTypeDef = 'Stripe'
+```
+
+<br>
+
+### 6.2 再根據帳戶類型找出 pk
+
+<br>
+
+```sql
+DECLARE @secretKey VARCHAR(50) = '', -- {帳戶類型}PublishableKey 例如 : StandardUATPublishableKey
+        @shopId BIGINT = ; -- 商店ID
+
+-- 修改前 
+select ShopSecret_ShopId,ShopSecret_Key,ShopSecret_Value,*
+from ShopSecret(nolock)
+where ShopSecret_GroupName = 'Stripe' 
+and ShopSecret_ShopId = @shopId
+and ShopSecret_Key = @secretKey
+and ShopSecret_ValidFlag = 1
+```
+
+<br>
+
+### 6.3 帳戶類型差異
+
+<br>
+
+- **Standard**：會根據商店有所不同, 使用連結帳戶的 pk + acct
+- **Custom**：shopId = 0，只會帶一把
 
 <br>

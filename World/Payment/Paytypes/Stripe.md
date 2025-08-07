@@ -4,6 +4,12 @@
 1. [異常案例紀錄](#1-異常案例紀錄)
 2. [帳戶類型](#2-帳戶類型)
 3. [ApplicationFee / Refund / TransferReversal](#3-applicationfee--refund--transferreversal)
+4. [系統使用費 / 金流手續費](#4-系統使用費--金流手續費)
+5. [publishableKey](#5-publishablekey)
+6. [App 設定值處理](#6-app-設定值處理)
+7. [第三方金物流 pk + acct 設定根據帳戶類型差異](#7-第三方金物流-pk--acct-設定根據帳戶類型差異)
+8. [快取](#8-快取)
+9. [Stripe 後台操作](#9-stripe-後台操作)
 
 <br>
 
@@ -254,3 +260,394 @@ and ShopDefault_Key = 'StripeAccountType'
 - **Transfer Reversal：** 賣家 → 平台（可包括主要金額和費用）
 
 <br>
+
+---
+
+## 4. 系統使用費 / 金流手續費
+
+### 4.1 取得 系統使用費 & 金流手續費位置
+
+<br>
+
+**GetOrderProcessingFeeProcessor**
+
+<br>
+
+### 4.2 取得費率的方式
+
+<br>
+
+#### 系統使用費：SalesFeeInfo
+
+<br>
+
+**影響因素**
+
+<br>
+
+- sourceCategoryId
+- SupplierId
+
+<br>
+
+**預設：** decimal salesFeeRate = 0.05m
+
+<br>
+
+**Table**
+
+<br>
+
+- SupplierContract
+- SupplierContract_IsDefaultSalesFeeRate
+- SupplierContractSalesFeeRate
+- SupplierContractSalesFeeRate_Rate
+
+<br>
+
+#### 金流手續費：PayProfileFeeInfo
+
+<br>
+
+**影響因素**
+
+<br>
+
+- shopId
+- payprofile
+- country
+- brand
+
+<br>
+
+**CSP：** csp_GetPayProfileProcessingFee
+
+<br>
+
+**最底限會撈 PayProfile**
+
+<br>
+
+- PayProfileProcessingFee_SupplierFeeRate
+- PayProfileProcessingFee_SupplierFixedFee
+
+<br>
+
+### 4.3 MWeb 計算費率後帶到 PaymentMiddleware
+
+<br>
+
+**位置：** StripePayChannelService.GetStripeApplicationFee
+
+<br>
+
+將資料帶到 ExtendInfo.application_fee_amount
+
+<br>
+
+**系統使用費：** 加總 SalePageGroup.TotalPayment * salesProcessingFee.Rate（一般是 0.05）
+
+<br>
+
+**運費使用費：** TradesOrderGroup.TradesOrderGroup_TotalFee * salesProcessingFee.Rate
+
+<br>
+
+若是 Custom Type 帳戶類型會再加上金流手續費：
+
+<br>
+
+```
+(TradesOrderGroup_TotalPayment * payProfileProcessingFee.Rate) + payProfileProcessingFee.FixedFee
+```
+
+<br>
+
+### 4.4 轉單後資料處理
+
+<br>
+
+**轉單 Job：** TransferOrderToERP
+
+<br>
+
+**Step1：** 將WebStoreDB資料轉移至ERPDB暫存表資料表 csp_ImportWebStoreDBTradesOrdersToERPDBSourceTablesByOrderId_Mall
+
+<br>
+
+**Step2：** 壓SalseOrderGroup：dbo.csp_TradesOrderTransToSalesOrderWithFlow_Mall
+
+<br>
+
+**Step3：** 壓SalesOrder：ERPDB.dbo.csp_UpdateDataAfterTradesOrderTransToSalesOrderWithFlow
+
+<br>
+
+#### 帶入參數
+
+<br>
+
+帶 TradesOrderGroupId：
+
+<br>
+
+- @shopPayProfileSupplierFixedFee：PayProfile_SupplierFixedFeePayProfile_SupplierFixedFee 抓這個
+- PayProfileProcessingFee_SupplierFixedFee 為主
+- @salesOrderGroupPaymentFixedFe
+- @cardIssueCountry
+- @cardBrand
+
+<br>
+
+#### 資料對應
+
+<br>
+
+執行 UpdateSalesOrderSlaveFeeRateByGroupId 時，會取 ThirdPartyPayment_Info 並 Mapping 為以下：
+
+<br>
+
+- **FeeRate** => SalesOrderSlave_SCMCreditCardFeeRate, SalesOrderSlave_SCMCreditCardFeeRate2
+- **SCMSalesFeeRate** => SalesOrderSlave_SCMSalesFeeRate
+- **FixedFee** => SalesOrderGroup_PaymentFixedFee
+
+<br>
+
+#### 費用單生成
+
+<br>
+
+接著長費用單（ExpenseOrder），費用單（ExpenseOrder）會長其他報表
+
+<br>
+
+---
+
+## 5. publishableKey
+
+### 5.1 Apple Pay 設定
+
+<br>
+
+**Apple Pay：** Configure the SDK with your Stripe publishable key on app start. This enables your app to make requests to the Stripe API.
+
+<br>
+
+### 5.2 Google Pay 設定
+
+<br>
+
+**Google Pay：** To initialize Stripe in your React Native app, either wrap your payment screen with the StripeProvider component, or use the initStripe initialization method. Only the API publishable key in publishableKey is required. The following example shows how to initialize Stripe using the StripeProvider component.
+
+<br>
+
+### 5.3 publishableKey 功能說明
+
+<br>
+
+publishableKey 是 Stripe SDK 與 Stripe 後台互動的「公開金鑰」。
+
+<br>
+
+Stripe SDK（不論是 Apple Pay、Google Pay 或其他）都需要連接到 Stripe 的伺服器來：
+
+<br>
+
+- **確認商家身份**：確認你是哪一個商家（Merchant）
+- **載入付款設定**：根據商家的設定載入相應的付款選項（例如你啟用了 Apple Pay、信用卡等）
+- **執行付款操作**：允許產生 PaymentMethod、Token、PaymentIntent 等操作
+
+<br>
+
+而 publishableKey 就是識別你是哪一位商家的方式。
+
+<br>
+
+---
+
+## 6. App 設定值處理
+
+### 6.1 App 設定檔 API
+
+<br>
+
+**API 路徑**：https://shop2.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/2?r=t
+
+<br>
+
+設定值放置於 `ExtendInfo.StripeConfiguration` 節點
+
+<br>
+
+![alt text](./image-2.png)
+
+<br>
+
+### 6.2 PublishableKey
+
+<br>
+
+**資料庫密鑰設定**
+
+<br>
+
+- **DB**：WebstoreDB
+- **Table**：ShopSecret
+- **Group**：Stripe
+- **Key**：{accountType}PublishableKey
+
+<br>
+
+### 6.3 帳戶類型
+
+<br>
+
+**資料庫設定**
+
+<br>
+
+- **DB**：WebStore
+- **Table**：ShopDefault
+- **Column**：ShopDefault_NewValue
+
+<br>
+
+#### 6.3.1 帳戶類型覆寫問題
+
+<br>
+
+有遇過一次帳戶撈出來是 Custom，但根據程式碼邏輯會被覆寫成 Standard。
+
+<br>
+
+**原因**：Entity 的設定邏輯會確認是否開啟 EnableCustomDate
+
+<br>
+
+**釐清 VSTS**：https://91appinc.visualstudio.com/G11n/_workitems/edit/433159
+
+<br>
+
+#### 6.3.2 Google Pay 帳戶確認
+
+<br>
+
+確認 googlepay CutomUATTest 是否「已激活」
+
+<br>
+
+### 6.4 CountryCode
+
+<br>
+
+**資料庫設定**
+
+<br>
+
+- **Table**：shopStaticSetting
+
+<br>
+
+**設定方式**
+
+<br>
+
+- **一般商店**：shopId = 0, groupName = Stripe, key = ConutryCode
+- **美金站**：shopId = 125, groupName = Stripe, key = ConutryCode
+
+<br>
+
+### 6.5 Currency
+
+<br>
+
+**資料來源**：Supplier.SalesMarketCuerrency
+
+<br>
+
+## 6.6 快取
+
+<br>
+
+- **Server 端的快取**：可以透過 r=t 處理
+- **BFF 快取**：約 5 分鐘左右
+
+<br>
+
+---
+
+## 7. 第三方金物流 pk + acct 設定根據帳戶類型差異
+
+### 7.1 Custom 帳戶類型
+
+<br>
+
+![alt text](./image-5.png)
+
+<br>
+
+### 7.2 Standard 帳戶類型
+
+<br>
+
+![alt text](./image-6.png)
+
+<br>
+
+---
+
+## 9. Stripe 後台操作
+
+### 9.1 查看 GooglePay / ApplePay 是否 Active
+
+<br>
+
+![alt text](./image-7.png)
+
+<br>
+
+### 9.2 查看帳戶資訊
+
+<br>
+
+![alt text](./image-8.png)
+
+<br>
+
+### 9.3 查看 apiKey
+
+<br>
+
+![alt text](./image-9.png)
+
+<br>
+
+### 9.4 查看 log
+
+<br>
+
+![alt text](./image-10.png)
+
+<br>
+
+### 9.5 目前 QA 連結狀況
+
+<br>
+
+shop = 11 CustomUATTest, 在 QA Custom UAT 的 ConnectedAccount
+shop = 2  Standard, 在 91APP HK UAT 的 ConnectedAccount, 帳戶名稱為 91APP HK Limited(ShopId2)
+
+
+<br>
+
+### 9.6 關鍵字
+
+开发人员
+API 密钥
+令牌
+
+### 9.7 切換測試模式
+
+![alt text](./image-11.png)
+
+---

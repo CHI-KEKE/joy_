@@ -180,6 +180,34 @@ WHERE PromotionEngine_ValidFlag = 1
 ORDER BY PromotionEngine_CreatedDateTime DESC
 ```
 
+**版本3**
+
+```sql
+use WebStoreDB
+
+select PromotionEngine_ShopId,PromotionEngine_TypeDef,PromotionEngine_TargetTypeDef,*
+from PromotionEngine(nolock)
+where PromotionEngine_ValidFlag = 1
+and PromotionEngine_TypeDef in ('RewardReachPriceWithCoupon','RewardReachPriceWithPoint2','RewardReachPriceWithRatePoint2')
+and PromotionEngine_ShopId not in (8,2373)
+and PromotionEngine_TargetTypeDef in ('SalePage','Category')
+--and PromotionEngine_EndDateTime > GETDATE()
+
+
+select PromotionEngine_ShopId,PromotionEngine_TypeDef,PromotionEngine_TargetTypeDef,*
+from PromotionEngine(nolock)
+where PromotionEngine_ValidFlag = 1
+and PromotionEngine_TypeDef in ('RewardReachPriceWithCoupon','RewardReachPriceWithPoint2','RewardReachPriceWithRatePoint2')
+and PromotionEngine_ShopId not in (8,2373)
+and PromotionEngine_ExcludeTargetTypeDef in ('SalePage','Category')
+--and PromotionEngine_EndDateTime > GETDATE()
+
+USE WebStoreDB
+select PromotionTagSlave_TargetTypeCode,PromotionTagSlave_TargetTypeId,PromotionTagSlave_TargetTypeCode,PromotionTagSlave_ValidFlag,*
+from PromotionTagSlave(nolock)
+where PromotionTagSlave_PromotionTagId in (652441,651990,651462,654150)
+```
+
 <br>
 
 ---
