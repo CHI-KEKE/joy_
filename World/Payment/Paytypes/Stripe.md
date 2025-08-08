@@ -10,6 +10,7 @@
 7. [第三方金物流 pk + acct 設定根據帳戶類型差異](#7-第三方金物流-pk--acct-設定根據帳戶類型差異)
 8. [快取](#8-快取)
 9. [Stripe 後台操作](#9-stripe-後台操作)
+10. [帳戶類型與 Key 整理](#10-帳戶類型與-key-整理)
 
 <br>
 
@@ -649,5 +650,40 @@ API 密钥
 ### 9.7 切換測試模式
 
 ![alt text](./image-11.png)
+
+<br>
+
+---
+
+## 10. 帳戶類型與 Key 整理
+
+### 10.1 HK QA 測試商店配置表
+
+<br>
+
+| Mode | Secret Key | Publishable key (用來產生paymentMethod) | AcctId | HK_QA測試商店 | HK_QA測試商店AcctId | HK_QA測試商店要帶ScretKey |
+|------|------------|------------------------------------------|--------|---------------|---------------------|---------------------------|
+| Standard | Platform | Connected Account | 子帳號 | 2 | acct_1EzmjGHfnYtXGyLl | (91APP HK ( UAT )) sk_test_51F9SOGESCzWmEeCHhUvwjWCX9kaWNxZfByCKGe8JL7lh74V9mIl83BGenMESc90wyDTejZpFAmJb7TnKolHYT4Wg00rjGkGUrd |
+| CustomTest | Platform | Platform | 子帳號 | 5 | (Knight Huang) acct_1KWcEYREP0EXjCKm | sk_test_51KWLzbEUxCsaikE27VeDZUIMuP6o6XrHdnw9dsrMbAGQMZBj9kSvAO1qrD6kGU8lh3AFoWEZxX0DrOZZDUcOXAls00n48V6n2I |
+| CustomUATTest | Platform | Platform | 子帳號 | 11 | (CustomUATTest) acct_1Q67okR0gqMYbKPN | sk_test_51KWMAXJ1b0MGGnW4ev0miT3a0BfPNHPxP7BxLZJFHK3FUOllrK7r7wAvRnw9dgUkUeRk7jAIcTz3yd274AElw6sw0073oYEDYK |
+| StandardUAT | Platform | Connected Account | 子帳號 | 125(美金站) | acct_1Q7SPiFGfUIK2bE1 | (91APP HK Limited) sk_test_51EzmjGHfnYtXGyLlBsqBOKEDpX4DL7sHijDHAtwmoHDZBpiRrCltklTNhRCKrUSGjUtAJuxOZ6GAoG6PX2aq0TYH00w2QKSIR4 |
+
+<br>
+
+### 10.2 Secret Key 設定位置
+
+<br>
+
+**Config 檔案路徑**：MachineConfig/Frontend/AppSettings.QA300.config
+
+<br>
+
+### 10.3 帳號整理文件
+
+<br>
+
+**參考文件**：https://docs.google.com/spreadsheets/d/1Wc3SB8I2qlHJ5xw2JzrOuXZVUpKAAHs7OsbJAUVeG0A/edit?gid=0#gid=0
+
+<br>
 
 ---

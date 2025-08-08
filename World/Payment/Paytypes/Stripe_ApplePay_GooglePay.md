@@ -1,4 +1,4 @@
-# ApplePay 文件
+# Stripe_ApplePay_GooglePay
 
 ## 目錄
 1. [異常紀錄](#1-異常紀錄)
@@ -109,6 +109,92 @@ ApplePay 沒有憑證，會跳「Apple Pay 無法使用」的 pop up
 <br>
 
 https://91app.slack.com/archives/C017G0YFPPH/p1727083602646129
+
+<br>
+
+### 1.4 APP 拿不到 Key (會被我們處理)
+
+<br>
+
+![alt text](./image-12.png)
+
+<br>
+
+### 1.5 APP 拿到 Key 但有誤( Google API )
+
+<br>
+
+![alt text](./image-13.png)
+
+<br>
+
+### 1.6 APP 拿到 Key 但不是這個帳戶的 Key ( Stripe API)
+
+<br>
+
+![alt text](./image-14.png)
+
+<br>
+
+### 1.7 Google / Apple Pay + Stripe SDK 錢包與綁卡錯誤流程
+
+<br>
+
+1. isAvailable（檢查是否可用）
+2. 執行支付（跳支付彈窗）
+
+<br>
+
+不管是台灣或香港的邏輯都是在 isAvailable = false 時會回傳ERROR_NO_CARD ，台灣也會在沒綁卡時走到這一步
+
+<br>
+
+但 Stripe 的 SDK 似乎不認為沒有卡是一種 不可用狀態 ，會直接執行第二步跳出彈窗，也就是說 Stripe 有下載 Google Pay 沒卡的情境沒有錯誤流程。
+
+<br>
+
+### 1.8 Payment middleware 請求付款失敗
+
+<br>
+
+走到這個檢核是已經有TG了，所以轉導P1正常，因一台車只會有一個K值
+
+<br>
+
+### 1.9 GooglePay 錯誤碼
+
+<br>
+
+- **OR_BIBED_11**：APP 尚未通過 GooglePay API 審核
+- **OR_BIBED_06**：Stripe 測試 Key 不能使用於 GooglePay 正式模式 / Key 錯誤
+
+<br>
+
+### 1.10 舊版 App 進購物車會 Crash
+
+<br>
+
+會 crash 的只有 build 到大概兩週多前andy/stripe-google-pay的版本會 crash 。
+
+<br>
+
+而用 develop branch build 舊版（只走 TapPay） 以及 build andy/stripe-google-pay 大概一週前的版本理論上都不應該 crash ，如果後續有疑慮可以用 gitsha 查查是哪版的 code
+
+<br>
+
+### 1.11 正式模式未審核通過
+
+<br>
+
+發現 publishable key 是正確的，會拿到 OR_BIBED_11 錯誤，後續釐清正式模式下， 商店 App 需要經過 Google Console 審核流程開通
+
+<br>
+
+### 1.12 QA 正式環境2號店在送審完成後，發現還是會遇到錯誤，錯誤碼為 OR_BIBED_06，後來查閱文件發現應是 Key 與 GooglePay 的模式對不起來
+
+<br>
+
+MWeb 會根據 Stripe PublishableKey 開頭是否為 pk_test_% = Test 或 pk_live_% = Live 來通知 Andorid APP 決定 SDK 使用測試或正式模式，若 publishable Key 有變，會抓取 Config 預設值 Stripe.DefaultMode
 
 <br>
 
