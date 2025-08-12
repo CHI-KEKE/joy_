@@ -7,6 +7,8 @@
 4. [PaymentMethodId 傳遞](#4-paymentmethodid-傳遞)
 5. [取消按鈕消失的問題](#5-取消按鈕消失的問題)
 6. [PublishableKey 位置](#6-publishablekey-位置)
+7. [語系](#7-語系)
+8. [送審](#8-送審)
 
 <br>
 
@@ -498,3 +500,112 @@ and ShopSecret_ValidFlag = 1
 - **Custom**：shopId = 0，只會帶一把
 
 <br>
+
+---
+
+## 7. 語系
+
+### 7.1 手機系統的設定語系
+
+<br>
+
+![alt text](./image-15.png)
+
+<br>
+
+![alt text](./image-16.png)
+
+<br>
+
+---
+
+## 8. 送審
+
+### 8.1 文件
+
+<br>
+
+https://docs.google.com/presentation/d/1PXPrk2DKekFbgzDn7W6oruFWn9ww0lHvJ3vntn5bZfQ/edit#slide=id.gc728790f86_0_5
+
+<br>
+
+### 8.2 錯誤碼
+
+<br>
+
+**OR_BIBED_11**：This merchant has not completed registration to use Google Pay API. Please go to console (https://pay.google.com/business/console) to verify.
+
+<br>
+
+You haven't completed the process to register your app for the Google Pay API. Review Request production access for more information.
+
+<br>
+
+### 8.3 送審確認
+
+<br>
+
+1. 確認跨國跟台灣流程差異
+2. 第三方金物流要啟用中間狀態
+3. HK AM 開單給 OD, 工作天大概7~14天
+4. GOOGLEPAY送審是 APPRD Build 測試模式 APP, 人工進去結帳截圖給OD登入Google Console完成作業
+
+<br>
+
+### 8.4 History
+
+<br>
+
+#### 8.4.1 送審成功後在 GOOGLEPAY 顯示失敗
+
+<br>
+
+**原因**：SDK 啟用有分 Test Mode / Live Mode 會需要對應 publishable key
+
+<br>
+
+**解法**：後端在 MobileAppSettingService 的 Extendinfo 中的 StripeConfiguration 新增 Mode : Test / Live 節點
+
+<br>
+
+1. andyliu 先拔 BFF code ，24.13.0 正式流程中完全不使用 StripeAccountType 節點。(可能是雖然不能結帳但至少可以截圖?)
+
+<br>
+
+要截圖還是走 AndyLiu 開的 branch。
+
+<br>
+
+2. 下個版本再使用 StripeAccountType 節點，據此節點判定走 Test 還是 Prod，若沒吃到節點則仍是測試環境 Test，正式環境 Prod。
+
+<br>
+
+#### 8.4.2 46 號店審核沒過
+
+<br>
+
+![alt text](./image-17.png)
+
+<br>
+
+![alt text](./image-18.png)
+
+<br>
+
+**參考文件**：https://developers.google.com/pay/api/android/guides/resources/pay-button-api
+
+<br>
+
+**原因**：看不到 Google Pay 按鈕
+
+<br>
+
+**處理**：這個按鈕的改動會連同 TW 一起調整
+
+<br>
+
+**VSTS**：https://91appinc.visualstudio.com/G11n/_workitems/edit/448676
+
+<br>
+
+---

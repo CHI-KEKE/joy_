@@ -7,6 +7,7 @@
 4. [大表](#4-大表)
 5. [取消單](#5-取消單)
 6. [退貨單](#6-退貨單)
+7. [特定金流商品頁資訊與法](#7-特定金流商品頁資訊與法)
 
 <br>
 
@@ -122,6 +123,38 @@ left join ReturnGoodsOrderSlave(nolock)
 on OrderSlaveFlow_TradesOrderSlaveId = ReturnGoodsOrderSlave_TradesOrderSlaveId
 WHERE OrderSlaveFlow_ValidFlag = 1
 AND OrderSlaveFlow_TradesOrderSlaveCode = 'TS250701P000011'
+```
+
+<br>
+
+---
+
+## 7. 特定金流商品頁資訊與法
+
+<br>
+
+```sql
+use WebStoreDB
+
+DECLARE @payType VARCHAR(30) = 'ApplePay';
+
+SELECT SalePagePayType_SalePageId AS N'商品序號',
+       SalePage_Title,
+       SalePage_ShopId AS N'商店序號',
+       SalePagePayType_CreatedDateTime AS N'金流套用時間',
+       *
+FROM SalePagePayType(nolock)
+INNER JOIN SalePage(nolock)
+    ON SalePagePayType_SalePageId = SalePage_Id
+WHERE SalePagePayType_ValidFlag = 1
+AND SalePage_ValidFlag = 1
+AND SalePagePayType_TypeDef = 'ApplePay'
+
+select *
+from ShopCategory(nolock)
+where ShopCategory_ValidFlag = 1
+and ShopCategory_ShopId = 2
+order by ShopCategory_CreatedDateTime desc
 ```
 
 <br>

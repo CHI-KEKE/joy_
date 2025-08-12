@@ -570,8 +570,23 @@ Stripe SDK（不論是 Apple Pay、Google Pay 或其他）都需要連接到 Str
 
 <br>
 
-- **Server 端的快取**：可以透過 r=t 處理
-- **BFF 快取**：約 5 分鐘左右
+- **APP 設定值 Server 端的快取**：可以透過 r=t 處理
+
+HK_QA : 
+
+2 號店
+https://shop2.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/2?lang=zh-TW&shopId=2&r=t
+
+5 號店
+https://cccrrrmmm1.shop.qa1.hk.91dev.tw//webapi/AppNotification/GetMobileAppSettings/5?lang=zh-TW&shopId=5&r=t
+
+125 (美金站)
+https://usdshop.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/125?lang=en-US&shopId=125&r=t
+
+
+
+
+- **APP 設定值 BFF 快取**：約 5 分鐘左右
 
 <br>
 

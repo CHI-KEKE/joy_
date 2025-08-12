@@ -11,5 +11,5 @@
 
 RefundByRequestId
 
- this.Refund(entity.PayType, salesOrderThirdPartyPayment, refundRequest)
+this.Refund(entity.PayType, salesOrderThirdPartyPayment, refundRequest)
 <br>

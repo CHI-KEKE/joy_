@@ -51,6 +51,28 @@ https://www.figma.com/design/5DvenyhpnBX5ftehBigTEp/Stripe-Apple-Pay-%26-Google-
 
 <br>
 
+**前端實現**：加 switch case by Key (BL.BE.PayProfile.PayProfileTypeEnum) 顯示「填寫完成，請聯繫專人開通」/「已開通」
+
+<br>
+
+**節點設定**：
+- IsSettingsValid === false
+- SettingsStatus === NotActive
+
+<br>
+
+**ShopDefault 設定**：
+- **Group**：Stripe
+- **Key**：IsGooglePayActive  
+- **Desc**：是否開通GooglePay
+
+<br>
+
+**修改 GooglePay 邏輯**：
+- **PR**：https://bitbucket.org/nineyi/nineyi.sms/pull-requests/34626
+
+<br>
+
 ### 1.5 調整 Stripe 設定是否有效判斷
 
 <br>
@@ -99,3 +121,5 @@ https://www.figma.com/design/5DvenyhpnBX5ftehBigTEp/Stripe-Apple-Pay-%26-Google-
 - Prod.ThirdParty.PayProfile.EnbaleSetting
 
 <br>
+
+---
