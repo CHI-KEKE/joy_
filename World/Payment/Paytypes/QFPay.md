@@ -671,25 +671,11 @@ https://openapi-int.qfapi.com/checkstand/#/?appcode=51E1B3648E92428A8507BFE0918E
 
 <br>
 
-**username:** 891837678
-**pw:** 837678
-**API code:** 51E1B3648E92428A8507BFE0918ED042
-**AP key:** 443B3AC3BD2647D2810D4CEE4F3E6912
-
-<br>
-
 ### testing
 
 <br>
 
 **URL:** https://sh-hk.qfapi.com/#/login
-
-<br>
-
-**username:** 7188079981
-**pw:** 079981
-**API code:** B10EA2F62F024A7DA7530A3A7FB096CB
-**AP key:** 0EBB7D7AC791441E94E7B0580210713C
 
 <br>
 
