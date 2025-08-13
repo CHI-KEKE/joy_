@@ -676,12 +676,9 @@ API 密钥
 
 <br>
 
-| Mode | S | Publishable key (用來產生paymentMethod) | AcctId | HK_QA測試商店 | HK_QA測試商店AcctId | HK_QA測試商店要帶S |
-|------|------------|------------------------------------------|--------|---------------|---------------------|---------------------------|
-| Standard | Platform | Connected Account | 子帳號 | 2 | acct_1EzmjGHfnYtXGyLl | (91APP HK ( UAT )) sk_test_51F9SOGESCzWmEeCHhUvwjWCX9kaWNxZfByCKGe8JL7lh74V9mIl83BGenMESc90wyDTejZpFAmJb7TnKolHYT4Wg00rjGkGUrd |
-| CustomTest | Platform | Platform | 子帳號 | 5 | (Knight Huang) acct_1KWcEYREP0EXjCKm | sk_test_51KWLzbEUxCsaikE27VeDZUIMuP6o6XrHdnw9dsrMbAGQMZBj9kSvAO1qrD6kGU8lh3AFoWEZxX0DrOZZDUcOXAls00n48V6n2I |
-| CustomUATTest | Platform | Platform | 子帳號 | 11 | (CustomUATTest) acct_1Q67okR0gqMYbKPN | sk_test_51KWMAXJ1b0MGGnW4ev0miT3a0BfPNHPxP7BxLZJFHK3FUOllrK7r7wAvRnw9dgUkUeRk7jAIcTz3yd274AElw6sw0073oYEDYK |
-| StandardUAT | Platform | Connected Account | 子帳號 | 125(美金站) | acct_1Q7SPiFGfUIK2bE1 | (91APP HK Limited) sk_test_51EzmjGHfnYtXGyLlBsqBOKEDpX4DL7sHijDHAtwmoHDZBpiRrCltklTNhRCKrUSGjUtAJuxOZ6GAoG6PX2aq0TYH00w2QKSIR4 |
+參考 Notion
+
+https://www.notion.so/STRIPE-24e558dd52a9800fb4cfefcc627101d9
 
 <br>
 
