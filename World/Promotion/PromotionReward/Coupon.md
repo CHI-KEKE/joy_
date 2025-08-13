@@ -5,6 +5,7 @@
 2. [CouponAPI InsertCoupon](#2-couponapi-insertcoupon)
 3. [卡太久券過期](#3-卡太久券過期)
 4. [回饋活動券資訊 - 購物車 UI 開發紀錄](#4-回饋活動券資訊---購物車-ui-開發紀錄)
+5. [券種資料對應的參考](#5-券種資料對應的參考)
 
 <br>
 
@@ -233,5 +234,100 @@
 <br>
 
 **Table Name：** ECouponCustom
+
+<br>
+
+---
+
+## 5. 券種資料對應的參考
+
+### 5.1 運費券免運
+
+**reward：** {discountPercentage: 0, discountAmount: null, salePageId: null, salePageTitle: null, qty: null}
+
+<br>
+
+```json
+{
+    "conditions": [
+        {
+            "requirement": {
+                "price": 0,
+                "quantity": null
+            },
+            "reward": {
+                "discountPercentage": 0,
+                "discountAmount": null,
+                "salePageId": null,
+                "salePageTitle": null,
+                "qty": null
+            }
+        }
+    ],
+    "limitation": {
+        "maxDiscountAmount": null,
+        "maxDiscountPercentage": null
+    },
+    "target": "Delivery"
+}
+```
+
+<br>
+
+### 5.2 贈品券 (Gift)
+
+```json
+{
+    "conditions": [
+        {
+            "requirement": {
+                "price": 0,
+                "quantity": null
+            },
+            "reward": {
+                "discountPercentage": null,
+                "discountAmount": null,
+                "salePageId": 975076,
+                "salePageTitle": "欸冷測試_有超取",
+                "qty": 1
+            }
+        }
+    ],
+    "limitation": {
+        "maxDiscountAmount": null,
+        "maxDiscountPercentage": null
+    },
+    "target": "Product"
+}
+```
+
+<br>
+
+### 5.3 折價券
+
+```json
+{
+    "conditions": [
+        {
+            "requirement": {
+                "price": 0,
+                "quantity": null
+            },
+            "reward": {
+                "discountPercentage": null,
+                "discountAmount": 1,
+                "salePageId": null,
+                "salePageTitle": null,
+                "qty": null
+            }
+        }
+    ],
+    "limitation": {
+        "maxDiscountAmount": null,
+        "maxDiscountPercentage": 1
+    },
+    "target": "Cart"
+}
+```
 
 <br>

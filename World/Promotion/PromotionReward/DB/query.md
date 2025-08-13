@@ -11,6 +11,9 @@
 8. [SaleProductSKU](#8-saleproductsku)
 9. [ShopStaticSetting](#9-shopstaticsetting)
 10. [TradesOrder](#10-tradesorder)
+11. [CrmShopMemberCard](#11-crmshopmembercard)
+12. [BatchUpload 相關](#12-batchupload-相關)
+13. [NMQ Task](#13-nmq-task)
 
 <br>
 
@@ -351,6 +354,149 @@ INNER JOIN TradesOrderSlave(NOLOCK)
 ON TradesOrderSlave_TradesOrderId = TradesOrder_Id
 WHERE TradesOrderGroup_ValidFlag = 1
 AND TradesOrderGroup_Code = 'TG250812PB0001'
+```
+
+<br>
+
+---
+
+## 11. CrmShopMemberCard
+
+```sql
+use CRMDB;
+ 
+select CrmShopMemberCard_Id,CrmShopMemberCard_Name,CrmShopMemberCard_ShopId,CrmShopMemberCard_Level,*
+from CrmShopMemberCard(nolock)
+where CrmShopMemberCard_ShopId =5
+order by CrmShopMemberCard.CrmShopMemberCard_ShopId,CrmShopMemberCard.CrmShopMemberCard_Level desc
+```
+
+<br>
+
+---
+
+## 12. BatchUpload 相關
+
+### 12.1 插入新 BatchUpload Type
+
+```sql
+USE WebStoreDB;
+  
+DECLARE @batchUploadType VARCHAR(50) = 'BatchModifyPromotionOuterId',
+        @batchUploadTypeDesc NVARCHAR(50) = N'批次更新給點活動料號',
+        @vsts VARCHAR(20) = 'VSTS466779',
+        @now DATETIME = GETDATE();
+  
+-- Insert
+INSERT INTO dbo.Definition
+(
+    Definition_TableName,
+    Definition_ColumnName,
+    Definition_Code,
+    Definition_Desc,
+    Definition_Note,
+    Definition_Sort,
+    Definition_CreatedDateTime,
+    Definition_CreatedUser,
+    Definition_UpdatedTimes,
+    Definition_UpdatedDateTime,
+    Definition_UpdatedUser,
+    Definition_ValidFlag
+)
+SELECT TOP 1
+    Definition_TableName,
+    Definition_ColumnName,
+    @batchUploadType,
+    @batchUploadTypeDesc,
+    Definition_Note,
+    Definition_Sort + 10,
+    @now,
+    @vsts,
+    0,
+    @now,
+    @vsts,
+    1
+FROM dbo.Definition WITH(NOLOCK)
+WHERE Definition_ValidFlag = 1
+    AND Definition_TableName = 'BatchUpload'
+    AND Definition_ColumnName = 'BatchUpload_TypeDef'
+ORDER BY Definition_Sort DESC
+  
+-- Verify
+SELECT TOP 1 *
+FROM dbo.Definition WITH(NOLOCK)
+WHERE Definition_ValidFlag = 1
+    AND Definition_TableName = 'BatchUpload'
+    AND Definition_ColumnName = 'BatchUpload_TypeDef'
+    AND Definition_Code = @batchUploadType
+ORDER BY Definition_Sort DESC
+ 
+use WebStoreDB
+-- Verify
+SELECT *
+FROM dbo.Definition WITH(NOLOCK)
+WHERE Definition_ValidFlag = 1
+    AND Definition_TableName = 'BatchUpload'
+    AND Definition_ColumnName = 'BatchUpload_TypeDef'
+    --AND Definition_Code = @batchUploadType
+    AND Definition_Code = 'ModifyRewardPromotionSalePage'
+ORDER BY Definition_Sort DESC
+```
+
+<br>
+
+### 12.2 主檔與錯誤訊息
+
+```sql
+-- HKQA
+-- BatchUploadTask : 50
+-- BatchUpload : 49
+-- BatchUploadType : BatchModifyPromotionOuterId
+ 
+USE WebStoreDB
+ 
+-- 批次主檔
+SELECT *
+FROM BatchUpload(NOLOCK)
+WHERE BatchUpload_ValidFlag = 1
+AND BatchUpload_Code = 'BA2502252300002'
+--and BatchUpload_Id = 11255
+ 
+--錯誤訊息
+select BatchUploadMessage_StatusDef,*
+from BatchUploadMessage(nolock)
+where BatchUploadMessage_ValidFlag = 1
+and BatchUploadMessage_BatchUploadId = 11255
+```
+
+<br>
+
+---
+
+## 13. NMQ Task
+
+```sql
+USE NMQV2DB
+ 
+SELECT *
+FROM Job(NOLOCK)
+WHERE Job_ValidFlag = 1
+AND Job_Name = 'BatchUpload'
+ 
+select *
+from Task(nolock)
+where Task_ValidFlag = 1
+--and Task_JobId = 50
+and Task_Data like '%ExportRewardPromotionSalePage%'
+order by Task_CreatedDatetime desc
+ 
+ 
+use NMQV2DB
+ 
+select *
+from Job(nolock)
+where Job_ValidFlag = 1
+and Job_Name = 'BatchModifyPromotionSalePageTask'
 ```
 
 <br>

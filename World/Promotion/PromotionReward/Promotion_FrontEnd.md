@@ -5,6 +5,8 @@
 2. [購物車計算](#2-購物車計算)
 3. [菜籃計算](#3-菜籃計算)
 4. [生日壽星貼標](#4-生日壽星貼標)
+5. [加價購](#5-加價購)
+6. [回饋活動加入全新的活動類型需實作](#6-回饋活動加入全新的活動類型需實作)
 
 <br>
 
@@ -279,5 +281,321 @@ promotionCollectionId + birthdayCollectionId + memberId 送去打 memberCollecti
 <br>
 
 引擎會看 IsBirthdayMonthEnabled + CurrentBirthdayMonth有貼才中
+
+<br>
+
+---
+
+## 5. 加價購
+
+### 5.1 Request 處理流程
+
+**request 進來**
+
+<br>
+
+```csharp
+entity.SalepageSkuList
+```
+
+<br>
+
+**mapping ProcessContext**
+
+<br>
+
+```csharp
+salePageSkuItemList.Add(
+    new SalepageSkuItemEntity
+    {
+        Index = index++,
+        SalepageId = salePage.SalepageId,
+        SkuId = salePage.SkuId,
+        Price = salePage.Price,
+        Payment = salePage.Price,
+        // ...
+    });
+```
+
+<br>
+
+**建立 CreateShoppingCartContext**
+
+<br>
+
+```csharp
+foreach (var item in context.SalepageSkuItemList)
+{
+    var productItem = new ProductItem
+    {
+        Id = item.SalepageId,
+        SkuId = item.SkuId,
+        ListPrice = item.Payment,
+        // ...
+    };
+}
+```
+
+<br>
+
+**引擎作法**
+
+<br>
+
+```csharp
+public bool Purchase(long id, ProductItem item, ISet<string> flags = null)
+{
+    PurchasedItem purchasedItem = new PurchasedItem(id, item, flags)
+    {
+        SalePrice = item.ListPrice,
+        // ...
+    };
+}
+```
+
+<br>
+
+### 5.2 商品範例
+
+**加購品：** 60393 貓腿
+
+<br>
+
+**主商品：** 62227 有 SKU
+
+<br>
+
+**當下的 Request Data**
+
+<br>
+
+- **主商品：** 4.5 * 14 = 63，Flag：`"AddOnsSalepageMajor"`
+- **加購品：** 6.66，Flags：`"AddOnsSalepageSub"`
+
+<br>
+
+### 5.3 完整 Request 範例
+
+```json
+{
+  "Shop": {
+    "Id": 11,
+    "Tags": ["EnableAddOns"]
+  },
+  "User": {
+    "Id": "33502",
+    "Tags": [
+      "AllUserScope",
+      "CrmShopMemberCard:24",
+      "FirstPurchase"
+    ],
+    "OuterId": null,
+    "ShopMemberCode": "97+Gy73RMbUYz5ZqI4EuEA=="
+  },
+  "Shipping": {
+    "ShippingProfileTypeDef": "Home",
+    "ShippingAreaId": 0,
+    "CountryProfileId": 85,
+    "LocationId": 0
+  },
+  "Payment": {
+    "PayProfileTypeDef": "TwoCTwoP"
+  },
+  "Channel": "AppIOS",
+  "CurrencyDecimalDigits": 2,
+  "SalepageSkuList": [
+    {
+      "SalepageId": 62227,
+      "SkuId": 86642,
+      "Price": 4.5,
+      "SuggestPrice": 10000.0,
+      "Qty": 14,
+      "Flags": ["AddOnsSalepageMajor"],
+      "OuterId": "123",
+      "Tags": null,
+      "OptionalTypeDef": "",
+      "OptionalTypeId": 0,
+      "CartExtendInfoItemGroup": 1748912653812,
+      "CartExtendInfoItemType": "Major",
+      "PointsPayPair": null,
+      "CartExtendInfos": [
+        {
+          "RuleTypeDef": "AddOnsSalepageExtraPurchase",
+          "RuleId": 10000050,
+          "RelatedItemCartIds": [45514],
+          "RelatedSubItemCount": 0
+        }
+      ],
+      "CartId": 45513
+    },
+    {
+      "SalepageId": 60393,
+      "SkuId": 84109,
+      "Price": 6.66,
+      "SuggestPrice": 100.0,
+      "Qty": 1,
+      "Flags": ["AddOnsSalepageSub"],
+      "OuterId": "",
+      "Tags": null,
+      "OptionalTypeDef": "",
+      "OptionalTypeId": 0,
+      "CartExtendInfoItemGroup": 1748912653812,
+      "CartExtendInfoItemType": "Sub",
+      "PointsPayPair": null,
+      "CartExtendInfos": [
+        {
+          "RuleTypeDef": "AddOnsSalepageExtraPurchase",
+          "RuleId": 10000050,
+          "RelatedItemCartIds": [],
+          "RelatedSubItemCount": 0
+        }
+      ],
+      "CartId": 45514
+    }
+  ],
+  "FeeList": [
+    {
+      "Id": 221,
+      "Type": "ShippingFee",
+      "Price": 0,
+      "Payment": 0,
+      "ExtendInfo": {
+        "ShippingProfileTypeDef": "Home",
+        "IsDomesticWeightPricing": false,
+        "TemperatureTypeDef": "Normal",
+        "ShippingType": "221",
+        "ShippingAreaId": 84,
+        "IsLocal": true
+      }
+    }
+  ],
+  "Promotion": {
+    "Code": null,
+    "PromoCodePoolGroupId": null,
+    "SelectedDesignatePaymentPromotionId": 0
+  },
+  "CouponSetting": {
+    "MultipleRedeem": {
+      "Discount": {
+        "IsMultiple": false,
+        "Qty": 1
+      },
+      "Gift": {
+        "IsMultiple": true,
+        "Qty": 9999
+      },
+      "Shipping": {
+        "IsMultiple": false,
+        "Qty": 1
+      }
+    },
+    "CouponList": [],
+    "Options": {
+      "IsVerbose": false,
+      "IsCouponPreSelect": true,
+      "IncludeRecordDetail": false
+    },
+    "LoyaltyPoint": {
+      "CheckoutPoint": 0,
+      "CheckoutDiscountPrice": 0,
+      "IsSelected": false,
+      "IsSetDiscountPrice": false,
+      "TotalPoint": 0.0
+    }
+  }
+}
+```
+
+<br>
+
+### 5.4 Collection 資訊
+
+**62227：**
+
+<br>
+
+- `"Collection:d_320231983465890560"`
+- `"Collection:d_320479663883691264"`
+
+<br>
+
+**60393：**
+
+<br>
+
+- `"Collection:d_320231983465890560"`
+- `"Collection:d_320479663883691264"`
+
+<br>
+
+### 5.5 排除邏輯實作
+
+**RuleInitProcess**
+
+<br>
+
+```csharp
+/// <summary>
+/// The RuleInitProcess
+/// </summary>
+public override void RuleInitProcess()
+{
+    this.ExclusiveTags ??= new HashSet<string>();
+    this.ExclusiveTags.Add(FlagConstants.AddOnsSalepageSub);
+    this.ExclusiveTags.Add(FlagConstants.CouponExcludedByOrder);
+}
+```
+
+<br>
+
+也就是說促購前台有一步 LoadRules，每個活動 Init 流程實作需要排除哪些 Flag 的商品
+
+<br>
+
+**PurchasedItems 排除機制**
+
+<br>
+
+PurchasedItems 會需要把該 Tags vs Flag 交集有結果要排除掉
+
+<br>
+
+```csharp
+/// <summary>
+/// Gets the PurchasedItems
+/// </summary>
+public IEnumerable<PurchasedItem> PurchasedItems =>
+    this._currentRule == null ?
+        this._purchasedItems :
+        this._purchasedItems.Where(x => ((this._currentRule.ExclusiveTags ?? new HashSet<string>()).Union(this.ExclusiveTags))
+                                       .Intersect(x.Flags).Any() == false
+                                        && (this._currentRule.GlobalExcludedProductIds == null ? true : this._currentRule.GlobalExcludedProductIds.Contains(x.Product.Id) == false)
+                                   );
+```
+
+<br>
+
+---
+
+## 6. 回饋活動加入全新的活動類型需實作
+
+新增回饋活動類型時需要實作的檔案列表：
+
+<br>
+
+- **PromotionConditionTypeEnum.cs**
+- **PromotionEngineTypeDefEnum.cs**
+- **PromotionEngineForCartEntity.cs**
+- **PromotionEngineRuleEntity.cs**
+- **新增 PromotionRewardCouponRuleEntity.cs**
+- **套件升級**
+- **ProcessRepository.cs**
+- **S3LocationRepository.cs**
+- **PromotionEngineService.cs**
+- **新增 RewardReachPriceWithCouponRuleService.cs**
+- **PromotionRuleRepository.cs**
+- **Program.cs**
+- **PromotionTagOuterIdRepository.cs**
+- **S3OuterIdRepository.cs**
 
 <br>
