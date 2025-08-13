@@ -550,6 +550,37 @@ from QFPay & 第三方, QFPay人員暫無解
 
 <br>
 
+### 1.14 退款異常，Return Data 為空
+
+<br>
+
+**時間軸：**
+
+<br>
+
+- **10/09 / 10/26** 訂單交易成功
+- **11/28** 申請退款
+- **11/28 17:00** Refund, 退款接口只能申请 29 天的订单 (0010000293181285348321738)
+- 該筆訂單被禁止退款，已經超出可退款時限，FPS 只能退 29 天以內的交易。"respcd\": \"1265\" ==> Pending 等下一輪
+- **11/28 18:00** RefundQuery 該筆訂單被禁止退款，23:30-00:30 的交易以及部分特殊交易會被禁止（1265）
+- ~~ 持續問到相同狀態 持續 Pending ~~
+- **12/01 0:03** 訂單資料為空 RefundFail
+
+<br>
+
+**修正方案：**
+
+<br>
+
+已修正 PaymentMiddleware 多抓 "該筆訂單被禁止退款，已經超出可退款時限" msg 作為區分
+
+<br>
+
+- **"時間區間的禁止退款"** ==> 可 Retry
+- **"關帳退款的禁止"** ==> 需壓成 Fail
+
+<br>
+
 ---
 
 ## 2. 正常發動付款頁面的相關資訊
@@ -765,6 +796,45 @@ https://openapi-int.qfapi.com/checkstand/#/?appcode=51E1B3648E92428A8507BFE0918E
 - 信用卡付款無法Cancel
 - 部分付款方式當天退款必須要全額退款，無法部分退
 - 退款金費是扣除當天交易金額，所以可能會發生退款餘額不足的問題
+
+<br>
+
+### 8.2 Refund
+
+<br>
+
+先取得 SalesOrderThirdPartyPayment 進行 Refund，Mapping 以下資訊取得結果
+
+<br>
+
+| 狀態名稱 | Return Code | 描述 | 第三方顯示訊息 | 91APP 狀態 |
+|----------|-------------|------|----------------|------------|
+| TransactionClosed | 1264 | 第三方顯示訂單已結束，通常發生在退款單重複申請 | x | 退款失敗 |
+| Success | 0000 | 退款成功 | x | 退款成功 |
+| SameDayPartialRefundRejected | 1124 | 信用卡不可當天部分退 | x | 退款處理中 |
+| RequestProcessing | 1145 | 處理中請稍後 | x | 退款處理中 |
+| RefundPeriodExceeded | 1265 | 改筆訂單已經關帳 | 該筆訂單被禁止退款，已經超出可退款時限 | 退款失敗 |
+| RefundNotAllowedDuringBillingPeriod | 1265 | 11:30 PM~ 12:30 AM 帳期無法退款 | x | 退款處理中 |
+| InsufficientRefundableBalance | 1269 | 帳戶餘額不足 | x | 退款處理中 |
+
+<br>
+
+### 8.3 RefundQuery
+
+<br>
+
+有 RefundRequest TransactionId , 執行 RefundQuery 確認 退款狀態 (屬於事後確認)
+
+<br>
+
+| 狀態名稱 | Return Code | 描述 | 第三方顯示訊息 | 91APP 狀態 |
+|----------|-------------|------|----------------|------------|
+| Success | 0000 | 退款成功 | x | 退款成功 |
+| SameDayPartialRefundRejected | 1124 | 信用卡不可當天部分退 | x | 退款處理中 |
+| InsufficientRefundableBalance | 1269 | 帳戶餘額不足 | x | 退款處理中 |
+| RefundNotAllowedDuringBillingPeriod | 1265 | 11:30 PM~ 12:30 AM 帳期無法退款 | x | 退款處理中 |
+| RequestProcessing | 1145 | 處理中請稍後 | x | 退款處理中 |
+| TransactionClosed | 1264 | 第三方顯示訂單已結束，通常發生在退款單重複申請 | x | 退款失敗 |
 
 <br>
 

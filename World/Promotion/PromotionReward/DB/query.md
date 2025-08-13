@@ -10,6 +10,7 @@
 7. [ECoupon](#7-ecoupon)
 8. [SaleProductSKU](#8-saleproductsku)
 9. [ShopStaticSetting](#9-shopstaticsetting)
+10. [TradesOrder](#10-tradesorder)
 
 <br>
 
@@ -333,6 +334,23 @@ from ShopStaticSetting(nolock)
 where ShopStaticSetting_ValidFlag = 1
 and ShopStaticSetting_GroupName = 'PromotionEngine'
 and ShopStaticSetting_Key = 'SupportMemberCollectionShop'
+```
+
+<br>
+
+---
+
+## 10. TradesOrder
+
+```sql
+SELECT TradesOrderSlave_Qty,*
+FROM TradesOrderGroup(NOLOCK)
+INNER JOIN TradesOrder(NOLOCK)
+ON TradesOrder_TradesOrderGroupId = TradesOrderGroup_Id
+INNER JOIN TradesOrderSlave(NOLOCK)
+ON TradesOrderSlave_TradesOrderId = TradesOrder_Id
+WHERE TradesOrderGroup_ValidFlag = 1
+AND TradesOrderGroup_Code = 'TG250812PB0001'
 ```
 
 <br>

@@ -5,6 +5,8 @@
 2. [HK Prod 第三方付款成功但大表狀態異常](#2-hk-prod-第三方付款成功但大表狀態異常)
 3. [30分鐘仍在待付款狀態](#3-30分鐘仍在待付款狀態)
 4. [付款成功率](#4-付款成功率)
+5. [OrderDuplicationVerification 訂單重複成功付款檢查](#5-orderduplicationverification-訂單重複成功付款檢查)
+6. [TimeoutRecheck 檢查](#6-timeoutrecheck-檢查)
 
 <br>
 
@@ -238,5 +240,65 @@ FROM a
 --AND (Success_Count * 1.0 / NULLIF(Total_Count,0)) > 0.5
 ORDER BY CustomHourly;
 ```
+
+<br>
+
+---
+
+## 5. OrderDuplicationVerification 訂單重複成功付款檢查
+
+<br>
+
+### 說明
+
+<br>
+
+每天撈取前一天 "Timeout", "Success" 訂單，向 QFPay 確認該筆訂單的成功付款比數
+
+<br>
+
+![alt text](./image-10.png)
+
+<br>
+
+### 商店協助處理事項
+
+<br>
+
+請商家協助至後台同一筆商戶訂單號較新的流水號執行退款，只保留地一筆成功付款流水號
+
+<br>
+
+![alt text](./image-11.png)
+
+<br>
+
+---
+
+## 6. TimeoutRecheck 檢查
+
+<br>
+
+### 說明
+
+<br>
+
+每天撈取前一天 Timeout 訂單，向 QFPay 確認該筆訂單的狀態
+
+<br>
+
+![alt text](./image-12.png)
+
+<br>
+
+### 商店協助處理事項
+
+<br>
+
+請協助至後台對該筆商戶訂單號執行退款
+
+<br>
+
+![alt text](./image-13.png)
 
 <br>
