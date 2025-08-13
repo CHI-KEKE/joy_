@@ -412,6 +412,8 @@ and ShopDefault_Key = 'StripeAccountType'
 - **SCMSalesFeeRate** => SalesOrderSlave_SCMSalesFeeRate
 - **FixedFee** => SalesOrderGroup_PaymentFixedFee
 
+https://bitbucket.org/nineyi/nineyi.databases/pull-requests/7564/diff
+
 <br>
 
 #### 費用單生成
