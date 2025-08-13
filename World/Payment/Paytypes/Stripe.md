@@ -676,7 +676,7 @@ API 密钥
 
 <br>
 
-| Mode | Secret Key | Publishable key (用來產生paymentMethod) | AcctId | HK_QA測試商店 | HK_QA測試商店AcctId | HK_QA測試商店要帶ScretKey |
+| Mode | S | Publishable key (用來產生paymentMethod) | AcctId | HK_QA測試商店 | HK_QA測試商店AcctId | HK_QA測試商店要帶S |
 |------|------------|------------------------------------------|--------|---------------|---------------------|---------------------------|
 | Standard | Platform | Connected Account | 子帳號 | 2 | acct_1EzmjGHfnYtXGyLl | (91APP HK ( UAT )) sk_test_51F9SOGESCzWmEeCHhUvwjWCX9kaWNxZfByCKGe8JL7lh74V9mIl83BGenMESc90wyDTejZpFAmJb7TnKolHYT4Wg00rjGkGUrd |
 | CustomTest | Platform | Platform | 子帳號 | 5 | (Knight Huang) acct_1KWcEYREP0EXjCKm | sk_test_51KWLzbEUxCsaikE27VeDZUIMuP6o6XrHdnw9dsrMbAGQMZBj9kSvAO1qrD6kGU8lh3AFoWEZxX0DrOZZDUcOXAls00n48V6n2I |
