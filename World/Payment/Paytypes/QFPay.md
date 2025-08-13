@@ -264,7 +264,7 @@ RefundRequest_StatusUpdatedDateTime:
 <br>
 
 - ReturnUrl 要 Encode 過
-- APIKey 壞掉
+- K 壞掉
 
 <br>
 
