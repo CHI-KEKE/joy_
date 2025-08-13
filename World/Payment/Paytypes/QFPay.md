@@ -4,6 +4,7 @@
 
 
 ## 目錄
+0. [基本資訊](#0-基本資訊)
 1. [異常紀錄](#1-異常紀錄)
 2. [正常發動付款頁面的相關資訊](#2-正常發動付款頁面的相關資訊)
 3. [商戶後台與登入資料](#3-商戶後台與登入資料)
@@ -17,6 +18,93 @@
 11. [Transaction Status Codes](#12-transaction-status-codes)
 12. [Refund](#13-refund)
 13. [問題清單](#14-問題清單)
+14. [關帳](#15-關帳)
+
+<br>
+
+---
+
+## 0. 基本資訊
+
+### 0.1 串接方式
+
+hosted payment pages
+
+<br>
+
+### 0.2 開發文件
+
+https://sdk.qfapi.com/
+
+<br>
+
+### 0.3 聯絡方式
+
+WhatsApp
+
+<br>
+
+### 0.4 測試卡資訊
+
+**測試卡文件:** https://sdk.qfapi.com/docs/online-shop/visa-master-online-payment#test-cards
+
+<br>
+
+| 卡別 | 卡號 | 預期結果 |
+|------|------|----------|
+| MasterCard | 5200000000001096 | 付款成功 |
+| Visa | 4000000000001091 | 付款成功 |
+| MasterCard | 5200000000001005 | 付款成功 (免 3D 驗證) |
+| Visa | 4000000000001000 | 付款成功 (免 3D 驗證) |
+| MasterCard | 5200000000001120 | 付款失敗 (at verification) |
+| Visa | 4000000000001125 | 付款失敗 (at verification) |
+| MasterCard | 5200000000001013 | 付款失敗 (at 3DS frictionless) |
+| Visa | 4000000000001018 | 付款失敗 (at 3DS frictionless) |
+
+<br>
+
+### 0.5 特殊測試卡行為說明
+
+#### 0.5.1 付款失敗 (at verification) 測試卡
+
+**適用卡號:**
+- MasterCard: 5200000000001120
+- Visa: 4000000000001125
+
+<br>
+
+**回應資訊:**
+- Return code: 1145
+- Message: 處理中，請稍等
+
+<br>
+
+**行為特徵:**
+1. 重新到相同付款頁仍然可以用正確卡號結帳轉導
+2. QFPay 會有 2 筆紀錄
+3. 屬於交易進行中情境
+4. 跳轉 FailedUrl
+
+<br>
+
+#### 0.5.2 付款失敗 (at 3DS frictionless) 測試卡
+
+**適用卡號:**
+- MasterCard: 5200000000001013
+- Visa: 4000000000001018
+
+<br>
+
+**回應資訊:**
+- Return code: 1205
+- Message: 交易失敗，請稍後重试
+
+<br>
+
+**行為特徵:**
+1. 填卡頁會直接阻擋
+2. 重新填正確卡號可以完成交易跳轉
+3. 會有 2 筆資料
 
 <br>
 
@@ -175,7 +263,8 @@ RefundRequest_StatusUpdatedDateTime:
 
 <br>
 
-ReturnUrl 要 Encode過
+- ReturnUrl 要 Encode 過
+- APIKey 壞掉
 
 <br>
 
@@ -373,11 +462,121 @@ https://91appinc.visualstudio.com/DailyResource/_workitems/edit/499423
 
 <br>
 
+### 1.4 QFPay 本身有異常
+
+<br>
+
+QFPay 說會拿到 1297 (但目前無法測試到這個情境)
+
+<br>
+
+### 1.5 PaymentMiddleware 異常
+
+<br>
+
+資料處理逾時
+
+<br>
+
+### 1.6 3D 驗證錯誤
+
+<br>
+
+"Verification of PaRes failed", 跳轉 交易進行中
+
+<br>
+
+### 1.7 信用卡錯誤
+
+<br>
+
+停在信用卡頁直到逾期
+
+<br>
+
+### 1.8 返回
+
+<br>
+
+選擇一種付款方式後都可按 "返回" 跳回選擇其他付款方式
+
+<br>
+
+### 1.9 逾期
+
+<br>
+
+時間為 12 min, 會在 QFPay UI頁面倒數，直到跳轉回91 , 顯示 "交易進行中"
+
+<br>
+
+### 1.10 同一筆TG 下，會有多筆交易紀錄
+
+<br>
+
+在同一筆TG 下，會有多筆交易紀錄，因為可以開多個視窗產生多筆交易成功，但可能會抓到錯誤的最終狀態 (已交易成功，但抓到處理中的狀態記錄在 91APP)
+
+<br>
+
+**解法:**
+
+<br>
+
+只要有成功的紀錄就抓出來作為交易成功的 TG，若有多筆成功也會記錄下來，並藉由 定期 Recheck 去檢查，並通知商店退款
+
+<br>
+
+### 1.11 WechatPay 在手機板仍只有 QRCode
+
+<br>
+
+請 QFPay 人員配置 H5
+
+<br>
+
+### 1.12 WechatPay配置 H5 後出現商家參數異常問題
+
+<br>
+
+QFPay 人員漏了配置 https://test-openapi-hk.qfapi.com Domain
+
+<br>
+
+### 1.13 MWeb測試會跳轉2次
+
+<br>
+
+from QFPay & 第三方, QFPay人員暫無解
+
+<br>
+
 ---
 
 ## 2. 正常發動付款頁面的相關資訊
 
 API: `/api/v1.0/pay/QFPay/TG240618K00002`
+
+
+1.QFPay 為自己組 Url, 而非打 API 取得 跳轉頁, 因此可能會發生使用者掛在 QFSign_Error 卻沒人知道得狀況 ( 已向 QFPay確認沒有可以用來確認網頁狀態的 API)
+
+2.QA 環境有分 Live / Testing (第三方支付) / SandBox (信用卡)
+
+3.逾期設定參數目前使用 checkoutExpiredTime 這個節點壓 TimeStamp 讓 UI 付款頁逾期
+
+4.expiredTime 用來設定 QRCode 的逾期時間
+
+5.目前在第三方沒有訂單失敗而無法繼續付款的情境
+
+6.不到 3DS 驗證頁面 或者通道沒有拒絕交易 QF 系統都沒有訂單紀錄
+
+7."syssn" = TransactionId
+
+
+8.信用卡都是 Webview, 第三方支付會需要跳第三方APP ==> 兩個需求都要滿足的話需使用
+
+{appInitPath}-s{shopId:D6}://thirdpartypayconfirm?url={encodedUri}
+
+9.手機端會看不到倒數計時，但實際上會倒數並跳轉
 
 <br>
 
@@ -586,6 +785,8 @@ https://openapi-int.qfapi.com/checkstand/#/?appcode=51E1B3648E92428A8507BFE0918E
 ---
 
 ## 10. Paytypes
+
+https://sdk.qfapi.com/docs/preparation/paycode/#paytype
 
 <br>
 
@@ -899,5 +1100,25 @@ QFPay API：https://test-openapi-th.qfapi.com/trade/v1/refund
 <br>
 
 https://docs.google.com/spreadsheets/d/1F5wXCP7-w-_u2C7vpVbIP_GgMe75Y9kH2HM-rJH7vAQ/edit?gid=1016597365#gid=1016597365
+
+<br>
+
+---
+
+## 15. 關帳
+
+<br>
+
+| Code | Description | 關帳期間 (天) |
+|------|-------------|--------------|
+| 800201 | WeChat Merchant Presented QR Code Payment (MPM) (Overseas & HK Merchants) | 365 |
+| 800212 | WeChat H5 Payment (In mobile browser) | 365 |
+| 801512 | Alipay Online WAP Payment (HK Merchants) | 365 |
+| 801514 | Alipay Online WEB Payment (HK Merchants) | 365 |
+| 802001 | FPS Merchant Presented QR Code Payment (MPM) (HK Merchants)*** | 29 |
+| 802801 | Visa / Mastercard Online Payments | 365 |
+| 805812 | PayMe Online WAP (in mobile browser Chrome etc.) Payment (HK Merchants) | 90 |
+| 805814 | PayMe Online WEB (in browser Chrome etc.) Payment (HK Merchants) | 90 |
+| 未定義 | 未定義的例外處理 | 365(取最大值) |
 
 <br>
