@@ -11,6 +11,7 @@
 8. [快取](#8-快取)
 9. [Stripe 後台操作](#9-stripe-後台操作)
 10. [帳戶類型與 Key 整理](#10-帳戶類型與-key-整理)
+11. [文件](#11-文件)
 
 <br>
 
@@ -265,6 +266,8 @@ and ShopDefault_Key = 'StripeAccountType'
 ---
 
 ## 4. 系統使用費 / 金流手續費
+
+![alt text](./image-24.png)
 
 ### 4.1 取得 系統使用費 & 金流手續費位置
 
@@ -697,6 +700,18 @@ https://www.notion.so/STRIPE-24e558dd52a9800fb4cfefcc627101d9
 <br>
 
 **參考文件**：https://docs.google.com/spreadsheets/d/1Wc3SB8I2qlHJ5xw2JzrOuXZVUpKAAHs7OsbJAUVeG0A/edit?gid=0#gid=0
+
+<br>
+
+---
+
+## 11. 文件
+
+### 11.1 Stripe Custom Account 需求規劃
+
+<br>
+
+[Stripe Custom Account-需求規劃](https://docs.google.com/presentation/d/1rf8MKdV2Vh6ofZq6repFjUd-2DUYjhpv9I2ppT0rSYI/edit?slide=id.p#slide=id.p)
 
 <br>
 

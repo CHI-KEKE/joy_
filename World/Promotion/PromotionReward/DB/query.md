@@ -137,7 +137,8 @@ SELECT PromotionEngine_ShopId as ShopId,
         WHEN CAST(JSON_VALUE(PromotionEngine_Rule, '$.MatchedSalesChannels') AS INT) <= 7 THEN N'線上'
         ELSE N'線上 + 線下'
     END AS SalesChannelType,
-    JSON_VALUE(PromotionEngine_Rule, '$.MatchedSalesChannels') AS MatchedSalesChannelsValue
+    JSON_VALUE(PromotionEngine_Rule, '$.MatchedSalesChannels') AS MatchedSalesChannelsValue,
+	 JSON_QUERY(CAST(PromotionEngine_Rule AS nvarchar(max)), '$.Thresholds')  AS Thresholds
        --PromotionEngine_Rule as PromotionEngineRule
 FROM dbo.PromotionEngine WITH (NOLOCK)
 INNER JOIN dbo.Shop WITH (NOLOCK)
@@ -145,7 +146,7 @@ INNER JOIN dbo.Shop WITH (NOLOCK)
     AND Shop_ValidFlag = 1
 WHERE PromotionEngine_ValidFlag = 1
   AND PromotionEngine_TypeDef IN ('RewardReachPriceWithRatePoint2','RewardReachPriceWithPoint2','RewardReachPriceWithCoupon')
-AND PromotionEngine_CreatedDateTime >= '2025-07-21'
+AND PromotionEngine_StartDateTime >= '2025-08-15'
 AND PromotionEngine_EndDateTime > GETDATE()
 ORDER BY PromotionEngine_ShopId,PromotionEngine_Id;
 ```
@@ -291,6 +292,18 @@ and ECoupon_ShopId = 10230
 and ECoupon_ValidFlag = 1
 ```
 
+
+```sql
+use WebStoreDB
+
+select *
+from ECoupon(nolock)
+inner join ECouponSlave(nolock)
+on ECouponSlave_ECouponId = ECoupon_Id
+where ECoupon_Id = 222734
+and ECouponSlave_MemberId = 2778955
+```
+
 <br>
 
 ---
@@ -354,6 +367,20 @@ INNER JOIN TradesOrderSlave(NOLOCK)
 ON TradesOrderSlave_TradesOrderId = TradesOrder_Id
 WHERE TradesOrderGroup_ValidFlag = 1
 AND TradesOrderGroup_Code = 'TG250812PB0001'
+```
+
+
+```sql
+USE WebStoreDB
+select *
+from TradesOrderGroup(nolock)
+where TradesOrderGroup_ValidFlag = 1
+and TradesOrderGroup_Code >= 'TG250808BA00LN'
+AND TradesOrderGroup_ShopId = 41571
+AND TradesOrderGroup_CrmShopMemberCardId IN (4521,4522,4523)
+AND TradesOrderGroup_TotalPayment >= 8800
+AND TradesOrderGroup_TrackSourceTypeDef IN ('AndriodApp','iOSApp')
+--and TradesOrderGroup_CreatedDateTime >= '2025-08-08 11:00'
 ```
 
 <br>
