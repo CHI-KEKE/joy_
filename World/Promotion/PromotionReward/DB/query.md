@@ -125,6 +125,8 @@ use WebStoreDB
 SELECT PromotionEngine_ShopId as ShopId,
        Shop_Name as ShopName,
        PromotionEngine_Id as PromotionEngineId,
+	   PromotionEngine_StartDateTime,
+	   PromotionEngine_EndDateTime,
        PromotionEngine_Name as PromotionEngineName,
        case
            when PromotionEngine_TypeDef = 'RewardReachPriceWithCoupon' then N'滿額給券'
@@ -138,15 +140,19 @@ SELECT PromotionEngine_ShopId as ShopId,
         ELSE N'線上 + 線下'
     END AS SalesChannelType,
     JSON_VALUE(PromotionEngine_Rule, '$.MatchedSalesChannels') AS MatchedSalesChannelsValue,
-	 JSON_QUERY(CAST(PromotionEngine_Rule AS nvarchar(max)), '$.Thresholds')  AS Thresholds
+	 JSON_QUERY(CAST(PromotionEngine_Rule AS nvarchar(max)), '$.Thresholds')  AS Thresholds,
+	 PromotionEngineSetting_ExtendInfo
        --PromotionEngine_Rule as PromotionEngineRule
 FROM dbo.PromotionEngine WITH (NOLOCK)
 INNER JOIN dbo.Shop WITH (NOLOCK)
     ON PromotionEngine_ShopId = Shop_Id
+inner join PromotionEngineSetting
+on PromotionEngine_Id = PromotionEngineSetting_PromotionEngineId
     AND Shop_ValidFlag = 1
 WHERE PromotionEngine_ValidFlag = 1
   AND PromotionEngine_TypeDef IN ('RewardReachPriceWithRatePoint2','RewardReachPriceWithPoint2','RewardReachPriceWithCoupon')
 AND PromotionEngine_StartDateTime >= '2025-08-15'
+AND PromotionEngine_StartDateTime < '2025-08-16'
 AND PromotionEngine_EndDateTime > GETDATE()
 ORDER BY PromotionEngine_ShopId,PromotionEngine_Id;
 ```

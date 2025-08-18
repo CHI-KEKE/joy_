@@ -5,6 +5,7 @@
 2. [攤提結果因重算不符預期](#2-攤提結果因重算不符預期)
 3. [找不到對應的退貨訂單明細](#3-找不到對應的退貨訂單明細)
 4. [線下訂單給點紀錄稽核監控到異常](#4-線下訂單給點紀錄稽核監控到異常)
+5. [匯入線下訂單時機不對導致稽核正逆流程混做 大量誤判](#5-匯入線下訂單時機不對導致稽核正逆流程混做-大量誤判)
 
 <br>
 
@@ -177,3 +178,43 @@ https://91app.slack.com/archives/C7T5CTALV/p1753324426113299
 打菜籃計算給點沒有排除負向單
 
 <br>
+
+---
+
+## 5. 匯入線下訂單時機不對導致稽核正逆流程混做 大量誤判
+
+### 問題描述
+
+Shop 41332 在 16:51、17:03 匯入線下訂單並且觸發 Event (Internal_MemberTierCalculateFinished) 產生 PromotionRewardBatchDispatcherV2
+
+<br>
+
+### 流程執行順序
+
+1. 建立 PromotionRewardLoyaltyPointsV2/PromotionRewardCoupon 立即執行
+
+<br>
+
+2. 建立 RecycleLoyaltyPointsV2/PromotionRecycleCoupon booking 10:30 執行
+
+<br>
+
+3. 建立 AuditPromotionRewardLoyaltyPointsDispatchV2 booking 10:30 執行→ 建立 AuditCrmOthersOrderPromotionRewardLoyaltyPointsV2、AuditCrmOthersOrderPromotionRewardCoupon 立即執行
+
+<br>
+
+4. 建立 AuditPromotionRecycleDispatch booking 14:00 執行 → 建立 AuditCrmOthersOrderPromotionRecycleLoyaltyPoints、AuditCrmOthersOrderPromotionRecycleCoupon 立即執行
+
+<br>
+
+5. 建立 BatchAuditLoyaltyPoints booking 14:30 執行
+
+<br>
+
+### 問題原因
+
+因為已經下午所以回饋跟稽核擠在一起做了
+
+<br>
+
+---
