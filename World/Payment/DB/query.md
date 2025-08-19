@@ -8,6 +8,10 @@
 5. [取消單](#5-取消單)
 6. [退貨單](#6-退貨單)
 7. [特定金流商品頁資訊與法](#7-特定金流商品頁資訊與法)
+8. [SupplierPayType](#8-supplierpaytype)
+9. [PayProfile](#9-payprofile)
+10. [PayShippingMapping](#10-payshippingmapping)
+11. [PayShippingDefault](#11-payshippingdefault)
 
 <br>
 
@@ -155,6 +159,52 @@ from ShopCategory(nolock)
 where ShopCategory_ValidFlag = 1
 and ShopCategory_ShopId = 2
 order by ShopCategory_CreatedDateTime desc
+```
+
+<br>
+
+---
+
+## 8. SupplierPayType
+
+```sql
+select *
+from SupplierPayType(nolock)
+where SupplierPayType_SupplierId =2
+```
+
+<br>
+
+---
+
+## 9. PayProfile
+
+```sql
+select *
+from PayProfile(nolock)
+```
+
+<br>
+
+---
+
+## 10. PayShippingMapping
+
+```sql
+select *
+from PayShippingMapping(nolock)
+```
+
+<br>
+
+---
+
+## 11. PayShippingDefault
+
+```sql
+select Shop_IsPayShippingDefault,*
+from Shop(nolock)
+where Shop_Id =44;
 ```
 
 <br>
