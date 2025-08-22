@@ -45,6 +45,16 @@ and RefundRequest_UpdatedDateTime > '2025-07-01'
 SELECT SalesOrderGroup_DateTime,SalesOrderGroup_ShopId,*
 FROM SalesOrderGroup(NOLOCK)
 WHERE SalesOrderGroup_TradesOrderGroupCode IN ('TG240229K00030','TG240118M00056')
+
+
+use ERPDB
+SELECT SalesOrderGroup_DateTime,SalesOrderGroup_ShopId,SalesOrderSlave_StatusDef,*
+FROM SalesOrderGroup(NOLOCK)
+inner join SalesOrder(nolock)
+on SalesOrder_SalesOrderGroupId = SalesOrderGroup_Id
+inner join SalesOrderSlave(nolock)
+on SalesOrder_Id = SalesOrderSlave_SalesOrderId
+WHERE SalesOrderGroup_TradesOrderGroupCode IN ('TG250821M00003')
 ```
 
 <br>
@@ -52,6 +62,17 @@ WHERE SalesOrderGroup_TradesOrderGroupCode IN ('TG240229K00030','TG240118M00056'
 ---
 
 ## 3. ThirdPartyPayment
+
+
+```sql
+USE WebStoreDB
+
+	SELECT *
+		FROM dbo.TradesOrderThirdPartyPayment WITH (NOLOCK)
+		WHERE TradesOrderThirdPartyPayment_ValidFlag = 1
+		AND TradesOrderThirdPartyPayment_TradesOrderGroupCode = 'TG250820W00092'
+		AND TradesOrderThirdPartyPayment_ValidFlag = 1
+```
 
 <br>
 

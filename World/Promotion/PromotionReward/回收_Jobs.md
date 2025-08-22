@@ -124,6 +124,9 @@ promotionRequest.RelatedOrderSlaveIdList.Add(request.CrmSalesOrderSlaveId);
 **範例 1：退貨事件**
 ```json
 {"Data":"{\"ShopId\":2,\"EventName\":\"Return\",\"TriggerDatetime\":\"2025-07-02T17:53:47.5375643+08:00\",\"OrderCreateDate\":\"2025-07-01T15:00:00.000\",\"PromotionId\":7371,\"PromotionEngineType\":\"RewardReachPriceWithPoint2\",\"PendingRetryCount\":1,\"CrmSalesOrderSlaveId\":828143,\"OrderTypeDefEnum\":\"Others\"}"}
+
+{"Data":"{\"ShopId\":11,\"EventName\":\"Return\",\"TriggerDatetime\":\"2025-08-19T06:33:52.1939309+08:00\",\"OrderCreateDate\":\"2025-08-14T20:30:00\",\"PromotionId\":7954,\"PromotionEngineType\":\"RewardReachPriceWithPoint2\",\"PendingRetryCount\":1,\"CrmSalesOrderSlaveId\":828883,\"OrderTypeDefEnum\":\"Others\"}"}
+
 ```
 
 <br>
@@ -196,6 +199,28 @@ promotionRequest.RelatedOrderSlaveIdList.Add(request.CrmSalesOrderSlaveId);
 	"OrderTypeDefEnum": "ECom"
 }
 ```
+
+<br>
+
+### 2.3 錯誤情境
+
+#### 情境一：訂單狀態時序問題
+
+**錯誤訊息：** [Error] TS250813R000004 訂單狀態Finish 不符合預期退點狀態
+
+<br>
+
+**原因：** 雖然是 OrderReturned event 觸發，但 ReturnGoodsOrderSlave 還沒走到 Finish
+
+<br>
+
+#### 情境二：線上通路判斷問題導致回饋異常
+
+**正流程：** 無符合的線上SalesChannel，跳過回饋 => 沒有正常長 couponRecord
+
+<br>
+
+**造成結果：** 逆流程：訂單已付款，但查無給券紀錄 => 查 SalesOrderValid 後發現沒正常長資料噴錯
 
 <br>
 

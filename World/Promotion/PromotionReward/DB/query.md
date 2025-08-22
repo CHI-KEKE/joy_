@@ -14,6 +14,7 @@
 11. [CrmShopMemberCard](#11-crmshopmembercard)
 12. [BatchUpload 相關](#12-batchupload-相關)
 13. [NMQ Task](#13-nmq-task)
+14. [SalesOrder](#14-salesorder)
 
 <br>
 
@@ -114,6 +115,16 @@ ORDER BY CrmSalesOrder_TradesOrderFinishDateTime DESC
 ---
 
 ## 2. PromotionEngine
+
+
+
+```sql
+use WebStoreDB
+
+select PromotionEngine_GroupCode,*
+from PromotionEngine(nolock)
+where PromotionEngine_Id = 8414
+```
 
 **版本1**
 
@@ -510,22 +521,22 @@ and BatchUploadMessage_BatchUploadId = 11255
 
 ```sql
 USE NMQV2DB
- 
+
 SELECT *
 FROM Job(NOLOCK)
 WHERE Job_ValidFlag = 1
 AND Job_Name = 'BatchUpload'
- 
+
 select *
 from Task(nolock)
 where Task_ValidFlag = 1
 --and Task_JobId = 50
 and Task_Data like '%ExportRewardPromotionSalePage%'
 order by Task_CreatedDatetime desc
- 
- 
+
+
 use NMQV2DB
- 
+
 select *
 from Job(nolock)
 where Job_ValidFlag = 1
@@ -533,3 +544,18 @@ and Job_Name = 'BatchModifyPromotionSalePageTask'
 ```
 
 <br>
+
+---
+
+## 14. SalesOrder
+
+```sql
+use ERPDB
+SELECT SalesOrderGroup_DateTime,SalesOrderGroup_ShopId,SalesOrderSlave_StatusDef,*
+FROM SalesOrderGroup(NOLOCK)
+inner join SalesOrder(nolock)
+on SalesOrder_SalesOrderGroupId = SalesOrderGroup_Id
+inner join SalesOrderSlave(nolock)
+on SalesOrder_Id = SalesOrderSlave_SalesOrderId
+WHERE SalesOrderGroup_TradesOrderGroupCode IN ('TG250821M00003')
+```
