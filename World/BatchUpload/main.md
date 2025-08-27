@@ -331,3 +331,11 @@ https://bitbucket.org/nineyi/nineyi.scm.nmqv2/pull-requests/14557/diff
 BatchUpdateSalePageMLService.CreateBatchUploadDataList
 
 <br>
+
+---
+
+## 9. 🐏 🐏🐏 🐏🐏  狀態說明 🐏 🐏🐏 🐏🐏  
+
+WaitingToLoadData : 已完成第一道驗證並建立 BatchUpload NMQ 等待處理
+
+<br>
