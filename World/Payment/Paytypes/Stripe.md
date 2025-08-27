@@ -12,6 +12,8 @@
 9. [Stripe 後台操作](#9-stripe-後台操作)
 10. [帳戶類型與 Key 整理](#10-帳戶類型與-key-整理)
 11. [文件](#11-文件)
+12. [前台 OAuth](#12-前台-oauth)
+13. [信用卡付款](#13-信用卡付款)
 
 <br>
 
@@ -187,6 +189,126 @@ from ShopDefault(nolock)
 where ShopDefault_ValidFlag = 1
 and ShopDefault_ShopId = @shopId
 and ShopDefault_Key = 'StripeAccountType'
+```
+
+<br>
+
+### 2.4 前台取得帳號設定
+
+```csharp
+public StripeSettingsEntity GetShopStripeSetting(long shopId, bool cleanCache = false)
+{
+    IEnumerable<ShopDefaultEntity> shopDefault = this.ShopDefaultRepository.GetShopDefaultListByGroupTypeDef(shopId, new List<string> { "Stripe" });
+
+    return new StripeSettingsEntity
+    {
+        StripeAccountType = shopDefault.SingleOrDefault(x => x.Key == "StripeAccountType").NewValue,
+        StripeAccountSettingType = shopDefault.SingleOrDefault(x => x.Key == "StripeAccountSettingType").NewValue,
+        StripeSubAccount = shopDefault.SingleOrDefault(x => x.Key == "StripeSubAccount").NewValue,
+        StripeCustomSubAccount = shopDefault.SingleOrDefault(x => x.Key == "StripeCustomSubAccount").NewValue,
+        StripeCustomTestSubAccount = shopDefault.SingleOrDefault(x => x.Key == "StripeCustomTestSubAccount").NewValue,
+        EnableCustomDate = shopDefault.SingleOrDefault(x => x.Key == "EnableCustomDate").NewValue,
+    };
+}
+```
+
+<br>
+
+**執行時期的 Account Type**
+
+<br>
+
+```csharp
+private string GetRuntimeAccountType()
+{
+    //// 確保 Account Type 不會因為時間差而有所變動
+    if (string.IsNullOrEmpty(this._runtimeStripeAccountType))
+    {
+        this._runtimeStripeAccountType = this._stripeAccountType;
+
+        //// Account Type 由 Custom 改為 Standard 的條件
+        //// EnableCustomDate 未指定時間
+        //// EnableCustomDate 未達指定時間
+        if (this._runtimeStripeAccountType.StartsWith(StripeAccountTypeConstants.Custom, StringComparison.OrdinalIgnoreCase)
+            && (DateTime.TryParse(this.EnableCustomDate, out DateTime enableCustomDate) == false
+                || enableCustomDate > DateTime.Now))
+        {
+            this._runtimeStripeAccountType = this._runtimeStripeAccountType.Replace(StripeAccountTypeConstants.Custom, StripeAccountTypeConstants.Standard);
+            this._runtimeStripeAccountType = this._runtimeStripeAccountType.Replace(StripeAccountTypeConstants.Test, string.Empty);
+        }
+    }
+
+    return this._runtimeStripeAccountType;
+}
+```
+
+<br>
+
+**是否為 Custom 類型帳號**
+
+<br>
+
+```csharp
+public bool IsCustomAccountType() => this.StripeAccountType.StartsWith(StripeAccountTypeConstants.Custom, StringComparison.OrdinalIgnoreCase) == true;
+```
+
+<br>
+
+**根據商店帳號類型取得付款流程**
+
+<br>
+
+```csharp
+public string GetStripePaymentFlow()
+{
+    return this.IsCustomAccountType() == true ? "DestinationCharge" : "DirectCharge";
+}
+```
+
+<br>
+
+**根據商店 Stripe 帳號類型取得子帳號**
+
+<br>
+
+```csharp
+public string GetSubAccount()
+{
+    return this.IsCustomAccountType() == true ? (this.IsTestMode() ? this.StripeCustomTestSubAccount : this.StripeCustomSubAccount) : this.StripeSubAccount;
+}
+```
+
+<br>
+
+### 2.5 前台 GetStripeApiKey
+
+```csharp
+private string GetStripeApiKey(long shopId, string accountType)
+{
+    switch (accountType)
+    {
+        case StripeAccountTypeConstants.Custom:
+            return this._stripeConfigurations.CustomAcctLiveSecretKey;
+
+        case StripeAccountTypeConstants.CustomTest:
+            return this._stripeConfigurations.CustomAcctTestSecretKey;
+
+        case StripeAccountTypeConstants.CustomUAT:
+            return this._stripeConfigurations.CustomUATAcctLiveSecretKey;
+
+        case StripeAccountTypeConstants.CustomUATTest:
+            return this._stripeConfigurations.CustomUATAcctTestSecretKey;
+
+        case StripeAccountTypeConstants.Standard:
+            return this._stripeConfigurations.StandardAcctLiveSecretKey;
+
+        case StripeAccountTypeConstants.StandardUAT:
+            return this._stripeConfigurations.StandardUATAcctLiveSecretKey;
+
+        default:
+            return this._stripeConfigurations.StandardAcctLiveSecretKey;
+    }
+}
 ```
 
 <br>
@@ -424,6 +546,190 @@ https://bitbucket.org/nineyi/nineyi.databases/pull-requests/7564/diff
 <br>
 
 接著長費用單（ExpenseOrder），費用單（ExpenseOrder）會長其他報表
+
+<br>
+
+### 4.8 手續費退款
+
+#### 4.8.1 判斷是否需要退手續費
+
+<br>
+
+**主要判斷條件**
+
+<br>
+
+```csharp
+request.ExtendInfo.IsRefundApplicationFee // Stripe 是否需要退手續費
+```
+
+<br>
+
+**檢查條件**
+
+<br>
+
+1. `this.IsSalesOrderFee(refundRequest.RefundRequest_SourceDef)` - 判斷是否為運費
+2. `salesOrderSlaveDateTime >= new DateTime(2020, 7, 1) || Config : Charge.SalesOrderFee.Shop`
+3. `request.ExtendInfo.ApplicationFeeAmount > 0`
+
+<br>
+
+#### 4.8.2 計算退手續費金額
+
+<br>
+
+**基本計算**
+
+<br>
+
+```csharp
+decimal refundApplicationFee = this.CalculateFee(refundAmount, feeRate);
+```
+
+<br>
+
+**退貨子單特殊處理**
+
+<br>
+
+若是退貨子單需考慮補收單：
+
+<br>
+
+```csharp
+var rechargeAmount = rechargeReceipt.RechargeReceipt_RechargeAmount;
+var rechargeAmountFee = this.CalculateFee(rechargeAmount, feeRate);
+// 退續費 = TS手續費 - 補收手續費
+refundApplicationFee = totalPaymentFee - rechargeAmountFee;
+```
+
+<br>
+
+#### 4.8.3 API 調用
+
+<br>
+
+**Stripe API**
+
+<br>
+
+```
+[Post("/v1/application_fees/{applicationFeeId}/refunds")]
+```
+
+<br>
+
+**文件參考**：https://docs.stripe.com/api/fee_refunds/create
+
+<br>
+
+#### 4.8.4 退款類型差異
+
+<br>
+
+**普通退款 (Refund)**
+
+<br>
+
+- **定義**：將交易金額退還給客戶
+- **資金流向**：商家賬戶 → 客戶的支付方式（如信用卡）
+- **用途**：客戶要求退款或取消訂單時使用
+
+<br>
+
+**應用程式費用退款 (Application Fee Refund)**
+
+<br>
+
+- **定義**：退還平台從關聯賬戶（如賣家）收取的費用
+- **資金流向**：平台賬戶 → 關聯賬戶（賣家）
+- **用途**：調整平台和賣家之間的費用分配
+
+<br>
+
+#### 4.8.5 主要區別
+
+<br>
+
+**資金來源和目的地**
+
+<br>
+
+- 普通退款：商家賬戶 → 客戶
+- 應用程式費用退款：平台賬戶 → 賣家賬戶
+
+<br>
+
+**影響對象**
+
+<br>
+
+- 普通退款：直接影響客戶
+- 應用程式費用退款：影響平台和賣家，不直接影響客戶
+
+<br>
+
+**關聯交易**
+
+<br>
+
+- 普通退款：與客戶的原始支付交易相關
+- 應用程式費用退款：與平台收取的費用相關
+
+<br>
+
+#### 4.8.6 使用場景示例
+
+<br>
+
+假設有一筆 $100 的交易，平台收取 10% 的應用程式費用：
+
+<br>
+
+- 客戶支付：$100
+- 平台收取應用程式費用：$10
+- 賣家收到：$90
+
+<br>
+
+**情況 1：普通退款**
+
+<br>
+
+- 客戶要求全額退款
+- 執行普通退款：$100 返還給客戶
+- 平台可能同時執行應用程式費用退款：$10 返還給賣家
+
+<br>
+
+**情況 2：僅應用程式費用退款**
+
+<br>
+
+- 平台決定減少收費
+- 執行應用程式費用退款：例如 $5 從平台返還給賣家
+- 客戶不受影響，交易金額保持不變
+
+<br>
+
+#### 4.8.7 特點與限制
+
+<br>
+
+- **可部分退款**：應用程式費用可以多次部分退款，直到全額退還
+- **退款限制**：一旦全額退還，就不能再次退款
+- **錯誤處理**：嘗試退還超過原始費用金額會導致錯誤
+
+<br>
+
+#### 4.8.8 在平台經濟中的重要性
+
+<br>
+
+- 允許平台靈活調整其收入模型
+- 有助於處理爭議或特殊情況
+- 可用於激勵或獎勵表現良好的賣家
 
 <br>
 
@@ -712,6 +1018,66 @@ https://www.notion.so/STRIPE-24e558dd52a9800fb4cfefcc627101d9
 <br>
 
 [Stripe Custom Account-需求規劃](https://docs.google.com/presentation/d/1rf8MKdV2Vh6ofZq6repFjUd-2DUYjhpv9I2ppT0rSYI/edit?slide=id.p#slide=id.p)
+
+<br>
+
+---
+
+## 12. 前台 OAuth
+
+StripeOAuthController
+
+<br>
+
+https://connect.stripe.com/oauth/token?client_secret={secret}&code={code}&grant_type=authorization_code
+
+<br>
+
+---
+
+## 13. 信用卡付款
+
+### 13.1 付款前會先檢查卡號
+
+**檔案路徑**：C:\91APP\NineYi.WebStore.MobileWebMall\WebStore\WebAPI\Controllers\CreditCardController.cs
+
+<br>
+
+```csharp
+public CreditCardValidationResponseEntity CreditCardValidation(CreditCardValidationRequestEntity infoDate)
+{
+    CreditCardValidationResponseEntity resultResponse = null;
+
+    var key = this._stripeConfigurations.StandardAcctLiveSecretKey;
+
+    if (infoDate.ShopId.HasValue && infoDate.ShopId.Value > 0)
+    {
+        StripeSettingsEntity settings = this._shopDefaultService.GetShopStripeSetting(infoDate.ShopId.Value);
+        key = this.GetStripeApiKey(infoDate.ShopId.Value, settings.StripeAccountType);
+    }
+
+    var pairs = new List<KeyValuePair<string, string>>
+        {
+            new KeyValuePair<string, string>("type", infoDate.Type),
+            new KeyValuePair<string, string>("card[number]", infoDate.Number),
+            new KeyValuePair<string, string>("card[exp_month]", infoDate.ExpiryMonth),
+            new KeyValuePair<string, string>("card[exp_year]", infoDate.ExpiryYear),
+            new KeyValuePair<string, string>("card[cvc]", infoDate.CVC)
+        };
+
+    var content = new FormUrlEncodedContent(pairs);
+    var apiUrl = new Uri("https://api.stripe.com/v1/payment_methods");
+    httpClient.DefaultRequestHeaders.Accept.Clear();
+    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
+    httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+    var result = httpClient.PostAsync(apiUrl, content);
+    var response = result.Result.Content.ReadAsStringAsync();
+    resultResponse = JsonConvert.DeserializeObject<CreditCardValidationResponseEntity>(response.Result);
+
+    return resultResponse;
+}
+```
 
 <br>
 
