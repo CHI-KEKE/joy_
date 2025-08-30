@@ -9,6 +9,8 @@
 6. [批次作業進度查詢 - 作業類型 - 下拉選單](#6-批次作業進度查詢---作業類型---下拉選單)
 7. [Enum / TypeDef](#7-enum--typedef)
 8. [批次匯入商品語系資料的銷售重點 (Selling Point) 欄位支援換行](#8-批次匯入商品語系資料的銷售重點-selling-point-欄位支援換行)
+9. [下載錯誤明細](#9-下載錯誤明細)
+10. [上限筆數驗證](#10-上限筆數驗證)
 
 <br>
 
@@ -253,6 +255,8 @@ public List<long> GetBatchUploadProcesseIdList(int supplierId)
 
 BatchUploadService.GetBatchUploadPermissionList()
 
+http://bitbucket.org/nineyi/nineyi.sms/pull-requests/35898/overview
+
 <br>
 
 ### 6.3 WebStoreDB.dbo.Definition 新增定義 (上限30字)
@@ -334,8 +338,109 @@ BatchUpdateSalePageMLService.CreateBatchUploadDataList
 
 ---
 
-## 9. 🐏 🐏🐏 🐏🐏  狀態說明 🐏 🐏🐏 🐏🐏  
+## 9. 下載錯誤明細
+
+**頁面 URL**
+
+<br>
+
+https://sms.qa1.hk.91dev.tw/BatchUpload/Detail/11239
+
+<br>
+
+**API 端點**
+
+<br>
+
+https://sms.qa1.hk.91dev.tw/Api/BatchUpload/GetMessageList
+
+<br>
+
+**Request**
+
+<br>
+
+```json
+{
+    "SearchItem": 11239,
+    "Take": 25,
+    "Skip": 0
+}
+```
+
+<br>
+
+**Response**
+
+<br>
+
+```json
+{
+    "List": [
+        {
+            "Title": "Promotion ID: 242423",
+            "StatusDef": "ValidateFailed",
+            "StatusDefDesc": "資料檢查有誤",
+            "Note": "• Promotion ID Not Found\n• Product Page ID Not Found: 651234,651235,651236,651237"
+        },
+        {
+            "Title": "Promotion ID: 242424",
+            "StatusDef": "ValidateFailed",
+            "StatusDefDesc": "資料檢查有誤",
+            "Note": "• Promotion ID Not Found\n• Product Page ID Not Found: 651235"
+        },
+        {
+            "Title": "Promotion ID: 123499",
+            "StatusDef": "ValidateFailed",
+            "StatusDefDesc": "資料檢查有誤",
+            "Note": "• Promotion ID Not Found\n• Product Page ID Not Found: 651233"
+        }
+    ],
+    "PageCount": 1,
+    "TotalCount": 3
+}
+```
+
+<br>
+
+---
+
+## 10. 上限筆數驗證
+
+**ModifyRewardPromotionSalePage**
+
+<br>
+
+固定 500 筆
+
+<br>
+
+```csharp
+$"BatchUpload.{this.GetBatchUploadType()}.MaxCount", "500")
+```
+
+<br>
+
+---
+
+## 11. 🐏 🐏🐏 🐏🐏  狀態說明 🐏 🐏🐏 🐏🐏  
 
 WaitingToLoadData : 已完成第一道驗證並建立 BatchUpload NMQ 等待處理
 
+InLoadData : NMQ 接到任務開始初始化 準備 LoadExcel
+
+InValidation : LoadExcel 完成 Wrapper 包好準備二次驗證
+
+
+ReadyToProcess : 二次驗證成功 準備 CreateNMQ
+ValidateFailed : 二次驗證失敗 
+Finish : 主 NMQ 發現 dataList.Count == 0
+WaitingToProces : 主 NMQ 發現 dataList.Count > 0
+ScheduleAbortedWithErrors : 檢查 dataList 有 BatchUploadData_StatusDef == ValidateFailed 更新狀態
+
+InProcess: 子 Job 已在處理中
+
+
+Finish : 完成子 Job
+ProcessFailed : 子 Job 跑完失敗
 <br>

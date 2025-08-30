@@ -236,3 +236,15 @@ D:\Batch\ExportModifiedCrmMemberData
 <br>
 
 ---
+
+## 💻 PushWorker release 被 RunByFlowId 卡住
+
+**Task Manager 確認 flowId**
+
+<br>
+
+查詢 DB, 結果是有人在手動結轉資料
+
+<br>
+
+---

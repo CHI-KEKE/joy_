@@ -2,9 +2,34 @@
 
 ## 目錄
 1. [其他交易資料匯入](#1-其他交易資料匯入)
+   - 1.1 [Log 流程分析](#11-log-流程分析)
+   - 1.2 [查 BatchUpload Table](#12-查-batchupload-table)
+   - 1.3 [查 BatchUploadData Table](#13-查-batchuploaddata-table)
+   - 1.4 [吃檔的 ETL 排程](#14-吃檔的-etl-排程)
+   - 1.5 [QA FTPClient.CurlPathV2 登進去資訊](#15-qa-ftpclientcurlpathv2-登進去資訊)
+   - 1.6 [怎麼從 UI 看是否匯入](#16-怎麼從-ui-看是否匯入)
 2. [匯出活動商品](#2-匯出活動商品)
 3. [匯出活動料號](#3-匯出活動料號)
 4. [批次更新序號 / 料號](#4-批次更新序號--料號)
+   - 4.1 [OSM](#41-osm)
+     - 4.1.1 [檔案](#411-檔案)
+     - 4.1.2 [關鍵字](#412-關鍵字)
+     - 4.1.3 [API](#413-api)
+     - 4.1.4 [主流程](#414-主流程)
+     - 4.1.5 [CreateBatchTask (產生 Job 入口)](#415-createbatchtask-產生-job-入口)
+   - 4.2 [主 BatchUploadProcess NMQ](#42-主-batchuploadprocess-nmq)
+     - 4.2.1 [Task Data](#421-task-data)
+     - 4.2.2 [DB Job 設定](#422-db-job-設定)
+     - 4.2.3 [機器檔案](#423-機器檔案)
+     - 4.2.4 [LoadData](#424-loaddata)
+     - 4.2.5 [LoadExcel](#425-loadexcel)
+     - 4.2.6 [DoValidate (二次驗證)](#426-dovalidate-二次驗證)
+     - 4.2.7 [Insert BatchUploadData Table 並建立子 NMQ](#427-insert-batchuploaddata-table-並建立子-nmq)
+   - 4.3 [BatchUploadTaskProcess](#43-batchuploadtaskprocess)
+   - 4.4 [SCMAPIV2](#44-scmapiv2)
+   - 4.5 [API 錯誤釐清案例](#45-api-錯誤釐清案例)
+     - 4.5.1 [批次更新料號，要上傳 10 萬個，只上傳了6萬多就終止問題](#451-批次更新料號要上傳-10-萬個只上傳了6萬多就終止問題)
+     - 4.5.2 [API 回 null!? 導致錯誤明細顯示異常](#452-api-回-null-導致錯誤明細顯示異常)
 
 <br>
 
@@ -518,6 +543,8 @@ https://sms.qa1.hk.91dev.tw/Api/BatchUpload/CreateBatchTask
 
 #### 4.1.4 主流程
 
+<br>
+
 **會分類跑對應的 Process**
 
 <br>
@@ -553,6 +580,79 @@ this.VerifyFile();
 <br>
 
 **Load Excel 檔**
+
+**建立 mappingProfile**
+
+<br>
+
+```csharp
+using NineYi.Common.Utility.Upload.Mappers;
+using NineYi.Sms.BL.BE.BatchUploads;
+using NineYi.Sms.Utilities.Helpers;
+
+namespace NineYi.Sms.Mappers.BatchUploads
+{
+    /// <summary>
+    /// 批次新增商品標籤
+    /// </summary>
+    public class BatchModifyPromotionSalePageMappingProfile : IColumnMapping<BatchModifyPromotionOuterIdEntity>, IColumnMapping<ModifyRewardPromotionSalePageEntity>
+    {
+        #region Implementation of IColumnMapping<BatchModifyPromotionSalePageExcelEntity>
+        /// <summary>
+        /// MapExcelToEntity
+        /// </summary>
+        /// <param name="excelFile">MappingDefinition</param>
+        public void MapExcelToEntity(MappingDefinition<BatchModifyPromotionOuterIdEntity> excelFile)
+        {
+            //// 語系 Hard Code
+            //// 除台灣以外, 其他國家一律預設英文
+            switch (SettingHelper.DefaultCountry)
+            {
+                case "TW":
+                    excelFile.Add(a => a.ScheduleTime, "期望生效時間");
+                    excelFile.Add(a => a.PromotionId, "活動序號");
+                    excelFile.Add(a => a.SalePageIds, "商品頁序號");
+                    excelFile.Add(a => a.ModifyStatus, "異動狀態");
+                    break;
+
+                default:
+                    excelFile.Add(a => a.ScheduleTime, "Execution Time");
+                    excelFile.Add(a => a.PromotionId, "Promotion ID");
+                    excelFile.Add(a => a.SalePageIds, "Product Page ID");
+                    excelFile.Add(a => a.ModifyStatus, "Update");
+                    break;
+            }
+        }
+        #endregion
+        
+        /// <summary>
+        /// MapExcelToEntity
+        /// </summary>
+        /// <param name="excelFile">MappingDefinition</param>
+        public void MapExcelToEntity(MappingDefinition<ModifyRewardPromotionSalePageEntity> excelFile)
+        {
+            //// 語系 Hard Code
+            //// 除台灣以外, 其他國家一律預設英文
+            switch (SettingHelper.DefaultCountry)
+            {
+                case "TW":
+                    excelFile.Add(a => a.ScheduleTime, "期望生效時間");
+                    excelFile.Add(a => a.PromotionId, "活動序號");
+                    excelFile.Add(a => a.SalePageIds, "商品頁序號");
+                    excelFile.Add(a => a.ModifyStatus, "異動狀態");
+                    break;
+
+                default:
+                    excelFile.Add(a => a.ScheduleTime, "Effective Time");
+                    excelFile.Add(a => a.PromotionId, "Promotion ID");
+                    excelFile.Add(a => a.SalePageIds, "Product Page ID");
+                    excelFile.Add(a => a.ModifyStatus, "Action");
+                    break;
+            }
+        }
+    }
+}
+```
 
 <br>
 
@@ -736,5 +836,634 @@ return obj3 as IEnumerable<object>;
 | BatchUpload_ExportFileDownloadPath | NULL |
 | BatchUpload_ShopId | 2 |
 | BatchUpload_ScheduledDateTime | 2024-05-28 10:20:00.000 |
+
+<br>
+
+### 4.2 主 BatchUploadProcess NMQ
+
+#### 4.2.1 Task Data
+
+```json
+{
+   "BatchUploadId":11229,
+   "SupplierId":2,
+   "UploadType":"ModifyRewardPromotionSalePage",
+   "UploadUser":"allenlin@nine-yi.com",
+   "FilePassword":"",
+   "ExportDataCondition":null,
+   "Country":"HK"
+}
+
+{"BatchUploadId":11519,"SupplierId":2,"UploadType":"BatchModifyPromotionOuterId","UploadUser":"ellygong@nine-yi.com","FilePassword":"","ExportDataCondition":null,"Country":"HK"}
+
+```
+
+<br>
+
+#### 4.2.2 DB Job 設定
+
+- JOBID : 49
+- Path : NineYi.SCM.Frontend.NMQV2.BatchUpload.BatchUploadProcess
+
+<br>
+
+#### 4.2.3 機器檔案
+
+E:\Storage\Docs\ModifyRewardPromotionSalePage
+E:\Storage\Docs\BatchModifyPromotionOuterId
+
+url要求
+https://sms.qa1.hk.91dev.tw/CommerceCloud/Docs/BatchModifyPromotionOuterId/Batch update products in promotions template (Product part number).xlsx
+
+href
+Docs/BatchModifyPromotionOuterId/Batch update products in promotions template (Product part number).xlsx
+
+實際
+E:\Storage\Docs\BatchModifyPromotionOuterId\Batch update products in promotions template (Product part number).xlsx
+
+商品頁
+/Docs/ModifyRewardPromotionSalePage/Batch update products in promotions template.xlsx (edited)
+
+
+以後上檔案要給前端路徑 前端 要加上 / 才會抓到正確的路徑
+
+**TW_QA**
+
+<br>
+
+```
+\\TYO-QA-Filer1\Files\Tmp\BatchUpload
+```
+
+<br>
+
+**HK_QA**
+
+<br>
+
+```
+"\\SG-HK-QA1-SCM2\Storage\Tmp\BatchUpload" 
+E:\Storage\Tmp\BatchUpload\2
+```
+
+<br>
+
+**HK_Prod**
+
+<br>
+
+```
+\\SG-HK-Filer1\Storage\Tmp\BatchUpload
+```
+
+<br>
+
+#### 4.2.4 LoadData
+
+(`BatchModifyPromotionSalePageService`)
+(`BatchModifyPromotionOuterId`)
+
+<br>
+
+初始化行為 BatchUploadService
+
+<br>
+
+位置在 BatchUploadProcess.InitContainerBuilder
+
+<br>
+
+```csharp
+.RegisterBatchUploadService<BatchModifyPromotionSalePageService>(BatchUploadTypeEnum.ModifyRewardPromotionSalePage) //// 批次更新點數折扣活動可使用商品
+```
+
+<br>
+
+#### 4.2.5 LoadExcel
+
+使用 LinqToExcel 套件的 ExcelQueryFactory 來執行 Excel 讀取操作
+
+<br>
+
+- Step 1. 建立 ExcelQueryFactory
+- Step 2. 取得對應介面與對應定義 (Mapping Definition)
+- Step 3. 建立 MappingDefinition
+- Step 4. 執行映射邏輯
+- Step 5. 取得對應資訊
+- Step 6. 建立映射至 ExcelQueryFactory
+- Step 7. 呼叫 Worksheet 取得資料
+- Step 8. 回傳
+
+<br>
+
+appSetting : BatchUpload.Storage.Floder
+
+<br>
+
+預設 : C:\Temp\UploadData
+
+<br>
+
+```
+C:\Temp\UploadData / supplierId / BatchUpload_UploadGuid
+```
+
+<br>
+
+驗證檔案是否存在 (System.IO.File.Exists)
+
+<br>
+
+**取 excel 欄位資料**
+
+<br>
+
+```csharp
+ScheduleTime = x.ScheduleTime,
+PromotionId = int.Parse(x.PromotionId),
+ModifyStatus = x.ModifyStatus,
+SalePageIds = x.GetSalePageIds()
+```
+
+<br>
+
+**by excelData 包成 List<BatchUploadDataWrapperEntities>**
+
+<br>
+
+- BatchUploadData(大量上傳資料, BatchUploadDataEntity)
+
+<br>
+
+```csharp
+BatchUploadDataEntity
+{
+    BatchUploadData_Id
+    BatchUploadData_BatchUploadId
+    BatchUploadData_SupplierId
+    BatchUploadData_TypeDef
+    BatchUploadData_TypeDefDesc
+    ...
+}
+```
+
+<br>
+
+- DataEntity(資料內容，用於與 BatchUploadData 一對一的情境)
+- DataEntityList(資料內容 Entity List)
+
+<br>
+
+每一列 excel 長一個 wrapper, 每一個 wrapper 有一組 BatchUploadData, DataEntityList, DataEntity
+
+<br>
+
+#### 4.2.6 DoValidate (二次驗證)
+
+**DoValidate**
+
+<br>
+
+1. by PromotionId 分群
+2. 集合驗證
+
+<br>
+
+BatchModifyPromotionOuterIdDataEntityValidator
+
+<br>
+
+UploadFailedMessageList
+
+<br>
+
+**DoValidate**
+
+<br>
+
+- FlentValidation : using ValidationEntity = NineYi.WebStore.Backend.BE.BatchUpload.GroupedBatchUploadDataValidationEntity<int, NineYi.WebStore.Backend.BE.BatchUpload.BatchModifyPromotionOuterIdDataEntity>;
+- BatchModifyPromotionOuterIdDataEntityValidator
+- 驗重複料號
+- 驗證活動序號
+- 驗證料號字元
+- 驗證異動狀態
+
+<br>
+
+**為什麼要包 wrapper**
+
+<br>
+
+一個 wrapper 是一個 promotion 維度
+
+<br>
+
+this.BatchUploadDataList = 一堆 wrapper
+
+<br>
+
+wrapper 主要分兩個節點,
+
+<br>
+
+- BatchUploadData = BatchUploadDataEntity, 紀載 title, data, status…等等
+- DataEntityList = 一組 promotion 的資料
+
+<br>
+
+看起來一個 batchuploadData 就是一筆 promotion 維度的資料, 也就是 excel 某一列
+
+<br>
+
+#### 4.2.7 Insert BatchUploadData Table 並建立子 NMQ
+
+取得 this.BatchUploadDataList 來自 List<BatchUploadDataWrapperEntity<BatchModifyPromotionSalePageDataEntity>>
+
+<br>
+
+**依 Supplier 決定是否 Bulk Insert BatchUploadData**
+
+<br>
+
+- shopId = 0
+- groupname = BatchUpload
+- key = BulkInsert.Enable.SupplierIds
+
+<br>
+
+**開關有開 (var bulkLimit = 10000)**
+
+<br>
+
+```csharp
+this.BatchUploadRepository.BulkInsertBatchUploadData(batchUploadDataList);
+```
+
+<br>
+
+**開關沒開 (WebStoreDB csp_InsertBatchUploadData)**
+
+<br>
+
+```csharp
+this.BatchUploadRepository.CreateBatchUploadData(batchUploadDataList)
+```
+
+<br>
+
+**塞入 BatchUploadData**
+
+<br>
+
+BatchUpload_TotalCount = 共幾列
+
+<br>
+
+- dataList.Count == 0, 更新批次上傳狀態 : Finish
+- dataList.Count > 0, 更新批次上傳狀態 : WaitingToProces
+- 檢查 dataList 有 BatchUploadData_StatusDef == ValidateFailed 更新狀態
+
+<br>
+
+**組織 taskNMQDataEntity**
+
+<br>
+
+```csharp
+taskNMQDataEntity.BatchUploadId = this.BatchUploadEntity.BatchUpload_Id;
+taskNMQDataEntity.ProcessType = BatchUploadTaskProcessTypeEnum.ByProcessCount.ToString();  //// 多筆, 依定義筆數執行 Task
+string typeProcessCountSetting = string.Format("BatchUpload.{0}.TaskProcessCount", this.BatchUploadEntity.BatchUpload_TypeDef);
+taskNMQDataEntity.ProcessCount = Convert.ToInt32(AppSetting.GetAppSetting(typeProcessCountSetting, "10"));
+taskNMQDataEntity.UploadUser = nmqDataEntity.UploadUser;
+```
+
+<br>
+
+- 本案為 : BatchModifyPromotionSalePageTask (仍有繼承 BatchUploadTask)
+- 一般為 : BatchUploadTask
+
+<br>
+
+### 4.3 BatchUploadTaskProcess
+
+每 10 為一組 產生一個 BatchModifyPromotionOuterIdTask / BatchModifyPromotionSalePageTask
+
+<br>
+
+**Task Data**
+
+<br>
+
+```json
+{
+   "BatchUploadId":11221,
+   "ProcessType":"ByProcessCount",
+   "BatchUploadDataId":0,
+   "ProcessCount":10,
+   "UploadUser":"yujiechen@nine-yi.com"
+}
+
+{"BatchUploadId":11519,"ProcessType":"ByProcessCount","BatchUploadDataId":0,"ProcessCount":10,"UploadUser":"ellygong@nine-yi.com"}
+{"BatchUploadId":11519,"ProcessType":"ByProcessCount","BatchUploadDataId":0,"ProcessCount":10,"UploadUser":"ellygong@nine-yi.com"}
+{"BatchUploadId":11519,"ProcessType":"ByProcessCount","BatchUploadDataId":0,"ProcessCount":10,"UploadUser":"ellygong@nine-yi.com"}
+{"BatchUploadId":11519,"ProcessType":"ByProcessCount","BatchUploadDataId":0,"ProcessCount":10,"UploadUser":"ellygong@nine-yi.com"}
+{"BatchUploadId":11519,"ProcessType":"ByProcessCount","BatchUploadDataId":0,"ProcessCount":10,"UploadUser":"ellygong@nine-yi.com"}
+```
+
+<br>
+
+**DB 設定**
+
+<br>
+
+商品頁
+
+<br>
+
+JobId : 334
+
+<br>
+
+料號
+
+<br>
+
+486
+
+<br>
+
+位置 : NineYi.SCM.Frontend.NMQV2.BatchUpload.BatchModifyPromotionSalePageTaskProcess
+
+<br>
+
+**批次異動商品頁子檔 TASK 狀態**
+
+<br>
+
+```sql
+USE NMQV2DB
+SELECT *
+FROM Task(NOLOCK)
+WHERE Task_ValidFlag = 1
+AND Task_JobId = 334
+ORDER BY Task_CreatedDatetime DESC
+```
+
+<br>
+
+**確認 BatchUpload Data**
+
+<br>
+
+- 尋找 BatchUpload ( `BatchUpload` DB)
+- 狀態是否 BatchUploadStatusEnum.WaitingToProcess,BatchUploadStatusEnum.InProcess
+
+<br>
+
+**判斷廠商是否超過最多執行 job 限制**
+
+<br>
+
+判斷廠商是否超過最多執行 job 限制
+
+<br>
+
+key : BatchUpload.Supplier.JobLimit
+
+<br>
+
+預設 : 10
+
+<br>
+
+撈取 BatchUpload 的 BatchUpload_StatusDef = "InProcess"
+
+<br>
+
+==> 發動 Task 重新排隊 再產一次 BatchUploadTask
+
+<br>
+
+delay 多久
+
+<br>
+
+key : BatchUpload.JobLimit.DelaySeconds
+
+<br>
+
+預設 : 120
+
+<br>
+
+**IsBatchTaskExecuted (短時間內重複執行 直接中斷)**
+
+<br>
+
+檢查是否 IsBatchTaskExecuted
+
+<br>
+
+批次執行記錄目錄 : config : BatchUpload.Storage.Floder 預設 C:\Temp\UploadData
+
+<br>
+
+```
+C:\Temp\UploadData \ ExecutedTasks \ yyyyMMdd \ taskId \ BatchUpload_SupplierId \ BatchUpload_Code
+```
+
+<br>
+
+若找到這個檔案 表示可能執行過
+
+<br>
+
+taskRedoExpireSeconds 由 Config : BatchUpload.{BatchUpload_TypeDef}.TaskExecuted.ExpireSeconds 預設 50秒
+
+<br>
+
+若最新執行時間加上redo時間 > 現在
+
+<br>
+
+視為執行過 且 尚在逾時期間內
+
+<br>
+
+重複執行註記
+
+<br>
+
+執行批次大量上傳重複處理檢查及中斷通知
+
+<br>
+
+config : BatchUpload.ProcessDuplicate.EmailReceivers
+
+<br>
+
+預設 : erichsu@91app.com;reonachao@91app.com
+
+<br>
+
+csp : csp_NoticeBatchProcessInterrupted
+
+<br>
+
+已逾時可重做, 將舊執行紀錄檔壓改名
+
+<br>
+
+if (isExecuted == false) 產生執行記錄檔案
+
+<br>
+
+短時間內重複執行 直接中斷
+
+<br>
+
+### 4.4 SCMAPIV2
+
+/v2/Promotion/ModifyPromotionSalePages
+
+<br>
+
+/v2/Promotion/ModifyPromotionProductSkuOuterIds
+
+<br>
+
+```csharp
+var request = new ModifyPromotionProductSkuOuterIdsRequestEntity
+{
+    ShopId = this.BatchUploadEntity.BatchUpload_ShopId.Value,
+    Id = entity.PromotionId,
+    ModifyType = ModifyStatusMapping[entity.ModifyStatus].ToEnum<PromotionScopeModifyTypeDefEnum>(),
+    ProductSkuOuterIds = entity.OuterIds.ToList()
+};
+```
+
+<br>
+
+若發生錯誤會 InsertUploadFailedMessageList BatchUploadMessage Table
+
+<br>
+
+**API 錯誤時 可以查看的資訊**
+
+<br>
+
+- BatchUploadMessage_StatusDef = ValidateFailed
+- BatchUploadMessage_Note = erroMessage
+- BatchUploadData_StatusDef = ProcessFailed
+
+<br>
+
+### 4.5 API 錯誤釐清案例
+
+#### 4.5.1 批次更新料號，要上傳 10 萬個，只上傳了6萬多就終止問題
+
+**案例資訊**
+
+<br>
+
+- code: BA2503211400003
+- Id: 11519
+- 時間: 2025/03/21 14:40
+
+<br>
+
+**NMQ 資料**
+
+<br>
+
+**BatchUploadData 詳細資訊**
+
+<br>
+
+| 欄位名稱 | 資料值 |
+|---------|--------|
+| BatchUploadData_Id | 1835340 |
+| BatchUploadData_BatchUploadId | 11519 |
+| BatchUploadData_SupplierId | 2 |
+| BatchUploadData_TypeDef | BatchModifyPromotionOuterId |
+| BatchUploadData_StatusDef | ProcessFailed |
+| BatchUploadData_Title | 2 |
+| BatchUploadData_CreatedDateTime | 2025-03-21 14:09:14.867 |
+| BatchUploadData_CreatedUser | BulkInsertBatchUploadData |
+| BatchUploadData_UpdatedTimes | 1 |
+| BatchUploadData_UpdatedUser | BatchUpload |
+| BatchUploadData_UpdatedDateTime | 2025-03-21 14:46:46.687 |
+| BatchUploadData_ValidFlag | 1 |
+
+<br>
+
+**BatchUploadData_Data 內容**
+
+<br>
+
+```json
+{
+    "ScheduleTime": "3/21/2025 2:40:00 PM",
+    "PromotionId": 6298,
+    "OuterIds": [
+        "Z7BkR", "tfu8R", "pQqQC", "UeXIq", "t4HZD", "nPa96", "pqhOn", "YArbF", 
+        "ZbEzd", "xt6dz", "ecBD4", "8MiN6", "fpvED", "MLolr", "pVA1y", "QIjft", 
+        "q0Bkr", "M5apB", "7bQDB", "B27px", "oogCE", "rnNHp", "3XSkn", "LfVl3", 
+        "nykRp", "mm5OS", "GxjdC", "Za1CZ", "q9E7e", "5QDt5", "ivyW4", "VhgrJ", 
+        "OMyO9", "adSdJ", "3qpQv", "uR70C", "CqVkk", "dLw1W", "nuYHO", "9CLLO"
+        // ... 更多料號
+    ],
+    "ModifyStatus": "Add"
+}
+```
+
+<br>
+
+**錯誤回應 (促購後台)**
+
+<br>
+
+**Response - traceId:**
+
+<br>
+
+```json
+{
+    "errorCode": "InternalServerError",
+    "message": "SqlException",
+    "data": "Transaction (Process ID 196) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction."
+}
+```
+
+<br>
+
+**問題分析**
+
+<br>
+
+- 發生 SQL 死鎖 (Deadlock)
+- 交易過程中與其他處理序產生鎖定資源衝突
+- 系統選擇該交易作為死鎖受害者並中止執行
+- 需要重新執行交易
+
+<br>
+
+#### 4.5.2 API 回 null!? 導致錯誤明細顯示異常
+
+**相關連結**
+
+<br>
+
+https://bitbucket.org/nineyi/nineyi.scm.nmqv2/pull-requests/15870/overview
+
+<br>
+
+**問題描述**
+
+<br>
+
+- API 回傳 null 導致錯誤明細顯示異常
+- 影響錯誤訊息的正確呈現
+- 需要透過程式碼修正處理 null 回應的情況
 
 <br>

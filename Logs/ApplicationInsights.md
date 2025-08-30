@@ -85,21 +85,6 @@ https://portal.azure.com/#@91app.biz/resource/subscriptions/a23bf8eb-057f-4ad3-8
 
 <br>
 
-Application Insights 也能有效評估系統的 latency（延遲）指標，提供全面的效能分析：
-
-<br>
-
-**Latency 評估項目**：
-
-<br>
-
-- **網路延遲**：用戶端到伺服器的網路傳輸時間
-- **處理延遲**：伺服器端處理請求的時間
-- **資料庫延遲**：資料庫查詢和回應時間
-- **依賴服務延遲**：外部 API 或服務的回應時間
-
-<br>
-
 **Latency 分析範例**：
 
 <br>
@@ -118,3 +103,7 @@ Application Insights 也能有效評估系統的 latency（延遲）指標，提
 <br>
 
 ---
+
+確認個別案例慢在哪裡
+![alt text](./image-3.png)
+![alt text](./image-4.png)
