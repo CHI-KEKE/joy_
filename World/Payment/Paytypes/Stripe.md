@@ -14,6 +14,9 @@
 11. [文件](#11-文件)
 12. [前台 OAuth](#12-前台-oauth)
 13. [信用卡付款](#13-信用卡付款)
+14. [記住信用卡](#14-記住信用卡)
+15. [切換帳戶](#15-切換帳戶)
+16. [卡別](#16-卡別)
 
 <br>
 
@@ -74,7 +77,7 @@ AND VipMemberInfo_ShopId = 28
 
 <br>
 
-![alt text](./image.png)
+![alt text](../image.png)
 
 <br>
 
@@ -93,27 +96,27 @@ and TradesOrderThirdPartyPayment_CreatedUser = '1751836' -- MemberId
 
 <br>
 
-![alt text](./image-1.png)
+![alt text](../image-1.png)
 
 <br>
 
 #### 1.1.3 Stripe 後台資訊
 
-![alt text](./image-2.png)
+![alt text](../image-2.png)
 
 <br>
 
-![alt text](./image-3.png)
+![alt text](../image-3.png)
 
 <br>
 
-![alt text](./image-5.png)
+![alt text](../image-5.png)
 
 <br>
 
 #### 1.1.4 Athena IIS Log 查看信用卡驗證紀錄
 
-![alt text](./image-4.png)
+![alt text](../image-4.png)
 
 <br>
 
@@ -149,6 +152,228 @@ AND PayTypeExpress_MemberId = 1751836
 <br>
 
 需要詢問 Stripe 該交易的問題
+
+<br>
+
+### 1.2 已經走到 Cancelled 但最後壓表失敗
+
+**Slack 連結**：https://91app.slack.com/archives/C7T5CTALV/p1738461751955299
+
+<br>
+
+**問題時間軸**
+
+<br>
+
+- **2025-02-02 01:16:55.049** - 綁定支付方式 建立 payment_method / 建立 payment_intent
+- **2025-02-02T01:16:58.78072266Z** - WaitingToPay 支付尚未完成 (`"next_action": {redirect_to_url`)，系統正在等待用戶完成 3D Secure 認證
+- **2025-02-02T01:21:10.334423269Z** - Query `"requires_action"` 仍需用戶完成 3D Secure 驗證，目前 amount_received = 0，表示尚未扣款成功仍是 waiting to pay
+- **2025-02-02T01:27:37.290428613Z** - Query `payment_intent_authentication_failure` 這筆交易未通過 3D Secure 驗證或其他身份驗證機制，回復失敗
+- **2025-02-02T01:27:37.350341125** - stripe api Cancel success，後續回 webapi 處理取消操作
+- **2025-02-02T01:31:07.879361224Z** - Query 當前支付狀態：`"canceled"`（交易已取消）
+
+<br>
+
+**問題描述**
+
+<br>
+
+在第4點 query 到訂單是驗證失敗後，PMW 回失敗，並且 web api 是走取消邏輯進行第5點的取消，但可能 DB 資料沒有更新成功。
+
+<br>
+
+**目前 DB 狀態**
+
+<br>
+
+- **OrderSlaveFlow**：WaitingTo3DAuth
+- **TradesOrderThirdPartyPayment**：WaitingToPay
+
+<br>
+
+**預期處理**
+
+<br>
+
+是否應該是壓成 WaitingToPay 再讓 Re-Check 重跑
+
+<br>
+
+**異常詳情**
+
+<br>
+
+**Elmah Log**：http://elmahdashboard.91app.hk/Log/Details/f5682e60-a253-4acf-8525-e6745c54a8e6
+
+<br>
+
+```
+The operation is not valid for the state of the transaction.
+Type: System.Transactions.TransactionException
+Message: The operation is not valid for the state of the transaction.
+Time: 2/2/2025 1:27:37 AM
+```
+
+<br>
+
+**異常發生流程**
+
+<br>
+
+1. API 端點 `/webapi/PayChannel/InternalFinishPayment` 處理支付完成請求
+2. 進入 `TradesOrderPaymentService.FinishPayment` 方法
+3. 嘗試更新 `TradesOrderThirdPartyPaymentRepository.Update()` 以更新第三方支付訂單狀態
+4. 異常發生點：
+   - EntityFramework 在 `SaveChanges()` 嘗試提交變更時發生 TransactionException
+   - 內部 `SQLConnection.Open()` 無法開啟連線，導致 `EntityConnection.OpenStoreConnectionIf()` 失敗
+   - SQL 連線池可能存在交易狀態異常或分散式交易無法升級
+
+<br>
+
+**異常相關檔案與程式碼行數**
+
+<br>
+
+- **TradesOrderThirdPartyPaymentRepository.Update()**
+  - 檔案：`D:\ws\workspace\yi.webstore.mobilewebmall_master\WebStore\DA\WebStoreDBV2\Repositories\TradesOrderThirdPartyPaymentRepository.cs`
+  - 行數：140
+  - 異常點：嘗試執行 `SaveChanges()` 更新支付狀態時發生錯誤
+
+- **TradesOrderPaymentService.CancelTradeOrder()**
+  - 檔案：`D:\ws\workspace\yi.webstore.mobilewebmall_master\WebStore\Frontend\BLV2\ThirdPartyPay\TradesOrderPaymentService.cs`
+  - 行數：546
+  - 異常點：交易取消時，調用 `Update()` 導致異常
+
+- **TradesOrderPaymentService.FinishPayment()**
+  - 檔案：`D:\ws\workspace\yi.webstore.mobilewebmall_master\WebStore\Frontend\BLV2\ThirdPartyPay\TradesOrderPaymentService.cs`
+  - 行數：425
+  - 異常點：處理支付完成時，調用 `CancelTradeOrder()`，導致異常
+
+- **PayChannelController.InternalFinishPayment()**
+  - 檔案：`D:\ws\workspace\yi.webstore.mobilewebmall_master\WebStore\WebAPI\Controllers\PayChannelController.cs`
+  - 行數：128
+  - 異常點：API 進入 `FinishPayment()` 方法後發生異常
+
+<br>
+
+**該張單的處理**
+
+<br>
+
+**VSTS**：https://91appinc.visualstudio.com/DailyResource/_workitems/edit/324367
+
+<br>
+
+補還點還券轉單
+
+<br>
+
+**根本問題分析**
+
+<br>
+
+- Stripe 回覆 `"status":"canceled"` 不在 PMW 的預期處理範圍
+- 因為 PMW 接到 Stripe 的回覆是 `"status":"canceled"` 會落入 exception 情境
+- MWeb 接到 PMW 的回傳結果會落入「由 Console 進行處理」的無窮迴圈情境
+- 最後 redis cache 過期之後 webapi 會一直跳無法取得付款流程上下文 `NineYi.WebStore.Frontend.BLV2.PayProcesses.GetPayProcessDataProcessorException`
+
+<br>
+
+### 1.3 App 轉導回來的白頁異常
+
+**Slack 連結**：https://91app.slack.com/?redir=%2Farchives%2FCMY85JQLC%2Fp1742887474296019%3Fname%3DCMY85JQLC%26perma%3D1742887474296019
+
+<br>
+
+**Stripe 公告異常**
+
+<br>
+
+![alt text](./image-25.png)
+
+<br>
+
+**每小時 timeout 數量**
+
+<br>
+
+![alt text](./image-26.png)
+
+<br>
+
+**單號資訊範例**
+
+<br>
+
+- **商店**：80 Melvita HK
+- **訂單號**：TG250325R00077
+- **平台**：iOS App
+- **付款方式**：信用卡 - VISA
+- **下單時間**：2025/03/25 15:43:04
+
+<br>
+
+**問題描述**
+
+<br>
+
+HK 有多間商店反映今天 (3/25) 早上 9 點多～11 點在 Android（Mobile 及 APP 均有發生）使用信用卡無法結帳。消費者按送出後會出現白頁，請團隊協助優先確認原因。
+
+<br>
+
+**反映商店**
+
+<br>
+
+- Eu Yan Sang (12)
+- 繽粉 (67)
+- CUAPP (28)（備註：CUAPP 沒有 Android App，是在第3方 App 用 MWeb 付款）
+
+<br>
+
+**異常訂單及信用卡資訊**
+
+<br>
+
+- **TG250325Q00033** - HSBC - VISA
+- **TG250325E00015** - CHINA CITIC BANK INTERNATIONAL - MASTER
+- **TG250325K00083** - STANDARD CHARTERED BANK (HONG - MASTER
+- **TG250325L00120** - HANG SENG BANK LIMITED - MASTER
+- **TG250325M00006** - HANG SENG BANK LIMITED - MASTER
+
+<br>
+
+**提升告警參考每小時成功率查詢**
+
+<br>
+
+```sql
+use WebStoreDB;
+
+WITH A AS(
+select Dateadd(SECOND,58,DATEADD(MINUTE,1,DATEADD(HOUR,DATEDIFF(HOUR,0,TradesOrderThirdPartyPayment_CreatedDateTime),0))) AS HOURLY,
+	   Sum(CASE WHEN TradesOrderThirdPartyPayment_StatusDef != 'WaitingToPay' AND TradesOrderThirdPartyPayment_StatusDef != 'Hidden' then 1 else 0 end) AS Total_Count,
+	   Sum(CASE WHEN TradesOrderThirdPartyPayment_StatusDef = 'Success' or 
+					 TradesOrderThirdPartyPayment_StatusDef = 'RePaySuccess' or 
+					 TradesOrderThirdPartyPayment_StatusDef = 'AuthSuccess' or 
+					 TradesOrderThirdPartyPayment_StatusDef = 'CancelAfterSuccess' THEN 1 ELSE 0 END) AS Success_Count,
+	   Sum(CASE WHEN TradesOrderThirdPartyPayment_StatusDef = 'Fail' then 1 else 0 end) AS Fail_Count,
+	   Sum(CASE WHEN TradesOrderThirdPartyPayment_StatusDef = 'Timeout' then 1 else 0 end) AS Timeout_Count,
+	   Sum(CASE WHEN TradesOrderThirdPartyPayment_StatusDef = 'CancelRequest' then 1 else 0 end) AS CancelRequest_Count
+from TradesOrderThirdPartyPayment(nolock)
+where TradesOrderThirdPartyPayment_ValidFlag = 1
+and TradesOrderThirdPartyPayment_TypeDef = 'CreditCardOnce_Stripe'
+and TradesOrderThirdPartyPayment_DateTime BETWEEN '2024-03-23' AND '2024-03-24'
+GROUP BY Dateadd(SECOND,58,DATEADD(MINUTE,1,DATEADD(HOUR,DATEDIFF(HOUR,0,TradesOrderThirdPartyPayment_CreatedDateTime),0))))
+SELECT HOURLY,
+       Total_Count,
+	   Success_Count,
+	   Fail_Count,
+	   Timeout_Count,
+	   CancelRequest_Count,
+	   Cast(Success_Count*100 / Total_Count as VARCHAR(20)) + '%' AS Etl_Define_SuccessRate
+FROM A
+```
 
 <br>
 
@@ -447,6 +672,28 @@ private string GetStripeApiKey(long shopId, string accountType)
 <br>
 
 **CSP：** csp_GetPayProfileProcessingFee
+
+**撈資料**
+
+```sql
+use WebStoreDB
+
+declare @shopId BIGINT = 0,
+		@payProfileTypeDef nvarchar(max) = 'GooglePay',
+		@cardIssueCountry nvarchar(max) = 'HK',
+		@cardBrand nvarchar(max) = 'Visa',
+		@now DATETIME = GETDATE();
+
+SELECT PayProfileProcessingFee_ShopId,PayProfileProcessingFee_SupplierFixedFee,PayProfileProcessingFee_SupplierFeeRate,PayProfileProcessingFee_CardIssueCountry,PayProfileProcessingFee_CardBrand,*
+FROM dbo.PayProfileProcessingFee WITH (NOLOCK)
+WHERE PayProfileProcessingFee_ValidFlag = 1
+	AND PayProfileProcessingFee_ShopId = @shopId
+	--AND PayProfileProcessingFee_PayProfileTypeDef = @payProfileTypeDef
+	--AND PayProfileProcessingFee_CardIssueCountry = @cardIssueCountry
+	--AND PayProfileProcessingFee_CardBrand = @cardBrand
+	AND PayProfileProcessingFee_StartDateTime <= @now
+	--AND PayProfileProcessingFee_EndDateTime >= @now
+```
 
 <br>
 
@@ -1078,6 +1325,157 @@ public CreditCardValidationResponseEntity CreditCardValidation(CreditCardValidat
     return resultResponse;
 }
 ```
+
+<br>
+
+---
+
+## 14. 記住信用卡
+
+### 14.1 前端透過 checkout / complete API 帶入 Identity
+
+<br>
+
+前端在選擇之前存過的信用卡時，會透過 checkout / complete API 帶入對應的 Identity 參數。
+
+<br>
+
+### 14.2 Shopping / Cart 處理流程
+
+<br>
+
+在購物車處理流程中，系統會準備相關的信用卡資訊。
+
+<br>
+
+### 14.3 GetPayDataProcessor.AssignPaymentMiddlewareCreditCardInfo
+
+<br>
+
+Cart 中有一個 `GetPayDataProcessor.AssignPaymentMiddlewareCreditCardInfo` 處理器，負責分配付款中介軟體的信用卡資訊：
+
+<br>
+
+```csharp
+var requestCreditCardInfo = checkoutContext.Request.PaymentMiddlewareCreditCardInfo;
+extendInfo.Add("identity", requestCreditCardInfo.Identity);
+payProcessContext.ThirdPartyPaymentInfo.ExtendInfo = extendInfo;
+```
+
+<br>
+
+### 14.4 MWeb CompleteforNewCart 的 ArrangePayTypeExpressInfoProcessor
+
+<br>
+
+在 MWeb 的 `CompleteforNewCart` 中，有一個 `ArrangePayTypeExpressInfoProcessor`，會將資料塞入 `paytype_express_info`：
+
+<br>
+
+```csharp
+case PayProfileTypeDefEnum.CreditCardOnce_Stripe:
+{
+    var shopId = context.ShoppingCartV2.ShopId;
+    var memberId = int.Parse(context.MemberId);
+    var identity = this.GetIdentityFromContext(context.ThirdPartyPaymentInfo);
+
+    if (string.IsNullOrWhiteSpace(identity) == false)
+    {
+        var payTypeExpressEntity =
+            this._payTypeExpressService.GetPayTypeExpressList(memberId, context.PayProfileType.ToString(), shopId);
+
+        if (payTypeExpressEntity.Any())
+        {
+            var sameIdentity = payTypeExpressEntity.Single(i => i.Identity == identity);
+
+            this._logger.Info($"已取得相同 identity 的 payTypeExpress, payTypeExpressId : {sameIdentity.Id}");
+
+            //// 反序列化 Info ，帶入機密的資訊
+            var payTypeExpressInfo = this._payTypeExpressService.GetPayTypeExpressInfo(sameIdentity);
+
+            if (payTypeExpressInfo == null)
+            {
+                throw new ShoppingCartV2Exception(Translation.Backend.Webapi.TradesOrderV2.IncorrectPayTypeExpress, ShoppingCartV2ExceptionTypeEnum.InvalidPayTypeExpress);
+            }
+
+            var extendInfo = new Dictionary<string, object>
+            {
+                { "identity", sameIdentity.Identity },
+                { "paytype_express_info", payTypeExpressInfo.ExtendInfo }
+            };
+
+            context.ThirdPartyPaymentInfo.ExtendInfo = extendInfo;
+
+            this._logger.Info($"已將 payTypeExpress 放入 context");
+
+            if (context.PayProfileType == PayProfileTypeDefEnum.CreditCardOnce_Stripe)
+            {
+                //// Stripe 信用卡手續費需要, 記住信用卡結帳仍然要保留 Brand 及 Country, 以 PayTypeExpress 的資訊為主
+                context.CreditCardInfo.Brand = payTypeExpressInfo.Association.ToEnum<CreditCardBrandEnum>();
+                context.CreditCardInfo.IssueCountryCode = payTypeExpressInfo.ExtendInfo.GetValueOrDefault("country")?.ToString();
+            }
+        }
+    }
+}
+```
+
+<br>
+
+### 14.5 付款時讀取 paytype_express_info
+
+<br>
+
+最後在付款時，`GetPayExtendInfo` 會讀取 `paytype_express_info` 中的相關資訊進行付款處理。
+
+<br>
+
+---
+
+## 15. 切換帳戶
+
+### 15.1 HK QA 125 Stripe 帳戶異動 (美金站)
+
+<br>
+
+**異動內容**
+
+<br>
+
+StripeSubAccount 變更：
+
+<br>
+
+- **原帳戶**：acct_1OINwsHK7varnAps
+- **新帳戶**：acct_1Q7SPiFGfUIK2bE1
+
+<br>
+
+**適用範圍**
+
+<br>
+
+- **環境**：HK QA
+- **商店**：125 (美金站)
+- **帳戶類型**：Stripe SubAccount
+
+<br>
+
+---
+
+## 16. 卡別
+
+### 16.1 支援的信用卡類型
+
+<br>
+
+Stripe 支援以下主要信用卡類型：
+
+<br>
+
+- **visa** - Visa 卡
+- **mastercard** - MasterCard 卡
+- **american_express** - American Express 卡
+- **union_pay** - 銀聯卡
 
 <br>
 

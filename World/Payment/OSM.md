@@ -2,6 +2,7 @@
 
 ## 目錄
 1. [三方金物流設定相關](#1-三方金物流設定相關)
+2. [加解密](#2-加解密)
 
 <br>
 
@@ -119,6 +120,129 @@ https://www.figma.com/design/5DvenyhpnBX5ftehBigTEp/Stripe-Apple-Pay-%26-Google-
 **Key**：
 - Prod.PayProfileType.GooglePay.EnabledShopIds
 - Prod.ThirdParty.PayProfile.EnbaleSetting
+
+<br>
+
+---
+
+## 2. 加解密
+
+### 2.1 加密
+
+<br>
+
+**使用方式**
+
+<br>
+
+```csharp
+var siteKey = Aes.Encode(response.KeyName.KeyId);
+```
+
+<br>
+
+**加密方法實作**
+
+<br>
+
+```csharp
+/// <summary>
+/// 取得加密字串
+/// </summary>
+/// <param name="inputData">欲加密的字串</param>
+/// <returns>加密後字串</returns>
+public static string Encode(string inputData)
+{
+    if (string.IsNullOrWhiteSpace(inputData))
+    {
+        return inputData;
+    }
+
+    Rfc2898DeriveBytes rfc = new Rfc2898DeriveBytes(Key(KeyVersion), new byte[256 / 8]);
+
+    aes.Key = rfc.GetBytes(aes.KeySize / 8);
+    aes.IV = rfc.GetBytes(aes.BlockSize / 8);
+
+    byte[] cipherText = null;
+    byte[] rawPlaintext = Encoding.Unicode.GetBytes(inputData);
+    using (MemoryStream ms = new MemoryStream())
+    {
+        using (CryptoStream cs = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
+        {
+            cs.Write(rawPlaintext, 0, rawPlaintext.Length);
+        }
+
+        cipherText = ms.ToArray();
+    }
+
+    string s = Convert.ToBase64String(cipherText);
+
+    return s;
+}
+```
+
+<br>
+
+### 2.2 解密
+
+<br>
+
+**解密方法實作**
+
+<br>
+
+```csharp
+/// <summary>
+/// 取得解密字串
+/// </summary>
+/// <param name="inputData">欲解密的字串</param>
+/// <param name="keyVersion">key 版本</param>
+/// <returns>解密後字串</returns>
+private static string Decode(string inputData, string keyVersion)
+{
+    string key = Key(keyVersion);
+    if (string.IsNullOrEmpty(key))
+    {
+        return null;
+    }
+
+    var keyAndIVCacheName = $"AES-KeyVersion-{KeyVersion}-keyAndIV";
+
+    var keyAndIV = GetCache<Tuple<byte[], byte[]>>(keyAndIVCacheName, () =>
+    {
+        Rfc2898DeriveBytes rfc = new Rfc2898DeriveBytes(key, new byte[256 / 8]);
+        var aesKey = rfc.GetBytes(_aes.KeySize / 8);
+        var aesIV = rfc.GetBytes(_aes.BlockSize / 8);
+        return new Tuple<byte[], byte[]>(aesKey, aesIV);
+    }, 60);
+
+    _aes.Key = keyAndIV.Item1;
+    _aes.IV = keyAndIV.Item2;
+
+    byte[] cipherText = Convert.FromBase64String(inputData);
+    byte[] plainText = null;
+    using (MemoryStream ms = new MemoryStream())
+    {
+        try
+        {
+            using (CryptoStream cs = new CryptoStream(ms, _aes.CreateDecryptor(), CryptoStreamMode.Write))
+            {
+                cs.Write(cipherText, 0, cipherText.Length);
+            }
+        }
+        catch
+        {
+            ////無法解密
+            return null;
+        }
+
+        plainText = ms.ToArray();
+    }
+
+    string s = Encoding.Unicode.GetString(plainText);
+    return s;
+}
+```
 
 <br>
 
