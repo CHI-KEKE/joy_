@@ -195,6 +195,994 @@ API 端點：
 
 <br>
 
+Request
+```json
+{
+  "promotionRules": [
+    {
+      "id": 34656,
+      "type": "RewardReachPriceWithRatePoint2",
+      "rule": {
+        "TypeFullName": "NineYi.Msa.Promotion.Rule.RewardReachPriceWithRatePoint2",
+        "Id": 34656,
+        "Name": "(新制)滿10訂單完成後4天贈120%，最多贈2345點",
+        "Enabled": true,
+        "Description": "(新制)滿10訂單完成後4天贈120%，最多贈2345點",
+        "Since": "2025-07-17T18:00:00+08:00",
+        "Until": "2025-09-06T00:00:59.997+08:00",
+        "UpdatedAt": "2025-07-17T17:40:45.9425521+08:00",
+        "Cyclable": false,
+        "Accumulated": false,
+        "IncludedProductScopes": [
+          {
+            "ProductScopeType": "NineYi.Msa.Promotion.Engine.AllProductScope"
+          }
+        ],
+        "ExcludedProductScopes": null,
+        "IncludeRegionScopes": [
+          {
+            "RegionScopeType": "NineYi.Msa.Promotion.Engine.AllCountryRegionScope"
+          }
+        ],
+        "MatchedUserScopes": [
+          {
+            "UserScopeType": "NineYi.Msa.Promotion.Engine.AllUserScope"
+          }
+        ],
+        "VisibleUserScopes": [
+          {
+            "UserScopeType": "NineYi.Msa.Promotion.Engine.AllUserScope"
+          }
+        ],
+        "MatchedSalesChannels": 31,
+        "VisibleSalesChannels": 31,
+        "IncludedLocationScopes": [
+          {
+            "LocationScopeType": "NineYi.Msa.Promotion.Engine.AllLocationScope"
+          }
+        ],
+        "IsLimitedAddOnsPurchaseQty": false,
+        "Thresholds": {
+          "AllUserScope": {
+            "ReachPriceRatePointPairs": [
+              {
+                "ReachPrice": 10.0,
+                "Rate": 1.2
+              }
+            ],
+            "MaximumPoints": 2345.0
+          },
+          "PointUntil": {
+            "UntilType": 2,
+            "AfterDays": 0,
+            "UntilYearOffset": 0,
+            "UntilYearMonth": 8,
+            "FixedDate": "0001-01-01T00:00:00"
+          },
+          "PointCalculateType": 1
+        }
+      }
+    }
+  ],
+  "promotionSourceType": "Promotion",
+  "channel": "InStore",
+  "promotionRuleIds": [
+    34656
+  ],
+  "options": {
+    "isVerbose": false,
+    "isCouponPreSelect": null,
+    "includeRecordDetail": true
+  },
+  "calculateDateTime": "2025-08-28T18:17:00+08:00",
+  "shipping": {
+    "shippingProfileTypeDef": null,
+    "shippingAreaId": 0,
+    "countryProfileId": 0,
+    "locationId": 9
+  },
+  "isMemberCollectionRequired": false,
+  "user": {
+    "id": "4190299",
+    "tags": [
+      "AllUserScope",
+      "CrmShopMemberCard:10"
+    ],
+    "outerId": "5104190236",
+    "shopMemberCode": "6bX6x2/YuowTUrdlVsHVSQ=="
+  },
+  "currencyDecimalDigits": 2,
+  "salepageSkuList": [
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 50,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All02",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663282,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 50,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All02",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663282,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 50,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All02",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663282,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 50,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All02",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663282,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 50,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All02",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663282,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": -50,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All02",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85767130,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": -50,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All02",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85767130,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": -50,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All02",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85767130,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": -50,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All02",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85767130,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": -50,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All02",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85767130,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663281,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663281,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663281,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663281,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663281,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": 25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85663281,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": -25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85767129,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": -25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85767129,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": -25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85767129,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": -25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85767129,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    },
+    {
+      "salepageId": 0,
+      "skuId": 0,
+      "price": -25,
+      "suggestPrice": 0,
+      "qty": 1,
+      "flags": [],
+      "outerId": "All01",
+      "tags": null,
+      "optionalTypeDef": "",
+      "optionalTypeId": 0,
+      "cartExtendInfoItemGroup": 85767129,
+      "cartExtendInfoItemType": "TradesOrderSlaveId",
+      "pointsPayPair": null,
+      "isExcludedLoyaltyPoint": false
+    }
+  ]
+}
+
+```
+有中的 Response
+
+```json
+{
+  "code": "Success",
+  "data": {
+    "requestId": "b1338774-07e6-4d0d-9d10-e26d7e7e4e52",
+    "salepageSkuList": [
+      {
+        "promotionDiscount": 0,
+        "promoCodeDiscount": 0,
+        "designatePaymentPromotionDiscount": 0,
+        "couponDiscount": 0,
+        "loyaltyPointDiscount": 0,
+        "additionalDiscount": 0,
+        "totalDiscount": 0,
+        "totalPrice": 250,
+        "totalPayment": 250,
+        "tags": [],
+        "loyaltyPointRedeemPoint": 0,
+        "salepageId": 0,
+        "skuId": 0,
+        "price": 50,
+        "suggestPrice": 0,
+        "qty": 5,
+        "flags": [
+          "$matched_promotion:34656"
+        ],
+        "outerId": null,
+        "optionalTypeDef": "",
+        "optionalTypeId": 0,
+        "cartExtendInfoItemGroup": 85663282,
+        "cartExtendInfoItemType": "TradesOrderSlaveId",
+        "pointsPayPair": null,
+        "cartExtendInfos": [],
+        "cartId": 0
+      },
+      {
+        "promotionDiscount": 0,
+        "promoCodeDiscount": 0,
+        "designatePaymentPromotionDiscount": 0,
+        "couponDiscount": 0,
+        "loyaltyPointDiscount": 0,
+        "additionalDiscount": 0,
+        "totalDiscount": 0,
+        "totalPrice": 150,
+        "totalPayment": 150,
+        "tags": [],
+        "loyaltyPointRedeemPoint": 0,
+        "salepageId": 0,
+        "skuId": 0,
+        "price": 25,
+        "suggestPrice": 0,
+        "qty": 6,
+        "flags": [
+          "$matched_promotion:34656"
+        ],
+        "outerId": null,
+        "optionalTypeDef": "",
+        "optionalTypeId": 0,
+        "cartExtendInfoItemGroup": 85663281,
+        "cartExtendInfoItemType": "TradesOrderSlaveId",
+        "pointsPayPair": null,
+        "cartExtendInfos": [],
+        "cartId": 0
+      },
+      {
+        "promotionDiscount": 0,
+        "promoCodeDiscount": 0,
+        "designatePaymentPromotionDiscount": 0,
+        "couponDiscount": 0,
+        "loyaltyPointDiscount": 0,
+        "additionalDiscount": 0,
+        "totalDiscount": 0,
+        "totalPrice": -150,
+        "totalPayment": -150,
+        "tags": [],
+        "loyaltyPointRedeemPoint": 0,
+        "salepageId": 0,
+        "skuId": 0,
+        "price": -25,
+        "suggestPrice": 0,
+        "qty": 6,
+        "flags": [
+          "$matched_promotion:34656"
+        ],
+        "outerId": null,
+        "optionalTypeDef": "",
+        "optionalTypeId": 0,
+        "cartExtendInfoItemGroup": 85767129,
+        "cartExtendInfoItemType": "TradesOrderSlaveId",
+        "pointsPayPair": null,
+        "cartExtendInfos": [],
+        "cartId": 0
+      }
+    ],
+    "promotionInstructionList": [],
+    "promotionRecordList": [
+      {
+        "purchasedItemSkuIds": [
+          0
+        ],
+        "sourceType": "Promotion",
+        "amount": 0,
+        "point": 300,
+        "gifts": null,
+        "couponItems": null,
+        "group": "Merged",
+        "id": "PR-1069",
+        "notes": null,
+        "promotionRuleId": 34656,
+        "purchasedItemIds": [
+          17,
+          16,
+          15,
+          14,
+          13,
+          12,
+          11,
+          10,
+          9,
+          8,
+          7,
+          6,
+          5,
+          4,
+          3,
+          2,
+          1
+        ],
+        "instructions": null,
+        "needAmortization": false,
+        "feeItemIds": null,
+        "serialNumber": null,
+        "redeemPoint": 0,
+        "subItemAmount": 0,
+        "subItemRedeemPoint": 0
+      }
+    ],
+    "promotionRecordDetailList": [
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": -30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 17,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85767129",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": -30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 16,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85767129",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": -30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 15,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85767129",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": -30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 14,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85767129",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": -30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 13,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85767129",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": -30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 12,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85767129",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 11,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663281",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 10,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663281",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 9,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663281",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 8,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663281",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 30,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 7,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663281",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 60,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 6,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663282",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 60,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 5,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663282",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 60,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 4,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663282",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 60,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 3,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663282",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 60,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 2,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663282",
+        "redeemPoint": 0
+      },
+      {
+        "cartId": 0,
+        "amount": 0,
+        "point": 60,
+        "group": "Merged",
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemId": 1,
+        "purchasedItemSkuId": 0,
+        "serialNumber": "85663282",
+        "redeemPoint": 0
+      }
+    ],
+    "promotionRecordDetailSummaryList": [
+      {
+        "cartId": 0,
+        "amount": 0,
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "purchasedItemSkuId": 0,
+        "qty": 0,
+        "purchasedItemIds": []
+      }
+    ],
+    "promotionRecordFeeDetailSummaryList": [],
+    "ruleList": [
+      {
+        "ruleId": 34656,
+        "sourceType": "LoyaltyPoint",
+        "typeDef": "RewardReachPriceWithRatePoint2"
+      }
+    ],
+    "serviceErrorList": [],
+    "customizedInfo": {
+      "orderMaxDiscountList": []
+    },
+    "loyaltyPoint": null,
+    "user": {
+      "id": "4190299",
+      "tags": [
+        "AllUserScope",
+        "CrmShopMemberCard:10"
+      ],
+      "outerId": "5104190236",
+      "shopMemberCode": "6bX6x2/YuowTUrdlVsHVSQ=="
+    }
+  },
+  "_lvl": "Information",
+  "_srctx": "Nine1.Promotion.Console.Common.Utils.Handler.LoggingHandler",
+  "_lt": "Common",
+  "_hid": "promotion-console-nmqv3worker-group4-864d7cb5d9-db2cb",
+  "_props": {
+    "HttpMethod": "POST",
+    "Uri": "https://promotion-api-frontend-internal.hk.91app.io/api/basket-calculate"
+  }
+}
+```
+
+沒中
+```json
+{
+  "code": "Success",
+  "data": {
+    "requestId": "4cc55808-6f81-43be-83f9-d1f06921789e",
+    "salepageSkuList": [
+      {
+        "promotionDiscount": 0,
+        "promoCodeDiscount": 0,
+        "designatePaymentPromotionDiscount": 0,
+        "couponDiscount": 0,
+        "loyaltyPointDiscount": 0,
+        "additionalDiscount": 0,
+        "totalDiscount": 0,
+        "totalPrice": 250,
+        "totalPayment": 250,
+        "tags": [],
+        "loyaltyPointRedeemPoint": 0,
+        "salepageId": 0,
+        "skuId": 0,
+        "price": 50,
+        "suggestPrice": 0,
+        "qty": 5,
+        "flags": [],
+        "outerId": null,
+        "optionalTypeDef": "",
+        "optionalTypeId": 0,
+        "cartExtendInfoItemGroup": 85663282,
+        "cartExtendInfoItemType": "TradesOrderSlaveId",
+        "pointsPayPair": null,
+        "cartExtendInfos": [],
+        "cartId": 0
+      },
+      {
+        "promotionDiscount": 0,
+        "promoCodeDiscount": 0,
+        "designatePaymentPromotionDiscount": 0,
+        "couponDiscount": 0,
+        "loyaltyPointDiscount": 0,
+        "additionalDiscount": 0,
+        "totalDiscount": 0,
+        "totalPrice": -250,
+        "totalPayment": -250,
+        "tags": [],
+        "loyaltyPointRedeemPoint": 0,
+        "salepageId": 0,
+        "skuId": 0,
+        "price": -50,
+        "suggestPrice": 0,
+        "qty": 5,
+        "flags": [],
+        "outerId": null,
+        "optionalTypeDef": "",
+        "optionalTypeId": 0,
+        "cartExtendInfoItemGroup": 85767130,
+        "cartExtendInfoItemType": "TradesOrderSlaveId",
+        "pointsPayPair": null,
+        "cartExtendInfos": [],
+        "cartId": 0
+      },
+      {
+        "promotionDiscount": 0,
+        "promoCodeDiscount": 0,
+        "designatePaymentPromotionDiscount": 0,
+        "couponDiscount": 0,
+        "loyaltyPointDiscount": 0,
+        "additionalDiscount": 0,
+        "totalDiscount": 0,
+        "totalPrice": 150,
+        "totalPayment": 150,
+        "tags": [],
+        "loyaltyPointRedeemPoint": 0,
+        "salepageId": 0,
+        "skuId": 0,
+        "price": 25,
+        "suggestPrice": 0,
+        "qty": 6,
+        "flags": [],
+        "outerId": null,
+        "optionalTypeDef": "",
+        "optionalTypeId": 0,
+        "cartExtendInfoItemGroup": 85663281,
+        "cartExtendInfoItemType": "TradesOrderSlaveId",
+        "pointsPayPair": null,
+        "cartExtendInfos": [],
+        "cartId": 0
+      },
+      {
+        "promotionDiscount": 0,
+        "promoCodeDiscount": 0,
+        "designatePaymentPromotionDiscount": 0,
+        "couponDiscount": 0,
+        "loyaltyPointDiscount": 0,
+        "additionalDiscount": 0,
+        "totalDiscount": 0,
+        "totalPrice": -150,
+        "totalPayment": -150,
+        "tags": [],
+        "loyaltyPointRedeemPoint": 0,
+        "salepageId": 0,
+        "skuId": 0,
+        "price": -25,
+        "suggestPrice": 0,
+        "qty": 6,
+        "flags": [],
+        "outerId": null,
+        "optionalTypeDef": "",
+        "optionalTypeId": 0,
+        "cartExtendInfoItemGroup": 85767129,
+        "cartExtendInfoItemType": "TradesOrderSlaveId",
+        "pointsPayPair": null,
+        "cartExtendInfos": [],
+        "cartId": 0
+      }
+    ],
+    "promotionInstructionList": [
+      {
+        "promotionRuleId": 34656,
+        "sourceType": "Promotion",
+        "state": {
+          "fulfilment": {
+            "reachPrice": 10,
+            "rate": 1.2
+          },
+          "lackOfPrice": 10,
+          "lackSalesChannel": 0
+        }
+      }
+    ],
+    "promotionRecordList": [],
+    "promotionRecordDetailList": [],
+    "promotionRecordDetailSummaryList": [],
+    "promotionRecordFeeDetailSummaryList": [],
+    "ruleList": [
+      {
+        "ruleId": 34656,
+        "sourceType": "LoyaltyPoint",
+        "typeDef": "RewardReachPriceWithRatePoint2"
+      }
+    ],
+    "serviceErrorList": [],
+    "customizedInfo": {
+      "orderMaxDiscountList": []
+    },
+    "loyaltyPoint": null,
+    "user": {
+      "id": "4190299",
+      "tags": [
+        "AllUserScope",
+        "CrmShopMemberCard:10"
+      ],
+      "outerId": "5104190236",
+      "shopMemberCode": "6bX6x2/YuowTUrdlVsHVSQ=="
+    }
+  }
+}
+
+```
+
 ---
 
 ## 4. 生日壽星貼標

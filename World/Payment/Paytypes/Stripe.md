@@ -77,7 +77,7 @@ AND VipMemberInfo_ShopId = 28
 
 <br>
 
-![alt text](../image.png)
+![alt text](../Img/image.png)
 
 <br>
 
@@ -96,27 +96,27 @@ and TradesOrderThirdPartyPayment_CreatedUser = '1751836' -- MemberId
 
 <br>
 
-![alt text](../image-1.png)
+![alt text](../Img/image-1.png)
 
 <br>
 
 #### 1.1.3 Stripe 後台資訊
 
-![alt text](../image-2.png)
+![alt text](../Img/image-2.png)
 
 <br>
 
-![alt text](../image-3.png)
+![alt text](../Img/image-3.png)
 
 <br>
 
-![alt text](../image-5.png)
+![alt text](../Img/image-5.png)
 
 <br>
 
 #### 1.1.4 Athena IIS Log 查看信用卡驗證紀錄
 
-![alt text](../image-4.png)
+![alt text](../Img/image-4.png)
 
 <br>
 
@@ -289,7 +289,7 @@ Time: 2/2/2025 1:27:37 AM
 
 <br>
 
-![alt text](./image-25.png)
+![alt text](./Img/image-25.png)
 
 <br>
 
@@ -297,7 +297,7 @@ Time: 2/2/2025 1:27:37 AM
 
 <br>
 
-![alt text](./image-26.png)
+![alt text](./Img/image-26.png)
 
 <br>
 
@@ -614,7 +614,7 @@ private string GetStripeApiKey(long shopId, string accountType)
 
 ## 4. 系統使用費 / 金流手續費
 
-![alt text](./image-24.png)
+![alt text](./Img/image-24.png)
 
 ### 4.1 取得 系統使用費 & 金流手續費位置
 
@@ -1038,7 +1038,7 @@ Stripe SDK（不論是 Apple Pay、Google Pay 或其他）都需要連接到 Str
 
 <br>
 
-![alt text](./image-2.png)
+![alt text](./Img/image-2.png)
 
 <br>
 
@@ -1156,7 +1156,7 @@ https://usdshop.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings
 
 <br>
 
-![alt text](./image-5.png)
+![alt text](./Img/image-5.png)
 
 <br>
 
@@ -1164,7 +1164,7 @@ https://usdshop.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings
 
 <br>
 
-![alt text](./image-6.png)
+![alt text](./Img/image-6.png)
 
 <br>
 
@@ -1176,7 +1176,7 @@ https://usdshop.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings
 
 <br>
 
-![alt text](./image-7.png)
+![alt text](./Img/image-7.png)
 
 <br>
 
@@ -1184,7 +1184,7 @@ https://usdshop.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings
 
 <br>
 
-![alt text](./image-8.png)
+![alt text](./Img/image-8.png)
 
 <br>
 
@@ -1192,7 +1192,7 @@ https://usdshop.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings
 
 <br>
 
-![alt text](./image-9.png)
+![alt text](./Img/image-9.png)
 
 <br>
 
@@ -1200,7 +1200,7 @@ https://usdshop.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings
 
 <br>
 
-![alt text](./image-10.png)
+![alt text](./Img/image-10.png)
 
 <br>
 
@@ -1222,7 +1222,7 @@ API 密钥
 
 ### 9.7 切換測試模式
 
-![alt text](./image-11.png)
+![alt text](./Img/image-11.png)
 
 <br>
 

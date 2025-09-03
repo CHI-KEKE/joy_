@@ -38,7 +38,7 @@ limit 1000;
 
 <br>
 
-![alt text](./image-6.png)
+![alt text](./Img/image-6.png)
 
 <br>
 
@@ -46,7 +46,7 @@ limit 1000;
 
 <br>
 
-![alt text](./image-7.png)
+![alt text](./Img/image-7.png)
 
 <br>
 
@@ -54,7 +54,7 @@ limit 1000;
 
 <br>
 
-![alt text](./image-8.png)
+![alt text](./Img/image-8.png)
 
 <br>
 
@@ -89,7 +89,7 @@ ApplePay 沒有憑證，會跳「Apple Pay 無法使用」的 pop up
 
 <br>
 
-![alt text](./image-3.png)
+![alt text](./Img/image-3.png)
 
 <br>
 
@@ -121,7 +121,7 @@ https://91app.slack.com/archives/C017G0YFPPH/p1727083602646129
 
 <br>
 
-![alt text](./image-12.png)
+![alt text](./Img/image-12.png)
 
 <br>
 
@@ -129,7 +129,7 @@ https://91app.slack.com/archives/C017G0YFPPH/p1727083602646129
 
 <br>
 
-![alt text](./image-13.png)
+![alt text](./Img/image-13.png)
 
 <br>
 
@@ -137,7 +137,7 @@ https://91app.slack.com/archives/C017G0YFPPH/p1727083602646129
 
 <br>
 
-![alt text](./image-14.png)
+![alt text](./Img/image-14.png)
 
 <br>
 
@@ -382,7 +382,7 @@ limit 100;
 <br>
 
 **結論**：為版本不該出現 ApplePay 的問題
-![alt text](./image-4.png)
+![alt text](./Img/image-4.png)
 
 <br>
 
@@ -512,11 +512,11 @@ and ShopSecret_ValidFlag = 1
 
 <br>
 
-![alt text](./image-15.png)
+![alt text](./Img/image-15.png)
 
 <br>
 
-![alt text](./image-16.png)
+![alt text](./Img/image-16.png)
 
 <br>
 
@@ -587,11 +587,11 @@ You haven't completed the process to register your app for the Google Pay API. R
 
 <br>
 
-![alt text](./image-17.png)
+![alt text](./Img/image-17.png)
 
 <br>
 
-![alt text](./image-18.png)
+![alt text](./Img/image-18.png)
 
 <br>
 

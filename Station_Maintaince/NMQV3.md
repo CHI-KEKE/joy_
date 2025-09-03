@@ -9,8 +9,9 @@
   - [🎯 Event 設定相關](#-event-設定相關)
   - [🖥️ 加開機器流程](#️-加開機器流程)
   - [🧪 測試資料模板](#-測試資料模板)
-  - [� 架構分析關鍵字](#-架構分析關鍵字)
-  - [�🔄 Batch Redo NMQ Job 程式碼](#-batch-redo-nmq-job-程式碼)
+  - [🔍 架構分析關鍵字](#-架構分析關鍵字)
+  - [🔄 Batch Redo NMQ Job 程式碼](#-batch-redo-nmq-job-程式碼)
+  - [🚨 Alarm Setting](#-alarm-setting)
 
 <br>
 
@@ -23,7 +24,6 @@
 <br>
 
 NMQV3 開發時需要執行 Translations 語系工具
-
 <br>
 
 **參考文件**：
@@ -444,6 +444,18 @@ string GetNmqV3Url(string market, string environment)
 - 支援環境：QA、Prod
 - 支援操作：Cancel、Redo、Archive
 - 支援狀態：READY、DOING、FAILED、CANCELED
+
+<br>
+
+---
+
+## 🚨 Alarm Setting
+
+**告警設定**：
+
+<br>
+
+![alt text](./image-17.png)
 
 <br>
 

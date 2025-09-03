@@ -1,6 +1,6 @@
 # Cybersource 文件
 
-![alt text](./image-1.png)
+![alt text](./Img/image-1.png)
 
 ## 目錄
 1. [domain](#1-domain)

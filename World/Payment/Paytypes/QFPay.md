@@ -1,6 +1,6 @@
 # QFPay 文件
 
-![alt text](./image.png)
+![alt text](./Img/image.png)
 
 
 ## 目錄
