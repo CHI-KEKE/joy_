@@ -4,10 +4,14 @@
 1. [關鍵字](#1-關鍵字)
 2. [Pay](#2-pay)
 3. [異常紀錄](#3-異常紀錄)
+4. [Error Code](#4-error-code)
 
 <br>
 
 ---
+
+![alt text](./Img/image30.png)
+
 
 ## 1. 關鍵字
 
@@ -72,3 +76,52 @@ System.FormatException: The input is not a valid Base-64 string as it contains a
 https://91app.slack.com/archives/C7T5CTALV/p1754498676586939
 
 <br>
+
+### 3.2 [HK] 2024/08/26 有 1 筆訂單因 PayMe API 出現異常出現錯誤狀態，請盡速確認訂單和消費者付款狀態
+
+**Shop 27 (和井Union Well) PayMe 設定異常**
+
+<br>
+
+**問題詳情**：
+
+<br>
+
+- **TG**：TG240826P00076
+- **第三方付款時間**：2024/08/26 13:51:41
+- **狀態**：已通報
+
+<br>
+
+**錯誤訊息**：
+
+<br>
+
+```
+3000 Service Request Authentication Failed,EA001,Authorisation failure. Please check the client_id and client_secret and try again.
+```
+
+<br>
+
+**通報內容**：
+
+<br>
+
+@channel Shop 27 (和井Union Well) PayMe 設定異常, 請盡速聯繫商店處理!!!
+
+<br>
+
+PayMe 付款時間: 2024/08/26 13:51:41
+TG code: TG240826P00076
+
+<br>
+
+---
+
+## 4. Error Code
+
+**錯誤代碼對照表**：https://docs.google.com/spreadsheets/d/1xqzL6AJoJW2z_ieif_nI-1NrerG2cvMauuKSauLknXU/edit#gid=0
+
+<br>
+
+---
