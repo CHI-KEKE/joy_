@@ -13,6 +13,7 @@
   - [🌐 關於 Web API](#-關於-web-api)
   - [📁 IIS LOG 查找方式](#-iis-log-查找方式)
   - [💻 本機開發環境建置](#-本機開發環境建置)
+  - [🗺️ AutoMapper 位置](#️-automapper-位置)
 
 <br>
 
@@ -608,6 +609,37 @@ shopping_service_env_name : PP
 3. 找到 Cookies 選項
 4. 新增上述兩個 Cookie 設定
 5. 重新整理頁面即可生效
+
+<br>
+
+---
+
+## 🗺️ AutoMapper 位置
+
+**Profile 設定**：
+
+<br>
+
+```csharp
+InfoModuleEditorPickEntityMappingProfile : Profile
+
+Mapper.CreateMap<EditorPick, InfoModuleEditorPickEntity>()
+    .ForMember(i => i.PubContentId, s => s.MapFrom(i => i.Id))
+    .ForMember(i => i.Title, s => s.MapFrom(i => i.Title))
+    .ForMember(i => i.Subtitle, s => s.MapFrom(i => i.Subtitle))
+    .ForMember(i => i.Uuid, s => s.MapFrom(i => i.Uuid))
+    .ForMember(i => i.FirmUrl, s => s.MapFrom(i => i.FirmUrl))
+    .ForMember(i => i.PublishedDate, s => s.MapFrom(i => i.PublishedDate))
+    .ForMember(i => i.Type, s => s.ResolveUsing<InfoModuleTypeResolver>().FromMember(i => i.Type));
+```
+
+<br>
+
+**說明**：
+
+<br>
+
+此 AutoMapper 設定檔定義了 `EditorPick` 物件對應到 `InfoModuleEditorPickEntity` 的對應規則，包含各個屬性的映射設定和自訂解析器的使用
 
 <br>
 

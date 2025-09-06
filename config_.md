@@ -7,12 +7,14 @@
 ## 📖 目錄
 
 - [⚙️ Config 設定文件](#️-config-設定文件)
-  - [📖 目錄](#-目錄)
   - [📍 MachineConfig 確認位置](#-machineconfig-確認位置)
   - [💭 使用 Config 前的思考](#-使用-config-前的思考)
   - [🔄 Config 檢查重要性](#-config-檢查重要性)
   - [🎛️ Config 功能開關設計](#️-config-功能開關設計)
   - [🔍 Config 對應機器查詢](#-config-對應機器查詢)
+  - [🌳 91 根](#-91-根)
+  - [🗃️ DB 定義的 Config](#️-db-定義的-config)
+  - [🚫 不要寫死市場判斷](#-不要寫死市場判斷)
 
 <br>
 
@@ -21,9 +23,7 @@
 ## 📍 MachineConfig 確認位置
 
 **主要設定檔位置**：
-
 <br>
-
 ```
 C:\Windows\Microsoft.NET\Framework64\v4.0.30319\Config
 ```
@@ -140,6 +140,57 @@ https://bitbucket.org/nineyi/nineyi.configuration/src/master/serverMaps.json
 <br>
 
 透過此連結可以查看各個設定檔案對應到哪些伺服器機器，有助於確認配置的部署範圍和影響範圍
+
+<br>
+
+---
+
+## 🌳 91 根
+
+![alt text](./image.png)
+![alt text](./image-1.png)
+
+<br>
+
+---
+
+## 🗃️ DB 定義的 Config
+
+**儲存過程讀取**：
+
+<br>
+
+```sql
+csp_GetConfigDBAppSettingValue
+```
+
+<br>
+
+**說明**：
+
+<br>
+
+透過資料庫儲存過程來讀取設定值，提供動態配置管理功能
+
+<br>
+
+---
+
+## 🚫 不要寫死市場判斷
+
+**設計原則**：
+
+<br>
+
+不要有市場判斷寫死在程式碼中，應抽成 Config 來處理
+
+<br>
+
+**實作建議**：
+
+<br>
+
+將市場相關的邏輯判斷統一透過設定檔管理，確保系統的彈性和可維護性
 
 <br>
 

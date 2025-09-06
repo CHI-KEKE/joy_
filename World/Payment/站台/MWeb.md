@@ -11,6 +11,9 @@
 8. [前台金流排序](#8-前台金流排序)
 9. [進度條異常出現 SubMessage](#9-進度條異常出現-submessage)
 10. [商品頁付款方式出現](#10-商品頁付款方式出現)
+11. [3.5頁跳轉](#11-35頁跳轉)
+12. [3.5頁跳轉文案](#12-35頁跳轉文案)
+13. [iOS轉導](#13-ios轉導)
 
 <br>
 
@@ -28,6 +31,12 @@ RegisterThirdPartyFinishProcess 付款後轉倒流程
 
 頁面轉導
 C:\91APP\NineYi.WebStore.MobileWebMall\WebStore\Frontend\MobileWebMallV2\Controllers\PayChannelController.cs => PayChannelReturn
+
+GetSalePageV2ProcessContext
+this.GetProcessorList<ISalePageV2Processor>("GetSalePageV2EntityProcess");
+GetSalePageDataProcessor
+GetPayTypeProcessor
+GetPayTypeDescriptionProcessor
 
 <br>
 
@@ -535,6 +544,278 @@ ISalePageV2Processor
 public void Process(SalePageV2ProcessContext context)
 {
     GetSalePagePayProfileTypeEntityList
+}
+```
+
+<br>
+
+---
+
+## 11. 3.5頁跳轉
+
+**說明**：
+
+<br>
+
+確認 PayChannelController.PayChannelReturn 是往後走的 3.5 頁
+
+<br>
+
+**處理流程**：
+
+<br>
+
+會走 Finish Payment，根據 query 拿到的 returnCode 做對應的處理：
+
+<br>
+
+**Success**：
+
+<br>
+
+```csharp
+RedirectResult /V2/Pay/Finish/?k={paymentResult.TradeOrderGroupUniqueKey}&shopId={shopId}
+```
+
+<br>
+
+**Failed**：
+
+<br>
+
+```csharp
+Nothing
+```
+
+<br>
+
+**Expired**：
+
+<br>
+
+```csharp
+ViewBag.Error = paymentResult.Message;
+ViewBag.ErrorRedirectUrl = $"/V2/ShoppingCart/Index?shopId={shopId}&err=PaymentFail";
+```
+
+<br>
+
+**WaitingToPay**：
+
+<br>
+
+```csharp
+Nothing
+```
+
+<br>
+
+**其他**：
+
+<br>
+
+```csharp
+ViewBag.Error = paymentResult.Message;
+ViewBag.ErrorRedirectUrl = $"/V2/TradesOrder/TradesOrderList?shopId={shopId}&err=PaymentWaitingToPay";
+```
+
+<br>
+
+**Exception**：
+
+<br>
+
+```csharp
+this._logger.Error(ex, "Exception has occurred - Message: " + ex.Message);
+ViewBag.Error = Translation.Backend.V2.PayChannel.PaymentInConfirmation;
+ViewBag.ErrorRedirectUrl = $"/V2/TradesOrder/TradesOrderList?shopId={shopId}&err=PaymentException";
+```
+
+<br>
+
+---
+
+## 12. 3.5頁跳轉文案
+
+**Translation**：
+
+<br>
+
+```csharp
+/// <summary>
+/// 交易進行中，請至訂單查詢確認訂單狀況
+/// </summary>
+public static string OrderInProcessing { get { return GetString("order_in_processing"); }}
+
+/// <summary>
+/// 付款確認中，請至訂單查詢確認訂單狀況
+/// </summary>
+public static string PaymentInConfirmation { get { return GetString("payment_in_confirmation"); }}
+```
+
+<br>
+
+**使用範圍**：
+
+<br>
+
+用這個 key 的只有跨國
+
+<br>
+
+**Key 設定**：
+
+<br>
+
+```
+module: backend.v2.pay_channel
+Translation.Backend.V2.PayChannel.PaymentInConfirmation
+key: payment_in_confirmation
+```
+
+<br>
+
+---
+
+## 13. iOS轉導
+
+
+https://91app.slack.com/archives/C017G0YFPPH/p1705658106066449
+
+**Config 設定**：
+
+<br>
+
+**QA**：
+
+<br>
+
+```
+https://payment-middleware-api-internal.qa1.hk.91dev.tw/api/v1.0
+```
+
+<br>
+
+**QA2**：
+
+<br>
+
+```
+http://payment-middleware-api-internal.qa1.hk.91dev.tw/api/v1.0
+```
+
+<br>
+
+**Ingress**：
+
+<br>
+
+```
+http
+```
+
+<br>
+
+**Domain.WebStore.AppPayProcess**：
+
+<br>
+
+**qa1**：
+
+<br>
+
+```
+https://appservice.qa1.hk.91dev.tw
+```
+
+<br>
+
+**qa2**：
+
+<br>
+
+```
+https://appservice.qa2.hk.91dev.tw
+```
+
+<br>
+
+**URL 設定**：
+
+<br>
+
+**qa1**：
+
+<br>
+
+```
+/V2/PayChannel/{payMethod}/{payChannel}/{context.TradesOrderGroup.TradesOrderGroup_Code}
+Query = $"shopId={shopId}&k={context.UniqueKey}&lang={locale}"
+```
+
+<br>
+
+**qa2**：
+
+<br>
+
+```
+/V2/PayChannel/{payMethod}/{payChannel}/{context.TradesOrderGroup.TradesOrderGroup_Code}"
+Query = $"shopId={shopId}&k={context.UniqueKey}&lang={locale}"
+```
+
+<br>
+
+**Scheme 設定**：
+
+<br>
+
+**qa1**：
+
+<br>
+
+```
+{appInitPath}-s{shopId:D6}://thirdpartypayconfirm?url={encodedUri}
+```
+
+<br>
+
+**qa2**：
+
+<br>
+
+```
+/V2/PayChannel/{payMethod}/{payChannel}/{context.TradesOrderGroup.TradesOrderGroup_Code}"
+Query = $"shopId={shopId}&k={context.UniqueKey}&lang={locale}"
+```
+
+<br>
+
+**給 app 的 URL 取值**：
+
+<br>
+
+**QA1/QA2**：
+
+<br>
+
+```csharp
+/// <summary>
+/// 更新第三方轉導資訊
+/// </summary>
+/// <param name="context">付款流程上下文</param>
+/// <param name="paymentResult">查詢付款狀態結果</param>
+public void UpdateProcessContextForRedirect(PayProcessContextEntity context, PaymentResultEntity paymentResult)
+{
+    //// 中斷後續付款流程處理器，轉導付款完成後由第三方付款結束流程接續處理
+    context.IsFinish = true;
+    context.Is3DSecure = false;
+    context.ThirdPartyPaymentInfo = new TradesOrderThirdPartyPaymentInfoEntity
+    {
+        TransactionId = paymentResult.TransactionId,
+        AppPaymentUrl = paymentResult.RedirectWebUrl,
+        WebPaymentUrl = paymentResult.RedirectWebUrl
+    };
 }
 ```
 
