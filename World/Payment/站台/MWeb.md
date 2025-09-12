@@ -14,6 +14,13 @@
 11. [3.5頁跳轉](#11-35頁跳轉)
 12. [3.5頁跳轉文案](#12-35頁跳轉文案)
 13. [iOS轉導](#13-ios轉導)
+14. [付款主邏輯](#14-付款主邏輯)
+15. [頁面跳轉 url](#15-頁面跳轉-url)
+16. [付款前 CreateTradesOrderProcessor.cs](#16-付款前-createtradesorderprocessorcs)
+17. [timeout setting](#17-timeout-setting)
+18. [Query 返回的失敗Message](#18-query-返回的失敗message)
+19. [Query 後流程](#19-query-後流程)
+20. [APP跳轉行為防止重複Request](#20-app跳轉行為防止重複request)
 
 <br>
 
@@ -637,6 +644,10 @@ ViewBag.ErrorRedirectUrl = $"/V2/TradesOrder/TradesOrderList?shopId={shopId}&err
 
 ## 12. 3.5頁跳轉文案
 
+```csharp
+paymentResult.Message = payChannelService.GetRequestPaymentErrorMessage(context, responseEntity);
+```
+
 **Translation**：
 
 <br>
@@ -818,6 +829,520 @@ public void UpdateProcessContextForRedirect(PayProcessContextEntity context, Pay
     };
 }
 ```
+
+
+**貓圈deeplink的方式**
+
+UnionPay: hk-com-nineyi-shop-s000002://UnionPay?url={3.5頁}
+WeChatPay: hk-com-nineyi-shop-s000002://PayChannelReturn?url={3.5頁}
+
+貓圈要求 : hk-com-nineyi-shop-s000002://UnionPay?url={3.5頁}
+
+<br>
+
+---
+
+## 14. 付款主邏輯
+
+### 14.1 CompleteForNewCart → 決定走 ThirdPartyProcess
+
+**API 端點**：
+
+<br>
+
+```
+/webapi/tradesOrderLite/CompleteForNewCart
+```
+
+<br>
+
+**主要流程**：
+
+<br>
+
+```csharp
+this._payProcessService.CreateTradesOrder(context);
+
+var processName = context.PayProcessFlowType.ToString();  // => ThirdPartyProcess
+```
+
+<br>
+
+**RegisterThirdPartyProcess**：
+
+<br>
+
+```csharp
+this.RegisterProcessor(builder, nameof(PayProcessFlowTypeEnum.ThirdPartyProcess), payFlow);
+```
+
+<br>
+
+**Processor List**：
+
+<br>
+
+```
+PayProcessProcessorModule.Load.RegisterThirdPartyProcess
+```
+
+<br>
+
+**ThirdPartyPayApiProcessor**：
+
+<br>
+
+```csharp
+Process
+{
+    case PayProfileTypeDefEnum.QFPay:
+    {
+        PaymentResultEntity paymentResult = this._tradesOrderPaymentService.ProcessPayment(context);
+        
+        //// 這裡開始走 paymentMiddleware 流程
+        var paymentProviderService = this._paymentServiceFactory.GetService(context.ShoppingCartV2.ShopId, context.PayProfileType.ToString());
+        
+        PaymentMiddlewareProvider.PaymentRequest
+        {
+            //// 在這裡 Resolve PayChannelService
+            IPayChannelService payChannelService = this._payChannelServiceResolver.Resolve(context.PayProfileType);
+            
+            //// 組 requestEntity
+            ThirdPartyPayRequestEntity requestEntity = new ThirdPartyPayRequestEntity
+            {
+                Amount = context.TradesOrderGroup.TradesOrderGroup_TotalPayment,
+                Country = SettingHelper.DefaultCountry,
+                Currency = currency,
+                TgCode = tgCode,
+                RequestId = requestId,
+                Device = deviceInfo.Device,
+                Platform = deviceInfo.Platform,
+                ExtendInfo = payChannelService.GetPayExtendInfo(context),
+            };
+            
+            //// 打 Pay!!!!
+            var responseEntity = this._paymentMiddlewareHttpClient.Pay(requestEntity, $"{context.PayProfileType}", tgCode, headers);
+            
+            //// 組 paymentResult
+            PaymentResultEntity paymentResult = new PaymentResultEntity
+            {
+                TransactionId = responseEntity.TransactionId,
+                ReturnCode = responseEntity.ReturnCode,
+                ReturnMessage = responseEntity.ReturnMessage,
+                Device = deviceInfo.Device,
+                Platform = deviceInfo.Platform,
+                ExtendInfo = responseEntity.ExtendInfo
+            };
+        }
+    }
+}
+```
+
+<br>
+
+**金流判斷**：
+
+<br>
+
+```csharp
+context.PayProfileType == PayProfileTypeDefEnum.QFPay
+```
+
+<br>
+
+### 14.2 各付款結果處理
+
+**WTP (Waiting To Pay)**：
+
+<br>
+
+```csharp
+PaymentMiddlewareReturnCodeConstants.WaitingToPay && responseEntity.PaymentAction.Action == PaymentActionDefEnum.Redirect
+```
+
+<br>
+
+**Success**：
+
+<br>
+
+```csharp
+if (paymentResult.Status == PaymentStatusDefEnum.Success)
+```
+
+<br>
+
+**Fail**：
+
+<br>
+
+```csharp
+CancelTradesOrderGroup
+RefundPoint
+RevertPromoCodePoolQuota
+
+//// 多券
+RevertRedeemCoupon
+
+if (paymentResult.Status == PaymentStatusDefEnum.Fail)
+    throw new TradesOrderProcessStatusException(TradesOrderResultEnum.ThirdPartyPayReserveFail, paymentResult.Message);
+```
+
+<br>
+
+**WaitingToPay && UpdateProcessContextForRedirect**：
+
+<br>
+
+**WaitingToPay**：
+
+<br>
+
+```csharp
+UpdateProcessContextForRedirect
+{
+    context.IsFinish = true;
+    context.Is3DSecure = false;
+    context.ThirdPartyPaymentInfo = new TradesOrderThirdPartyPaymentInfoEntity
+    {
+        TransactionId = paymentResult.TransactionId,
+        AppPaymentUrl = paymentResult.RedirectWebUrl,
+        WebPaymentUrl = paymentResult.RedirectWebUrl
+    };
+}
+
+this._orderSlaveFlowRepository.UpdateStatus(
+    context.TradesOrderSlaveIds,
+    statusDef,
+    OrderSlaveFlowStatusForSCMEnum.Hide,
+    OrderSlaveFlowStatusForUserEnum.WaitingToPay,
+    true,
+    false,
+    false
+);
+```
+
+<br>
+
+---
+
+## 15. 頁面跳轉 url
+
+**範例 URL**：
+
+<br>
+
+```
+https://shop2.shop.qa1.hk.91dev.tw/V2/PayChannel/Default/QFPay/TG240618L00001?shopId=2&k=95aba957-d6b4-47b2-bf99-4c0af4c29fbe&lang=zh-HK
+```
+
+<br>
+
+**來源**：
+
+<br>
+
+```
+NineYi.WebStore.Frontend.BLV2.PayChannel >> PayChannelHelper >> GetPayChannelReturnUrl
+```
+
+<br>
+
+**Routing 設定**：
+
+<br>
+
+```csharp
+/// <summary>
+/// Pay Channel
+/// </summary>
+/// <param name="routes">路由集合</param>
+private static void MapPayChannelReturn(RouteCollection routes)
+{
+    routes.MapRoute(
+        name: "PayChannelReturn",
+        url: "PayChannel/{payMethod}/{payChannel}/{tgCode}",
+        defaults: new { controller = "PayChannel", action = "PayChannelReturn" });
+
+    routes.MapRoute(
+        name: "PayChannelReturnForSwiftPass",
+        url: "PayChannel/{payMethod}/{payChannel}/{tgCode}/{shopId}/{k}/{lang}",
+        defaults: new { controller = "PayChannel", action = "PayChannelReturn" });
+}
+```
+
+<br>
+
+---
+
+## 16. 付款前 CreateTradesOrderProcessor.cs
+
+**Stripe 系列處理**：
+
+<br>
+
+預設壓：
+
+<br>
+
+```csharp
+orderSlaveFlow.OrderSlaveFlow_StatusDef = OrderSlaveFlowStatusEnum.WaitingToTrans.ToString();
+```
+
+<br>
+
+**一般跨國金流處理**：
+
+<br>
+
+一般跨國金流會壓：
+
+<br>
+
+```csharp
+OrderSlaveFlowStatusEnum.WaitingToPay
+```
+
+<br>
+
+等到轉導後會在 PaychannelReturn/Finish 確認 Success 後壓成：
+
+<br>
+
+```csharp
+OrderSlaveFlowStatusEnum.WaitingToTrans
+```
+
+<br>
+
+**狀態更新程式碼**：
+
+<br>
+
+```csharp
+this._orderSlaveFlowRepository.UpdateStatus(
+    context.TradesOrderSlaveIds,
+    OrderSlaveFlowStatusEnum.WaitingToTrans,
+    OrderSlaveFlowStatusForSCMEnum.Hide,
+    OrderSlaveFlowStatusForUserEnum.OrderProcessing,
+    true,
+    false,
+    false
+);
+```
+
+<br>
+
+**成功支付後狀態**：
+
+<br>
+
+成功支付後會壓成：
+
+<br>
+
+```csharp
+OrderSlaveFlowStatusEnum.WaitingToShipping
+```
+
+<br>
+
+**一般跨國轉導成功處理**：
+
+<br>
+
+一般跨國經過轉導後若判定為 success 會壓成：
+
+<br>
+
+```csharp
+this._orderSlaveFlowRepository.UpdateStatus(
+    context.TradesOrderSlaveIds,
+    OrderSlaveFlowStatusEnum.WaitingToTrans,
+    OrderSlaveFlowStatusForSCMEnum.Hide,
+    OrderSlaveFlowStatusForUserEnum.OrderProcessing,
+    true,
+    false,
+    false
+);
+```
+
+<br>
+
+---
+
+## 17. timeout setting
+
+**Recheck Timeout Setting**：
+
+<br>
+
+```xml
+<!-- Recheck Timeout Setting-->	
+<add key="QA.PayChannel.PaymentTimeout.Default" value="720" xdt:Transform="Insert" />
+<add key="QA.PayChannel.PaymentTimeout.CreditCardOnce_Stripe" value="1800" xdt:Transform="Insert" />
+<add key="QA.PayChannel.PaymentTimeout.CreditCardOnce_CheckoutDotCom" value="1800" xdt:Transform="Insert" />
+<add key="QA.PayChannel.PaymentTimeout.CreditCardOnce_Cybersource" value="1800" xdt:Transform="Insert" />
+<add key="QA.PayChannel.PaymentTimeout.TwoCTwoP" value="1800" xdt:Transform="Insert" />
+<add key="QA.PayChannel.PaymentTimeout.CreditCardOnce_Razer" value="3600" xdt:Transform="Insert" />
+```
+
+<br>
+
+---
+
+## 18. Query 返回的失敗Message
+
+**Translation 位置**：
+
+<br>
+
+```
+NineYi.WebStore.Translation.Backend.V2 >> PayChannel
+backend.v2.pay_channel
+```
+
+<br>
+
+**PayChannelService 實作**：
+
+<br>
+
+```csharp
+/// <summary>
+/// 取得Query 的錯誤訊息
+/// </summary>
+/// <param name="responseEntity">Query 回傳資料</param>
+/// <returns>錯誤訊息</returns>
+public string GetErrorMessage(QueryPaymentResponseEntity responseEntity)
+{
+    this._logger.Debug($"ErrorDetails: {JsonConvert.SerializeObject(responseEntity)}");
+
+    switch (responseEntity.ReturnCode)
+    {
+        case PaymentMiddlewareReturnCodeConstants.Failed:
+            return Translation.Backend.V2.PayChannel.ErrorFail;
+
+        case PaymentMiddlewareReturnCodeConstants.Expired:
+            return Translation.Backend.V2.PayChannel.ErrorMessage;
+
+        default:
+            return Translation.Backend.V2.PayChannel.OrderInProcessing;
+    }
+}
+```
+
+<br>
+
+**使用位置**：
+
+<br>
+
+```
+NineYi.WebStore.Frontend.BLV2.ThirdPartyPay >> QueryPayment
+Message = payChannelService.GetErrorMessage(responseEntity)
+```
+
+<br>
+
+---
+
+## 19. Query 後流程
+
+### 19.1 Success
+
+**三方表更新**：
+
+<br>
+
+```csharp
+_tradesOrderThirdPartyPaymentRepository.Update
+```
+
+<br>
+
+**大表狀態更新**：
+
+<br>
+
+```csharp
+this._orderSlaveFlowRepository.UpdateStatus(
+    context.TradesOrderSlaveIds,
+    OrderSlaveFlowStatusEnum.WaitingToTrans,
+    OrderSlaveFlowStatusForSCMEnum.Hide,
+    OrderSlaveFlowStatusForUserEnum.OrderProcessing,
+    true,
+    false,
+    false
+);
+```
+
+<br>
+
+**執行 ThirdPartyFinishProcess List**：
+
+<br>
+
+```csharp
+payFlow.Add(typeof(CreateGlobalInvoiceProcessor), "建立國際版發票");
+payFlow.Add(typeof(TransferOrderProcessor), "轉單到ERP");
+payFlow.Add(typeof(CreateRegularOrderProcessor), "含定期購商品的訂單加入定期購設定");
+payFlow.Add(typeof(AfterOrderProcessor), "成立訂單後動作");
+```
+
+<br>
+
+### 19.2 Expired
+
+```csharp
+thirdPartyPaymentEntity.IsClosed = false
+```
+
+**處理流程**：
+
+<br>
+
+- 三方表壓 timeout
+- CreateCancelRequest
+- UpdateOrderSlaveFlow
+
+<br>
+
+### 19.3 Failed
+
+**處理流程**：
+
+<br>
+
+- CancelPayment
+- CancelTradeOrder
+
+<br>
+
+### 19.4 WaitingToPay
+
+**取得 timeout seconds**：
+
+<br>
+
+```csharp
+Config : string value = this._configService.GetAppSetting($"PayChannel.PaymentTimeout.{payType}", "");
+```
+
+**處理邏輯**：
+
+<br>
+
+- 壓 timeout
+- 否則不做事
+
+<br>
+
+---
+
+## 20. APP跳轉行為防止重複Request
+
+![alt text](./Img/image1.png)
 
 <br>
 

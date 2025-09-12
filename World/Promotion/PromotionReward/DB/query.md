@@ -15,6 +15,7 @@
 12. [BatchUpload 相關](#12-batchupload-相關)
 13. [NMQ Task](#13-nmq-task)
 14. [SalesOrder](#14-salesorder)
+15. [LoyaltyPoint](#15-loyaltypoint)
 
 <br>
 
@@ -44,6 +45,15 @@ and CrmSalesOrder_TypeDef = 'Others'
 --and CrmSalesOrder_TotalPayment > 3000
 and CrmSalesOrder_ShopId = 41571
 and CrmSalesOrder_CrmShopMemberCardId > 4521
+
+
+
+use CRMDB
+select CrmSalesOrderSlave_Id,CrmSalesOrderSlave_CrmMemberId,CrmSalesOrderSlave_TotalPayment,CrmSalesOrderSlave_DataSourceType,CrmSalesOrderSlave_OriginalCrmSalesOrderId,CrmSalesOrderSlave_OriginalCrmSalesOrderSlaveId,CrmSalesOrderSlave_Qty,*
+from CrmSalesOrderSlave(nolock)
+where CrmSalesOrderSlave_ValidFlag = 1
+--and CrmSalesOrderSlave_CrmSalesOrderId = 25904391
+and CrmSalesOrderSlave_OuterOrderSlaveCode1 = 'TS001'
 ```
 
 <br>
@@ -338,6 +348,16 @@ inner join ECouponSlave(nolock)
 on ECouponSlave_ECouponId = ECoupon_Id
 where ECoupon_Id = 222734
 and ECouponSlave_MemberId = 2778955
+
+
+SELECT 
+    ECouponSlave_Id,
+    ECouponSlave_ShopId,
+    ECouponSlave_ValidFlag,
+    ECouponSlave_UpdatedDateTime,
+    ECouponSlave_UpdatedUser
+FROM dbo.ECouponSlave
+WHERE ECouponSlave_ShopId IN (SELECT Id FROM @TargetIds);
 ```
 
 <br>
@@ -577,4 +597,84 @@ on SalesOrder_SalesOrderGroupId = SalesOrderGroup_Id
 inner join SalesOrderSlave(nolock)
 on SalesOrder_Id = SalesOrderSlave_SalesOrderId
 WHERE SalesOrderGroup_TradesOrderGroupCode IN ('TG250821M00003')
+
+
+use ERPDB
+
+SELECT SalesOrderSlave_Id,SalesOrder_TradesOrderGroupId,SalesOrderSlave_StatusDef,SalesOrderThirdPartyPayment_StatusDef,SalesOrder_PayProfileTypeDef
+FROM dbo.SalesOrderSlave WITH (NOLOCK)
+INNER JOIN dbo.SalesOrder SO WITH(NOLOCK ) ON SO.SalesOrder_Id = SalesOrderSlave.SalesOrderSlave_SalesOrderId AND SalesOrder_ValidFlag = 1
+INNER JOIN dbo.SalesOrderThirdPartyPayment WITH (NOLOCK) on SalesOrderThirdPartyPayment_ValidFlag = 1 AND SalesOrderThirdPartyPayment_TradesOrderGroupId = SalesOrder_TradesOrderGroupId
+WHERE SalesOrderSlave_ValidFlag = 1
+--AND SalesOrderSlave_TradesOrderSlaveCode IN ('TS250828J000019','TS250828J000013','TS250828J000025')
 ```
+
+<br>
+
+---
+
+## 15. LoyaltyPoint
+
+```sql
+USE LoyaltyDB
+
+DECLARE @shopId BIGINT = 17
+
+SELECT 
+	LoyaltyPointTransaction_CreatedDateTime AS CDT
+	, LoyaltyPointTransactionInfo_OuterMemberId AS OuterMemberId
+	, LoyaltyPointTransaction_EventTypeDef AS EventType
+	, LoyaltyPointTransactionInfo_OccurType AS OccurType
+	, LoyaltyPointTransaction_OccurTypeId
+	, LoyaltyPointTransaction_Code
+	, LoyaltyPointTransaction_TotalPoints
+	, LoyaltyPointTransactionInfo_OccurDescription
+	, LoyaltyPointTransaction_CreatedUser
+	--, REPLACE(LoyaltyPointTransaction_OccurTypeId, '|25721', '') AS TGCode
+	--,*
+	--,LoyaltyPointTransactionInfo.*
+FROM dbo.LoyaltyPointTransaction(NOLOCK)
+JOIN dbo.LoyaltyPointTransactionInfo(NOLOCK)
+	ON LoyaltyPointTransactionInfo_ValidFlag = 1
+	AND LoyaltyPointTransactionInfo_LoyaltyPointTransactionId = LoyaltyPointTransaction_Id
+WHeRE LoyaltyPointTransaction_ValidFlag = 1
+	AND LoyaltyPointTransaction_ShopId = @shopId
+	--AND LoyaltyPointTransaction_CreatedDateTime >= '2025-08-28' -- CONVERT(DATE,GETDATE())
+	--AND LoyaltyPointTransaction_Code IN ('LT2508281400059')
+	--AND LoyaltyPointTransaction_SystemType IN ('PromotionReward','PromotionRewardStore') -- PromotionReward PromotionRewardStore
+	--AND LoyaltyPointTransaction_CreatedUser IN ('PromotionRewardLoyaltyPointsV2','RecycleLoyaltyPointsV2Job') --PromotionRewardLoyaltyPointsV2
+	--AND LoyaltyPointTransactionInfo_OccurType IN ('PromotionReward','PromotionRewardRecycle','PromotionRewardStore')--'PromotionRewardStore',
+	--AND LoyaltyPointTransaction_OccurTypeId = 'MS250828Q000022|8738'
+	--AND LoyaltyPointTransaction_OccurTypeId IN ('0704ambertest004|7438','0704ambertest004|7263','0704ambertest004|7439')
+	--AND LoyaltyPointTransaction_OccurTypeId LIKE 'TG250327K00042|%'
+	AND LoyaltyPointTransaction_OccurTypeId LIKE '%34957%'
+	--AND LoyaltyPointTransaction_OccurTypeId LIKE '%LT2508281400059%'
+	--AND LoyaltyPointTransaction_OccurTypeId NOT LIKE 'TS25%'
+	--AND LoyaltyPointTransactionInfo_OuterMemberId = 'K46night'
+	--AND LoyaltyPointTransactionInfo_OccurDescription LIKE '%Sprint 198 Demo'
+	and LoyaltyPointTransaction_EventTypeDef = 'Recycle'
+--ORDER BY LoyaltyPointTransaction_CreatedDateTime
+```
+
+<br>
+
+**常見的 OccurTypeId 範例**：
+
+<br>
+
+```sql
+--4|6156
+--UAT702R|6177_LT250311J000000024
+--UAT1102RA|6200_LT250312J000000065
+--FTL-250312182334-dA4QP3YM____|6198
+
+--test0001|753_LT2506261400005
+--0625ambertest003|753
+--753_CrmSalesOrder:0625ambertest003
+--753_CrmSalesOrder:1753
+--658_CrmSalesOrder:1705
+```
+
+<br>
+
+---
