@@ -127,6 +127,9 @@ promotionRequest.RelatedOrderSlaveIdList.Add(request.CrmSalesOrderSlaveId);
 
 {"Data":"{\"ShopId\":11,\"EventName\":\"Return\",\"TriggerDatetime\":\"2025-08-19T06:33:52.1939309+08:00\",\"OrderCreateDate\":\"2025-08-14T20:30:00\",\"PromotionId\":7954,\"PromotionEngineType\":\"RewardReachPriceWithPoint2\",\"PendingRetryCount\":1,\"CrmSalesOrderSlaveId\":828883,\"OrderTypeDefEnum\":\"Others\"}"}
 
+{"Data":"{\"ShopId\":11,\"TSCode\":\"\",\"EventName\":\"Return\",\"TriggerDatetime\":\"2025-09-13T06:36:40.2185864+08:00\",\"OrderCreateDate\":\"2025-09-11T18:00:00\",\"PromotionId\":8941,\"PromotionEngineType\":\"RewardReachPriceWithRatePoint2\",\"PendingRetryCount\":0,\"CrmSalesOrderSlaveId\":829262,\"OrderTypeDefEnum\":\"Others\",\"MemberId\":34283,\"S3Key\":\"\"}"}
+
+
 ```
 
 <br>

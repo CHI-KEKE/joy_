@@ -54,6 +54,33 @@ from CrmSalesOrderSlave(nolock)
 where CrmSalesOrderSlave_ValidFlag = 1
 --and CrmSalesOrderSlave_CrmSalesOrderId = 25904391
 and CrmSalesOrderSlave_OuterOrderSlaveCode1 = 'TS001'
+
+
+USE CRMDB;
+
+SELECT TOP 1000 CrmSalesOrder_ShopId,
+CrmSalesOrderSlave_Price,
+CrmSalesOrderSlave_Qty,
+CrmSalesOrderSlave_PurchaseType,
+CrmSalesOrderSlave_TypeMemo,
+CrmSalesOrderSlave_TotalPayment,
+       CrmMember_ShopId,
+	   CrmSalesOrderSlave_OriginalCrmSalesOrderId,
+	   CrmSalesOrderSlave_OriginalCrmSalesOrderSlaveId,
+       CrmMember_Id,
+       CrmSalesOrder_TradesOrderFinishDateTime,
+       CrmSalesOrder_Id,
+       CrmSalesOrder_TypeDef,
+       CrmSalesOrder_OuterOrderCode1,
+       ROW_NUMBER() OVER(PARTITION BY CrmSalesOrder_Id ORDER BY CrmSalesOrderSlave_Id desc) AS OrderIdCount,
+       CrmSalesOrderSlave_PurchaseType
+FROM CrmSalesOrder(NOLOCK)
+INNER JOIN CrmSalesOrderSlave(NOLOCK)
+ON CrmSalesOrder_Id = CrmSalesOrderSlave_CrmSalesOrderId
+INNER JOIN CrmMember(NOLOCK)
+ON CrmMember_Id = CrmSalesOrder_CrmMemberId
+where CrmMember_ShopId = 12
+and CrmSalesOrder_Id = 26112651
 ```
 
 <br>

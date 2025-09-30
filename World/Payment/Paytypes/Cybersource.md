@@ -11,6 +11,7 @@
 6. [寄信](#6-寄信)
 7. [異常紀錄](#7-異常紀錄)
 8. [Refund](#8-refund)
+9. [文件](#9-文件)
 
 <br>
 
@@ -429,6 +430,64 @@ Refund 完壓 RefundProcesing 之後 RefundQuery 斷掉
 
 <br>
 
+### 7.2 退款失敗 job fail
+
+<br>
+
+https://91app.slack.com/archives/C7T5CTALV/p1758171601964099
+
+<br>
+
+```json
+{"id":"7581686318736754003851","submitTimeUtc":"2025-09-18T04:10:32Z","status":"201","errorInformation":{"reason":"UNAUTHORIZED_CARD","message":"Decline - Inactive card or card not authorized for card-not-present transactions."}}
+```
+
+<br>
+
+**打 QueryAPI 或寄信確認**：
+
+<br>
+
+```
+POST {{url}}/api/{{version}}/RefundQuery/{{payType}}
+{
+   "request_id":"checkRefundStatus",
+   "transaction_id": "TG250613A00030",
+   "country":"HK",
+   "amount": 659.00,
+   "currency": "HKD",
+   "extend_info": {
+      "RefundRequestTransactionId": "7581686318736754003851"
+   }
+}
+```
+
+<br>
+
+**Response**：
+
+<br>
+
+```json
+{
+  "request_id": "checkRefundStatus",
+  "transaction_id": "7581686318736754003851",
+  "return_code": "4002",
+  "return_message": "Closed Account",
+  "extend_info": {}
+}
+```
+
+<br>
+
+**處理方式**：
+
+<br>
+
+請 AM 協助線下退款
+
+<br>
+
 ---
 
 ## 8. Refund
@@ -515,5 +574,28 @@ Refund 完壓 RefundProcesing 之後 RefundQuery 斷掉
   "submitTimeUtc": "2025-03-21T05:02:30Z"
 }
 ```
+
+<br>
+
+---
+
+## 9. 文件
+
+**Cybersource 文件連結**：
+
+<br>
+
+https://ebc2test.cybersource.com/content/ebc/help/cybs/zh-tw/business-center/user/all/cybs/ebc2_olh/trns_mngmt_intro/view_details/details/reason_code_descriptions.html
+
+<br>
+
+**Reason Code 208**：
+
+<br>
+
+拒絕。無實卡交易：卡片非使用中卡片，或者未得到無實卡交易授權。要求換一張支付卡或付款方式。
+
+
+**Reason Code 232**
 
 <br>

@@ -21,6 +21,7 @@
 18. [Query 返回的失敗Message](#18-query-返回的失敗message)
 19. [Query 後流程](#19-query-後流程)
 20. [APP跳轉行為防止重複Request](#20-app跳轉行為防止重複request)
+21. [APP 跳轉](#21-app-跳轉)
 
 <br>
 
@@ -1343,6 +1344,20 @@ Config : string value = this._configService.GetAppSetting($"PayChannel.PaymentTi
 ## 20. APP跳轉行為防止重複Request
 
 ![alt text](./Img/image1.png)
+
+<br>
+
+---
+
+## 21. APP 跳轉
+
+**App.Ref.IOSInitPath**：
+
+<br>
+
+```
+hk-com-nineyi-shop
+```
 
 <br>
 
