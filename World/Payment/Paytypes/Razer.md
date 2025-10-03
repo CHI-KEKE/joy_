@@ -52,6 +52,18 @@ Id, InstallmentId, InstallmentDef, InstallmentRate, InstallmentAmountLimit, HasI
 context.Data.InstallmentList
 
 
+**開幹**
+
+既有 : ShopInstallment + installment
+
+可以拿到 
+
+Id = IShopInstallment_Id 
+InstallmentDef = ShopInstallment_InstallmentDef
+HasInterest = shopInstallment.ShopInstallment_HasInterest
+
+
+
 **Cache**
 
 60 min
@@ -286,3 +298,119 @@ public List<string> SupportedCardBrandList
     }
 }
 ```
+
+
+## 怎麼傳送分期交易資料
+
+https://shop2.shop.qa1.hk.91dev.tw/shopping/api/checkout/complete?lang=zh-HK&shopId=2
+
+paymentMiddlewareCreditCardInfo
+```json
+{
+    "creditCardNo": "4242",
+    "creditCardDate": "0130",
+    "creditCardCvv": "***",
+    "brand": "Visa",
+    "identity": "824EFC5FDF3AFDF37DBAFAB82B9A1529FE26258A7BB839AF5520858DA4B46C6E",
+    "ExtendInfo":{
+        "InstallmentDef":3
+    }
+}
+```
+
+
+
+## Razer 串前台付款
+
+C:\91APP\NineYi.WebStore.MobileWebMall\WebStore\Frontend\BLV2\ThirdPartyPay\PaymentMiddlewareService.cs
+
+CreditCardOnce_Razer
+CreditCardInstallment_Razer
+
+
+因為 Resolve Paychannel 的方式是取 _ 後面那一個所以會拿到相同的 PayChannelService
+
+
+## 交易貸幣別的方式
+
+根據市場
+
+```csharp
+var currency = this.GetRequestCurrency(tgCode, context.ShoppingCartV2.ShopId, context.PayProfileType);
+
+       /// <summary>
+        /// 取得貨幣符號
+        /// </summary>
+        public static string DefaultCurrencyCode
+        {
+            get
+            {
+                if (_defaultCountry == string.Empty)
+                {
+                    throw new Exception("Please set default country.");
+                }
+
+                switch (_defaultCountry)
+                {
+                    case "MY":
+                        return "MYR";
+
+                    case "HK":
+                        return "HKD";
+
+                    case "TW":
+                    default:
+                        return "TWD";
+                }
+            }
+        }
+```
+
+## 怎麼帶 context.txn_channel
+
+```csharp
+private string GetChannel(PayProcessContextEntity context)
+{
+    switch (context.PayProfileType)
+    {
+        case PayProfileTypeDefEnum.CreditCardOnce_Razer:
+            return "CREDIT";
+        case PayProfileTypeDefEnum.CreditCardInstallment_Razer:
+            return "CREDITBA";
+        case PayProfileTypeDefEnum.OnlineBanking_Razer:
+            return context.ShoppingCartV2.SelectedCheckoutPayTypeGroup.PayTypeChannel.PayTypeChannelCode.ToUpper();
+        case PayProfileTypeDefEnum.GrabPay_Razer:
+            return "GRABPAY";
+        case PayProfileTypeDefEnum.Boost_Razer:
+            return "BOOST";
+        case PayProfileTypeDefEnum.TNG_Razer:
+            return "TNG-EWALLET";
+        default:
+            throw new NotImplementedException("Unsupport PayProfileType");
+    }
+}
+```
+
+
+## GetPayExtendInfo
+
+context.PayProfileType == PayProfileTypeDefEnum.CreditCardOnce_Razer
+
+
+
+## paymentmiddleware params
+
+付款
+RMS/API/Direct/1.4.0/index.php
+
+
+
+
+
+
+## checkout get 評估
+
+shopping/api/checkout?checkoutUniqueKey=e6e4706c-1a39-4157-823b-56b90fc9fb5f&lang=zh-TW&shopId=10230
+
+只是拿快取得資料
+
