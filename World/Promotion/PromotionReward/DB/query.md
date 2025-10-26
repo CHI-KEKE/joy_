@@ -1,21 +1,63 @@
 # Query 文件
 
 ## 目錄
+
+### 📦 訂單相關
+
 1. [CrmSalesOrder](#1-crmsalesorder)
-2. [PromotionEngine](#2-promotionengine)
-3. [PromotionEngineSetting](#3-promotionenginesetting)
-4. [PromotionTag](#4-promotiontag)
-5. [PromotionHistory](#5-promotionhistory)
-6. [RuleRecord](#6-rulerecord)
-7. [ECoupon](#7-ecoupon)
-8. [SaleProductSKU](#8-saleproductsku)
-9. [ShopStaticSetting](#9-shopstaticsetting)
-10. [TradesOrder](#10-tradesorder)
-11. [CrmShopMemberCard](#11-crmshopmembercard)
-12. [BatchUpload 相關](#12-batchupload-相關)
-13. [NMQ Task](#13-nmq-task)
-14. [SalesOrder](#14-salesorder)
-15. [LoyaltyPoint](#15-loyaltypoint)
+   - [1.1 會員訂單基礎關聯查詢](#-11-會員訂單基礎關聯查詢)
+   - [1.2 會員訂單多join](#-12-會員訂單多join)
+   - [1.3 NineYiMemberId](#-13-NineYiMemberId)
+   - [1.4 OuterOrderCode](#-14-OuterOrderCode)
+   - [1.5 slaveandOuterProductSkuCode](#-15-slaveandOuterProductSkuCode)
+   - [1.6 線下訂單專用查詢](#-16-Others)
+
+2. [TradesOrder](#2-TradesOrder)
+   - [2.1 多join](#-21-多join)
+   - [2.2 TrackSourceTypeDef](#-22-TrackSourceTypeDef)
+
+3. [SalesOrder](#3-SalesOrder)
+   - [3.1 多join](#-31-多join)
+   - [3.2 SalesOrderThirdPartyPayment](#-32-SalesOrderThirdPartyPayment)
+
+### 🎁 PromotionEngine
+
+1.  [PromotionEngine](#2-promotionengine)
+   - [基礎查詢](#基礎)
+   - [活動類型與通路](#promotionengine_typedefandchannel)
+   - [JSON 規則解析](#parsejsonrule)
+   - [目標類型設定](#targettypedef)
+
+2.  [PromotionEngineSetting](#3-promotionenginesetting)
+3.  [🏷️ PromotionTag - 促銷標籤](#4-promotiontag)
+4.  [📜 PromotionHistory - 促銷歷史](#5-promotionhistory)
+5.  [📋 RuleRecord - 規則記錄](#6-rulerecord)
+
+### 🎁 回饋獎勵
+
+1.  [ECoupon](#7-ecoupon)
+    - [7.1 自訂券](#-71-自訂券)
+    - [7.2 會員](#-72-會員)
+    - [7.3 Ids](#-73-Ids)
+
+2.  [LoyaltyPoint](#15-loyaltypoint)
+    - [15.1 LoyaltyPointTransaction](#-151-LoyaltyPointTransaction)
+    - [15.2 OccurTypeIdEvent](#-152-OccurTypeIdEvent)
+    - [15.3 OccurTypeId,](#-153-OccurTypeId)
+
+### 其他
+
+29. [SaleProductSKU](#8-saleproductsku)
+30. [ShopStaticSetting](#9-shopstaticsetting)
+    - [9.1 CalculateSwitch](#-91-CalculateSwitch)
+    - [9.2 SupportMemberCollection](#-92-SupportMemberCollection)
+    - [9.3 PromotionReward](#-93-PromotionReward)
+31. [CrmShopMemberCard](#11-crmshopmembercard)
+32. [BatchUpload](#12-BatchUpload)
+    - [12.1 插入新 BatchUpload Type](#121-插入新-batchupload-type)
+    - [12.2 主檔與錯誤訊息](#122-主檔與錯誤訊息)
+33. [NMQ Task](#13-nmq-task)
+
 
 <br>
 
@@ -23,156 +65,285 @@
 
 ## 1. CrmSalesOrder
 
-**from crmMemberId**
+> **資料庫**: `CRMDB` | **主要功能**: CRM系統會員訂單資料查詢與分析
 
-<br>
+### 📋 查詢功能總覽
+
+| 查詢類型 | 功能說明 | 關鍵欄位 | 使用場景 |
+|---------|---------|----------|----------|
+| 🔗 會員訂單關聯 | 會員與訂單完整關聯查詢 | `CrmSalesOrder_CrmMemberId` | 會員購買行為分析 |
+| 🆔 九易會員ID | 根據九易系統會員ID查詢 | `CrmMember_NineYiMemberId` | 跨系統會員資料查詢 |
+| 📦 外部訂單編號 | 透過外部系統訂單號查詢 | `CrmSalesOrder_OuterOrderCode1` | 第三方系統對接 |
+| 🛒 訂單明細 | 訂單商品明細資料查詢 | `CrmSalesOrderSlave` 系列 | 商品銷售分析 |
+| 🏪 線下訂單 | 實體門市訂單專用查詢 | `CrmSalesOrder_TypeDef = 'Others'` | 門市業績統計 |
+
+### 🔗 1.1 會員訂單基礎關聯查詢
 
 ```sql
-use CRMDB
-
-select *
-from CrmSalesOrder(nolock)
-INNER JOIN CrmMember(NOLOCK)
-ON CrmSalesOrder_CrmMemberId = CrmMember_Id
-where CrmSalesOrder_ValidFlag = 1
-
-
-select CrmSalesOrder_Id,CrmSalesOrder_TypeDef,CrmSalesOrder_TradesOrderFinishDateTime,CrmSalesOrder_TotalPayment,CrmSalesOrder_CrmShopMemberCardId
-from CrmSalesOrder(nolock)
-where CrmSalesOrder_ValidFlag = 1
-and CrmSalesOrder_TradesOrderFinishDateTime > '2025-08-25'
-and CrmSalesOrder_TypeDef = 'Others'
---and CrmSalesOrder_TotalPayment > 3000
-and CrmSalesOrder_ShopId = 41571
-and CrmSalesOrder_CrmShopMemberCardId > 4521
-
-
-
-use CRMDB
-select CrmSalesOrderSlave_Id,CrmSalesOrderSlave_CrmMemberId,CrmSalesOrderSlave_TotalPayment,CrmSalesOrderSlave_DataSourceType,CrmSalesOrderSlave_OriginalCrmSalesOrderId,CrmSalesOrderSlave_OriginalCrmSalesOrderSlaveId,CrmSalesOrderSlave_Qty,*
-from CrmSalesOrderSlave(nolock)
-where CrmSalesOrderSlave_ValidFlag = 1
---and CrmSalesOrderSlave_CrmSalesOrderId = 25904391
-and CrmSalesOrderSlave_OuterOrderSlaveCode1 = 'TS001'
-
-
+-- 基礎會員訂單查詢 (含會員資料)
 USE CRMDB;
 
-SELECT TOP 1000 CrmSalesOrder_ShopId,
-CrmSalesOrderSlave_Price,
-CrmSalesOrderSlave_Qty,
-CrmSalesOrderSlave_PurchaseType,
-CrmSalesOrderSlave_TypeMemo,
-CrmSalesOrderSlave_TotalPayment,
-       CrmMember_ShopId,
-	   CrmSalesOrderSlave_OriginalCrmSalesOrderId,
-	   CrmSalesOrderSlave_OriginalCrmSalesOrderSlaveId,
-       CrmMember_Id,
-       CrmSalesOrder_TradesOrderFinishDateTime,
-       CrmSalesOrder_Id,
-       CrmSalesOrder_TypeDef,
-       CrmSalesOrder_OuterOrderCode1,
-       ROW_NUMBER() OVER(PARTITION BY CrmSalesOrder_Id ORDER BY CrmSalesOrderSlave_Id desc) AS OrderIdCount,
-       CrmSalesOrderSlave_PurchaseType
-FROM CrmSalesOrder(NOLOCK)
-INNER JOIN CrmSalesOrderSlave(NOLOCK)
-ON CrmSalesOrder_Id = CrmSalesOrderSlave_CrmSalesOrderId
-INNER JOIN CrmMember(NOLOCK)
-ON CrmMember_Id = CrmSalesOrder_CrmMemberId
-where CrmMember_ShopId = 12
-and CrmSalesOrder_Id = 26112651
-```
-
-<br>
-
-**NineYiMemberId**
-
-<br>
-
-```sql
-Select CrmMember_NineYiMemberId,*
-from CrmMember(nolock)
-where CrmMember_Id = 33309
-```
-
-<br>
-
-**outerOrderCode1**
-
-<br>
-
-```sql
-use CRMDB
-select CrmSalesOrder_TradesOrderFinishDateTime,*
-from CrmSalesOrder(nolock)
-where CrmSalesOrder_OuterOrderCode1 = 'uat301A'
-```
-
-<br>
-
-**crmsalesorderslave**
-
-<br>
-
-```sql
-
-use CRMDB
-select CrmSalesOrderSlave_CrmMemberId,CrmSalesOrderSlave_TotalPayment,CrmSalesOrderSlave_DataSourceType,CrmSalesOrderSlave_OriginalCrmSalesOrderId,CrmSalesOrderSlave_OriginalCrmSalesOrderSlaveId,CrmSalesOrderSlave_Qty,*
-from CrmSalesOrderSlave(nolock)
-where CrmSalesOrderSlave_ValidFlag = 1
-and CrmSalesOrderSlave_CrmSalesOrderId = 329081
-
-
-select CrmSalesOrderSlave_CrmSalesOrderId,CrmSalesOrderSlave_OuterProductSkuCode
-from CrmSalesOrderSlave(nolock)
-where CrmSalesOrderSlave_ValidFlag = 1
-and CrmSalesOrderSlave_OuterProductSkuCode in 
-('IW7385','IW4988','IR5789','IX7001','IW7541','IN2390','IR5798','IG4049','IG4052','IV5658','IV8226','IR7103','IR7096','IR6244','IR6245','IN4352','IN8749','IN8745','IV8223','IV8224','IV8221','IN8703','IN4343','IN4372','HZ4268','HZ4269','H63102','IU4623','IP8974','IR5775','IR5791','IR5784','IN2389','IR5782','IW7536','IX7000','IY0104','IN2391','IH2886','IE5700','IH2887','IG4107','IG4105','IN4374','HY1249','IV7749','IN8682','IN4347','IN8756','IR6249','IR6250','IN8701','IZ3128','IV5644','IR7108','IV5647','IR7110','IN4342','IV5657','IR6251','IE3237','IG4026','IG4036','IG4037','IG4095','IE5662','IG4028','IE3239','IS8985','IS8984','IN2401','IN4375','IN4377','IV5555','IZ3168','IV5625','IR6265','IV7737','IN4353','IZ3123','IZ3124','IV5622','IR6268','IZ3122','IZ3121','IV7736','IN4335','IV5836','IR7106','IZ3126','H54025','HM8347','HM8337','HS2721','HM8338','HR1986','HQ5964','HQ5972','HQ5967','HQ3661','HN1966','HT4501','HN1976','HT2303','HN1974','HD3317','GN5938','HM8362','HM8333','HM8356','HM8357','HM8358','HM8366','HM8340','HM8361','HM8354','HM8348','HM8341','HF2143','HQ6510','HR1952','HQ3734','HQ3663','HR1932','HR1951','HR1929','HM5039','HN4328','HT2291','HM5038','FN3359','FN3358','HT4499','GV4198','GV4194','HN4312','GV0336','HN4320','HG6153','HM9347','HT4498','HT4490','GV2799','GV2794','HT4734','HM5036','HB3405','HH8895','HT4732','HM5035','IB8611','HG8604','HM9342','IK9360','IU4628','IU4621','IL6965','IL6964','IP7162','HP3126','ID5430','IG2934','IG2937','IG2936','IG3043','IG0804','IP7678','IP7677','IL2027','IL2046','IL2152','IP7687','H63021','IP7695','IP7698','IL2035','IL2033','IL2040','IJ9902','IJ9907','IJ9891','IJ9872','IJ9880','IJ9877','IJ9876','IN5161','IU4627','IN8053','HZ4267','HZ4266','GK2074','IP1857','IU4629','IU4630','IQ3396','IQ3394','IT7794','IF7789','IE9390','ID5429','IF7791','IF7788','IG2914','IF7787','IG5300','ID5431','IP8779','IP5589','IL2066','IJ9782','IQ1792','HY1251','IP7929','IL2164','H63059','IQ1798','IL2056','H63080','H44782','H44798','IT7522','IT7524','H63044','IA1438','H44800','IA1421','IL4619','IL2059','IQ2137','H63094','HD3306','H62984','IJ3142','H62979','H62978','H62977','H63110','H63099','H63095','FZ6424','FZ6423','FZ6402','FZ6403','IE9396','IF2347','FZ6401','IA1453','H63016','IA1428','H44802','H63067','H63066','IB4785','IB4780','HY1255','HQ3672','HQ3735','JN4884','JN4885','JN7192','JN7183','JP1147','JD2903','JX2462','JW4773','JQ2454','JD1763','JD1761','JD1759','JD1477','JD3518','JD1765','JI7087','JL8301','JL8295','IW0069','JM7845','JN4986','JN7038','JN4945','JM7812','JN4906','JN4907','JD3521','JD3523','JC6396','JI7083','JL8299','JL6880','JM5494','JM7818','JM7817','JN1728','JN1727','JP1144','JP1143','JP1152','JP1153','JP1150','JP1148','JW4667','JD2909','JD2905','JP4745','JW7355','JS1118','JS1111','JN4990','JD5999','JN4873','JN4879','JM7815','JN3751','JM3230','JN4882','JN3719','JN3704','JM3358','JH6028','JP0400','JE2017','JE2016','IY9275','JE4023','IY9274','IF1973','IH0865','IF2047','IF2046','IH0871','IW9995','IX0011','JN7832','IX0009','IW7459','IW7455','IW9994','IW9993','IW9999','JD9794','IW7492','JI9153','IY9278','JE2014','IY4079','IH0869','IF2040','IF2041','IR7100','IR7102','JE3434','IN4398','JE3433','IN4397','JD9791','JE3436','JE9281','JE9282','IW2472','JD9843','IX0402','IW2473','JI9096','IZ3173','IZ3172','JE2012','IY4083','IY4087','H62982','H62981','IH2551','IE1450','IF2025','JE3438','JD9788','IW7472','JE3442','JD9793','JE9274','JD9799','IW7471','IW0080','JD9825','IW0071','JD9796','JF0668','JD9795','JF3665','JI7451','JE0130','IW7382','IW7386','JC7569','JC7568','JC7572','JC7571','IW7387','IW7389','IW7390','JF6361','JN4887','JS3154','JS1116','JS1115','JS3155','JM7844','JN4904','JN4911','JN4910','JD5997','JD1479','JD1474','JD1480','JD1475','JH8062','KA9633','JW4626','JZ0717','JX4745','JX4744','JX4804','JX7292','JW7352','JW7351','KB2608','KB2607','KA9630','JV6776','JV6782','JM7854','JD6002','JR4216','JR4217','JR4225','JR4224','JR6645','JR6644','JR6656','JR6655','KA2308','KC3339','JM9041','JM9039','JV9721','KB9310','JW6219','KA2302','KA7141','JW4624','JW4623','JW4621','KA7128','JX7276','JX7281','JX7333','KB3692','KD4760','JX4754','JX4752','KC8356','JR4201','JS2457','JS2459','JR6657','JX8362','JV9669','JV9720','JV9722','JV9770','KB2077','JY4556','JY4555','JW7354','JW7353','KD4759','KD2555','KE2311','JR4199','JS2463','JX8305','JX8308','JX8327','JX8294')
-
-```
-
-<br>
-
-**查看我們要的線下訂單**
-
-<br>
-
-```sql
-USE CRMDB;
-
-WITH A AS(
-SELECT TOP 1000 CrmSalesOrder_ShopId,
-       CrmMember_ShopId,
-       CrmMember_Id,
-       CrmSalesOrder_TradesOrderFinishDateTime,
-       CrmSalesOrder_Id,
-       CrmSalesOrder_TypeDef,
-       CrmSalesOrder_OuterOrderCode1,
-       ROW_NUMBER() OVER(PARTITION BY CrmSalesOrder_Id ORDER BY CrmSalesOrderSlave_Id desc) AS OrderIdCount,
-       CrmSalesOrderSlave_PurchaseType
-FROM CrmSalesOrder(NOLOCK)
-INNER JOIN CrmSalesOrderSlave(NOLOCK)
-ON CrmSalesOrder_Id = CrmSalesOrderSlave_CrmSalesOrderId
-INNER JOIN CrmMember(NOLOCK)
-ON CrmMember_Id = CrmSalesOrder_CrmMemberId
-where CrmMember_ShopId = 2
-AND CrmSalesOrderSlave_PurchaseType = 'Normal'
-and CrmSalesOrder_TypeDef = 'Others'
-ORDER BY CrmMember_CreatedDateTime DESC)
 SELECT *
-FROM A
-WHERE OrderIdCount = 1
-and CrmSalesOrder_Id = 329141
-ORDER BY CrmSalesOrder_TradesOrderFinishDateTime DESC
+FROM CrmSalesOrder(NOLOCK)
+INNER JOIN CrmMember(NOLOCK)
+    ON CrmSalesOrder_CrmMemberId = CrmMember_Id
+WHERE CrmSalesOrder_ValidFlag = 1;
+
+-- 條件篩選訂單查詢
+SELECT 
+    CrmSalesOrder_Id AS 訂單ID,
+    CrmSalesOrder_TypeDef AS 訂單類型,
+    CrmSalesOrder_TradesOrderFinishDateTime AS 完成時間,
+    CrmSalesOrder_TotalPayment AS 總金額,
+    CrmSalesOrder_CrmShopMemberCardId AS 會員卡ID
+FROM CrmSalesOrder(NOLOCK)
+WHERE CrmSalesOrder_ValidFlag = 1
+    AND CrmSalesOrder_TradesOrderFinishDateTime > '2025-08-25'
+    AND CrmSalesOrder_TypeDef = 'Others'  -- 線下訂單
+    -- AND CrmSalesOrder_TotalPayment > 3000  -- 可選：金額篩選
+    AND CrmSalesOrder_ShopId = 41571
+    AND CrmSalesOrder_CrmShopMemberCardId > 4521;
 ```
 
-<br>
+
+### 📊 1.2 會員訂單多join
+
+```sql
+-- 會員訂單完整分析 (含商品明細與會員資料)
+USE CRMDB;
+
+SELECT TOP 1000 
+    CrmSalesOrder_ShopId AS 店鋪ID,
+    CrmSalesOrderSlave_Price AS 商品價格,
+    CrmSalesOrderSlave_Qty AS 購買數量,
+    CrmSalesOrderSlave_PurchaseType AS 購買類型,
+    CrmSalesOrderSlave_TypeMemo AS 類型備註,
+    CrmSalesOrderSlave_TotalPayment AS 明細金額,
+    CrmMember_ShopId AS 會員店鋪ID,
+    CrmSalesOrderSlave_OriginalCrmSalesOrderId AS 原始訂單ID,
+    CrmSalesOrderSlave_OriginalCrmSalesOrderSlaveId AS 原始明細ID,
+    CrmMember_Id AS 會員ID,
+    CrmSalesOrder_TradesOrderFinishDateTime AS 訂單完成時間,
+    CrmSalesOrder_Id AS 訂單ID,
+    CrmSalesOrder_TypeDef AS 訂單類型,
+    CrmSalesOrder_OuterOrderCode1 AS 外部訂單號,
+    ROW_NUMBER() OVER(PARTITION BY CrmSalesOrder_Id ORDER BY CrmSalesOrderSlave_Id DESC) AS 明細排序
+FROM CrmSalesOrder(NOLOCK)
+INNER JOIN CrmSalesOrderSlave(NOLOCK)
+    ON CrmSalesOrder_Id = CrmSalesOrderSlave_CrmSalesOrderId
+INNER JOIN CrmMember(NOLOCK)
+    ON CrmMember_Id = CrmSalesOrder_CrmMemberId
+WHERE CrmMember_ShopId = 12
+    AND CrmSalesOrder_Id = 26112651;
+```
+
+### 🆔 1.3 NineYiMemberId
+
+```sql
+-- 九易會員ID查詢
+USE CRMDB;
+
+SELECT 
+    CrmMember_NineYiMemberId AS 九易會員ID,
+    CrmMember_Id AS CRM會員ID,
+    CrmMember_ShopId AS 店鋪ID,
+    *
+FROM CrmMember(NOLOCK)
+WHERE CrmMember_Id = 33309;
+```
+
+### 📦 1.4 OuterOrderCode
+
+```sql
+-- 外部訂單編號查詢
+USE CRMDB;
+
+SELECT 
+    CrmSalesOrder_TradesOrderFinishDateTime AS 完成時間,
+    CrmSalesOrder_OuterOrderCode1 AS 外部訂單號,
+    CrmSalesOrder_Id AS 內部訂單ID,
+    CrmSalesOrder_TotalPayment AS 總金額,
+    *
+FROM CrmSalesOrder(NOLOCK)
+WHERE CrmSalesOrder_OuterOrderCode1 = 'uat301A';
+```
+
+### 🛒 1.5 slaveandOuterProductSkuCode
+
+```sql
+-- 訂單明細基本查詢
+USE CRMDB;
+
+SELECT 
+    CrmSalesOrderSlave_Id AS 明細ID,
+    CrmSalesOrderSlave_CrmMemberId AS 會員ID,
+    CrmSalesOrderSlave_TotalPayment AS 明細金額,
+    CrmSalesOrderSlave_DataSourceType AS 資料來源類型,
+    CrmSalesOrderSlave_OriginalCrmSalesOrderId AS 原始訂單ID,
+    CrmSalesOrderSlave_OriginalCrmSalesOrderSlaveId AS 原始明細ID,
+    CrmSalesOrderSlave_Qty AS 數量,
+    *
+FROM CrmSalesOrderSlave(NOLOCK)
+WHERE CrmSalesOrderSlave_ValidFlag = 1
+    AND CrmSalesOrderSlave_CrmSalesOrderId = 329081;
+
+-- 根據商品料號查詢明細
+SELECT 
+    CrmSalesOrderSlave_CrmSalesOrderId AS 訂單ID,
+    CrmSalesOrderSlave_OuterProductSkuCode AS 商品料號
+FROM CrmSalesOrderSlave(NOLOCK)
+WHERE CrmSalesOrderSlave_ValidFlag = 1
+    AND CrmSalesOrderSlave_OuterProductSkuCode IN ('IW7385','IW4988','IR5789');
+
+```
+
+### 🏪 1.6 Others
+
+```sql
+-- 線下訂單篩選查詢 (高效能版本)
+USE CRMDB;
+
+WITH OfflineOrderAnalysis AS (
+    SELECT TOP 1000 
+        CrmSalesOrder_ShopId AS 店鋪ID,
+        CrmMember_ShopId AS 會員店鋪ID,
+        CrmMember_Id AS 會員ID,
+        CrmSalesOrder_TradesOrderFinishDateTime AS 完成時間,
+        CrmSalesOrder_Id AS 訂單ID,
+        CrmSalesOrder_TypeDef AS 訂單類型,
+        CrmSalesOrder_OuterOrderCode1 AS 外部訂單號,
+        ROW_NUMBER() OVER(PARTITION BY CrmSalesOrder_Id ORDER BY CrmSalesOrderSlave_Id DESC) AS 明細排序,
+        CrmSalesOrderSlave_PurchaseType AS 購買類型
+    FROM CrmSalesOrder(NOLOCK)
+    INNER JOIN CrmSalesOrderSlave(NOLOCK)
+        ON CrmSalesOrder_Id = CrmSalesOrderSlave_CrmSalesOrderId
+    INNER JOIN CrmMember(NOLOCK)
+        ON CrmMember_Id = CrmSalesOrder_CrmMemberId
+    WHERE CrmMember_ShopId = 2  -- 指定店鋪
+        AND CrmSalesOrderSlave_PurchaseType = 'Normal'  -- 一般購買
+        AND CrmSalesOrder_TypeDef = 'Others'  -- 線下訂單
+    ORDER BY CrmMember_CreatedDateTime DESC
+)
+SELECT *
+FROM OfflineOrderAnalysis
+WHERE 明細排序 = 1  -- 每筆訂單只取一筆明細
+    AND 訂單ID = 329141  -- 指定訂單ID
+ORDER BY 完成時間 DESC;
+```
 
 ---
 
+## 2. TradesOrder
+
+### 🔍 2.1 多join
+
+```sql
+-- 完整交易訂單結構查詢
+SELECT 
+    TradesOrderGroup_Code AS 訂單群組編號,
+    TradesOrderSlave_Qty AS 商品數量,
+    TradesOrder_Id AS 訂單ID,
+    TradesOrderSlave_Id AS 明細ID,
+    *
+FROM TradesOrderGroup(NOLOCK)
+INNER JOIN TradesOrder(NOLOCK)
+    ON TradesOrder_TradesOrderGroupId = TradesOrderGroup_Id
+INNER JOIN TradesOrderSlave(NOLOCK)
+    ON TradesOrderSlave_TradesOrderId = TradesOrder_Id
+WHERE TradesOrderGroup_ValidFlag = 1
+    AND TradesOrderGroup_Code = 'TG250812PB0001';
+```
+
+### 📊 2.2 TrackSourceTypeDef
+
+```sql
+-- 多條件篩選交易訂單群組
+USE WebStoreDB;
+
+SELECT 
+    TradesOrderGroup_Code AS 訂單群組編號,
+    TradesOrderGroup_ShopId AS 店鋪ID,
+    TradesOrderGroup_CrmShopMemberCardId AS 會員卡ID,
+    TradesOrderGroup_TotalPayment AS 總金額,
+    TradesOrderGroup_TrackSourceTypeDef AS 來源管道,
+    TradesOrderGroup_CreatedDateTime AS 建立時間,
+    *
+FROM TradesOrderGroup(NOLOCK)
+WHERE TradesOrderGroup_ValidFlag = 1
+    AND TradesOrderGroup_Code >= 'TG250808BA00LN'  -- 訂單編號範圍
+    AND TradesOrderGroup_ShopId = 41571  -- 指定店鋪
+    AND TradesOrderGroup_CrmShopMemberCardId IN (4521,4522,4523)  -- 指定會員卡
+    AND TradesOrderGroup_TotalPayment >= 8800  -- 最小金額
+    AND TradesOrderGroup_TrackSourceTypeDef IN ('AndriodApp','iOSApp')  -- 行動裝置來源
+    -- AND TradesOrderGroup_CreatedDateTime >= '2025-08-08 11:00'  -- 可選：時間篩選
+ORDER BY TradesOrderGroup_CreatedDateTime DESC;
+```
+
+---
+
+## 3. SalesOrder
+
+### 🔍 3.1 多join
+
+```sql
+-- 銷售訂單完整結構查詢
+USE ERPDB;
+
+SELECT 
+    SalesOrderGroup_DateTime AS 訂單時間,
+    SalesOrderGroup_ShopId AS 店鋪ID,
+    SalesOrderSlave_StatusDef AS 明細狀態,
+    SalesOrder_Id AS 訂單ID,
+    SalesOrderSlave_Id AS 明細ID,
+    *
+FROM SalesOrderGroup(NOLOCK)
+INNER JOIN SalesOrder(NOLOCK)
+    ON SalesOrder_SalesOrderGroupId = SalesOrderGroup_Id
+INNER JOIN SalesOrderSlave(NOLOCK)
+    ON SalesOrder_Id = SalesOrderSlave_SalesOrderId
+WHERE SalesOrderGroup_TradesOrderGroupCode IN ('TG250821M00003')  -- 指定交易群組編號
+ORDER BY SalesOrderGroup_DateTime DESC;
+```
+
+### 💳 3.2 SalesOrderThirdPartyPayment
+
+```sql
+-- 銷售訂單支付狀態查詢
+USE ERPDB;
+
+SELECT 
+    SalesOrderSlave_Id AS 明細ID,
+    SalesOrder_TradesOrderGroupId AS 交易群組ID,
+    SalesOrderSlave_StatusDef AS 明細狀態,
+    SalesOrderThirdPartyPayment_StatusDef AS 支付狀態,
+    SalesOrder_PayProfileTypeDef AS 支付方式,
+    SalesOrderSlave_TradesOrderSlaveCode AS 交易明細編號
+FROM dbo.SalesOrderSlave WITH (NOLOCK)
+INNER JOIN dbo.SalesOrder SO WITH(NOLOCK) 
+    ON SO.SalesOrder_Id = SalesOrderSlave.SalesOrderSlave_SalesOrderId 
+    AND SalesOrder_ValidFlag = 1
+INNER JOIN dbo.SalesOrderThirdPartyPayment WITH (NOLOCK) 
+    ON SalesOrderThirdPartyPayment_ValidFlag = 1 
+    AND SalesOrderThirdPartyPayment_TradesOrderGroupId = SalesOrder_TradesOrderGroupId
+WHERE SalesOrderSlave_ValidFlag = 1
+    -- AND SalesOrderSlave_TradesOrderSlaveCode IN ('TS250828J000019','TS250828J000013','TS250828J000025')  -- 可選：指定明細編號
+ORDER BY SalesOrderSlave_Id DESC;
+```
+
+---
+
+</details>
+
+---
+
+# 🎁 促銷相關查詢
+
+<details>
+<summary>📖 點擊展開促銷引擎與活動規則查詢</summary>
+
 ## 2. PromotionEngine
 
-
+### 基礎
 
 ```sql
 use WebStoreDB
@@ -182,7 +353,7 @@ from PromotionEngine(nolock)
 where PromotionEngine_Id = 8414
 ```
 
-**版本1**
+### PromotionEngine_TypeDefAndChannel
 
 <br>
 
@@ -226,7 +397,7 @@ ORDER BY PromotionEngine_ShopId,PromotionEngine_Id;
 
 <br>
 
-**版本2**
+### ParseJsonRule
 
 <br>
 
@@ -258,7 +429,7 @@ WHERE PromotionEngine_ValidFlag = 1
 ORDER BY PromotionEngine_CreatedDateTime DESC
 ```
 
-**版本3**
+### TargetTypeDef
 
 ```sql
 use WebStoreDB
@@ -352,42 +523,175 @@ order by PromotionEngineRuleRecord_CreatedDateTime desc
 
 ## 7. ECoupon
 
-```sql
-use WebStoreDB
-select ECouponCustom_Name,ECoupon_ShopId,ECoupon_Id,ECoupon_DiscountPercent,ECoupon_DiscountPrice,*
-from ECouponCustom(nolock)
-inner join ECouponCustomMapping(nolock)
-on ECouponCustom_Id = ECouponCustomMapping_ECouponCustomId
-inner join ECoupon(nolock)
-on ECoupon_Id = ECouponCustomMapping_ECouponId
-where ECouponCustom_ValidFlag = 1
-and ECoupon_ShopId = 10230
-and ECoupon_ValidFlag = 1
-```
-
+### 🔍 7.1 自訂券
 
 ```sql
-use WebStoreDB
-
-select *
-from ECoupon(nolock)
-inner join ECouponSlave(nolock)
-on ECouponSlave_ECouponId = ECoupon_Id
-where ECoupon_Id = 222734
-and ECouponSlave_MemberId = 2778955
-
+-- 自訂優惠券完整查詢
+USE WebStoreDB;
 
 SELECT 
-    ECouponSlave_Id,
-    ECouponSlave_ShopId,
-    ECouponSlave_ValidFlag,
-    ECouponSlave_UpdatedDateTime,
-    ECouponSlave_UpdatedUser
-FROM dbo.ECouponSlave
-WHERE ECouponSlave_ShopId IN (SELECT Id FROM @TargetIds);
+    ECouponCustom_Name AS 券券名稱,
+    ECoupon_ShopId AS 店鋪ID,
+    ECoupon_Id AS 券券ID,
+    ECoupon_DiscountPercent AS 折扣百分比,
+    ECoupon_DiscountPrice AS 折扣金額,
+    *
+FROM ECouponCustom(NOLOCK)
+INNER JOIN ECouponCustomMapping(NOLOCK)
+    ON ECouponCustom_Id = ECouponCustomMapping_ECouponCustomId
+INNER JOIN ECoupon(NOLOCK)
+    ON ECoupon_Id = ECouponCustomMapping_ECouponId
+WHERE ECouponCustom_ValidFlag = 1
+    AND ECoupon_ShopId = 10230 
+    AND ECoupon_ValidFlag = 1;
+```
+
+### 🎁 7.2 會員
+
+```sql
+-- 會員優惠券查詢
+USE WebStoreDB;
+
+SELECT 
+    ECoupon_Id AS 券券ID,
+    ECouponSlave_Id AS 券券明細ID,
+    ECouponSlave_MemberId AS 會員ID,
+    ECouponSlave_ValidFlag AS 有效狀態,
+    ECouponSlave_UpdatedDateTime AS 更新時間,
+    ECouponSlave_UpdatedUser AS 更新者,
+    *
+FROM ECoupon(NOLOCK)
+INNER JOIN ECouponSlave(NOLOCK)
+    ON ECouponSlave_ECouponId = ECoupon_Id
+WHERE ECoupon_Id = 222734
+    AND ECouponSlave_MemberId = 2778955;
+```
+
+### 🏪 7.3 Ids
+
+```sql
+-- 店鋪優惠券批次查詢
+DECLARE @TargetIds TABLE (Id BIGINT);
+INSERT INTO @TargetIds VALUES (41571), (10230), (12345); -- 示例店鋪ID
+
+SELECT 
+    ECouponSlave_Id AS 券券明細ID,
+    ECouponSlave_ShopId AS 店鋪ID,
+    ECouponSlave_ValidFlag AS 有效狀態,
+    ECouponSlave_UpdatedDateTime AS 更新時間,
+    ECouponSlave_UpdatedUser AS 更新者,
+    *
+FROM dbo.ECouponSlave(NOLOCK)
+WHERE ECouponSlave_ShopId IN (SELECT Id FROM @TargetIds)
+ORDER BY ECouponSlave_UpdatedDateTime DESC;
 ```
 
 <br>
+
+---
+
+## 15. LoyaltyPoint
+
+### 📊 15.1 LoyaltyPointTransaction
+
+```sql
+-- 會員點數交易明細查詢
+USE LoyaltyDB;
+
+DECLARE @shopId BIGINT = 17;
+
+SELECT 
+    LoyaltyPointTransaction_CreatedDateTime AS 建立時間,
+    LoyaltyPointTransactionInfo_OuterMemberId AS 外部會員ID,
+    LoyaltyPointTransaction_EventTypeDef AS 事件類型,
+    LoyaltyPointTransactionInfo_OccurType AS 發生類型,
+    LoyaltyPointTransaction_OccurTypeId AS 發生類型ID,
+    LoyaltyPointTransaction_Code AS 交易代碼,
+    LoyaltyPointTransaction_Point AS 點數異動,
+    LoyaltyPointTransactionInfo_OccurDescription AS 說明,
+    LoyaltyPointTransaction_CreatedUser AS 建立者,
+    -- REPLACE(LoyaltyPointTransaction_OccurTypeId, '|25721', '') AS 清理後代碼, -- 可選：清理特定格式
+    *
+FROM dbo.LoyaltyPointTransaction(NOLOCK)
+JOIN dbo.LoyaltyPointTransactionInfo(NOLOCK)
+    ON LoyaltyPointTransactionInfo_ValidFlag = 1
+    AND LoyaltyPointTransactionInfo_LoyaltyPointTransactionId = LoyaltyPointTransaction_Id
+WHERE LoyaltyPointTransaction_ValidFlag = 1
+    AND LoyaltyPointTransaction_ShopId = @shopId
+    -- AND LoyaltyPointTransaction_CreatedDateTime >= CONVERT(DATE, GETDATE()) -- 今日記錄
+    -- AND LoyaltyPointTransaction_Code IN ('LT2508281400059') -- 特定交易代碼
+    -- AND LoyaltyPointTransaction_EventTypeDef IN ('PromotionReward','PromotionRewardStore') -- 促銷回饋記錄
+    -- AND LoyaltyPointTransaction_CreatedUser IN ('PromotionRewardLoyaltyPointsV2Job','RecycleLoyaltyPointsV2Job') -- 系統作業
+ORDER BY LoyaltyPointTransaction_CreatedDateTime DESC;
+```
+
+### 🔍 15.2 OccurTypeIdEvent
+
+```sql
+-- 特定條件點數查詢
+USE LoyaltyDB;
+
+SELECT 
+    LoyaltyPointTransaction_Id AS 交易ID,
+    LoyaltyPointTransaction_OccurTypeId AS 發生類型ID,
+    LoyaltyPointTransaction_Point AS 點數異動,
+    LoyaltyPointTransaction_CreatedDateTime AS 建立時間,
+    LoyaltyPointTransactionInfo_OccurDescription AS 說明
+FROM dbo.LoyaltyPointTransaction(NOLOCK)
+JOIN dbo.LoyaltyPointTransactionInfo(NOLOCK)
+    ON LoyaltyPointTransactionInfo_ValidFlag = 1
+    AND LoyaltyPointTransactionInfo_LoyaltyPointTransactionId = LoyaltyPointTransaction_Id
+WHERE LoyaltyPointTransaction_ValidFlag = 1
+    -- 測試會員相關記錄
+    AND LoyaltyPointTransaction_OccurTypeId IN ('0704ambertest004|7438','0704ambertest004|7423','0704ambertest004|7439')
+    -- 特定活動關聯
+    -- AND LoyaltyPointTransaction_OccurTypeId LIKE 'TG702R27KLT2021%'
+    -- AND LoyaltyPointTransaction_OccurTypeId LIKE '%3495U%'
+    -- AND LoyaltyPointTransaction_OccurTypeId NOT LIKE '%Te25%'
+    -- 特定使用者操作
+    -- AND LoyaltyPointTransactionInfo_OuterMemberId = 'K46night'
+    -- AND LoyaltyPointTransactionInfo_OccurDescription LIKE '%Sprint1980Demo%'
+    -- 回收記錄
+    AND LoyaltyPointTransaction_EventTypeDef = 'Recycle'
+ORDER BY LoyaltyPointTransaction_CreatedDateTime DESC;
+```
+
+### 📋 15.3 OccurTypeId,
+
+```sql
+-- 常見交易代碼範例說明
+/*
+交易代碼格式說明：
+
+生產環境格式：
+- UAT702R|6177_LT250xxx  -- 訂單+活動+交易號
+- UAT1102RA|6200_LT250xxx -- 複合訂單格式  
+- FTL-250312182334-dA4Q   -- 特殊產生格式
+
+測試環境格式：
+- test0001|753_LT         -- 測試訂單
+- 0625ambertest004|7xxx   -- 測試會員
+- 753_CrmSalesOrder:062   -- CRM關聯測試
+- 753_CrmSa              -- CRM訂單關聯
+- 658_CrmSa              -- 其他CRM格式
+
+事件類型：
+- PromotionReward         -- 促銷回饋給點
+- PromotionRewardStore    -- 門市促銷回饋
+- Recycle                -- 點數回收
+*/
+
+-- 查詢交易代碼統計
+SELECT 
+    LEFT(LoyaltyPointTransaction_OccurTypeId, 10) AS 代碼前綴,
+    COUNT(*) AS 筆數,
+    SUM(LoyaltyPointTransaction_Point) AS 總點數
+FROM dbo.LoyaltyPointTransaction(NOLOCK)
+WHERE LoyaltyPointTransaction_ValidFlag = 1
+    AND LoyaltyPointTransaction_CreatedDateTime >= DATEADD(DAY, -7, GETDATE())
+GROUP BY LEFT(LoyaltyPointTransaction_OccurTypeId, 10)
+ORDER BY 筆數 DESC;
+```
 
 ---
 
@@ -405,65 +709,67 @@ where SaleProductSKU_SalePageId = 62210
 
 ## 9. ShopStaticSetting
 
-**9.1 重算開關啟用時間**
-
-<br>
+### 🧮 9.1 CalculateSwitch
 
 ```sql
-use WebStoreDB
+-- 促銷回饋計算開關查詢
+USE WebStoreDB;
 
-select *
-from ShopStaticSetting(nolock)
-where ShopStaticSetting_ValidFlag = 1
-and ShopStaticSetting_GroupName = 'PromotionReward'
-and ShopStaticSetting_Key = 'CalculateSwitch'
+SELECT 
+    ShopStaticSetting_ShopId AS 店鋪ID,
+    ShopStaticSetting_GroupName AS 設定群組,
+    ShopStaticSetting_Key AS 設定鍵值,
+    ShopStaticSetting_Value AS 設定值,
+    ShopStaticSetting_CreatedDateTime AS 建立時間,
+    ShopStaticSetting_UpdatedDateTime AS 更新時間,
+    *
+FROM ShopStaticSetting(NOLOCK)
+WHERE ShopStaticSetting_ValidFlag = 1
+    AND ShopStaticSetting_GroupName = 'PromotionReward'
+    AND ShopStaticSetting_Key = 'CalculateSwitch';
 ```
 
-<br>
-
-**9.2 支援 MemberCollection**
-
-<br>
+### 👥 9.2 SupportMemberCollection
 
 ```sql
-use WebStoreDB
+-- 會員收集支援設定查詢
+USE WebStoreDB;
 
-select *
-from ShopStaticSetting(nolock)
-where ShopStaticSetting_ValidFlag = 1
-and ShopStaticSetting_GroupName = 'PromotionEngine'
-and ShopStaticSetting_Key = 'SupportMemberCollectionShop'
+SELECT 
+    ShopStaticSetting_ShopId AS 店鋪ID,
+    ShopStaticSetting_GroupName AS 設定群組,
+    ShopStaticSetting_Key AS 設定鍵值,
+    ShopStaticSetting_Value AS 設定值,
+    ShopStaticSetting_Description AS 設定說明,
+    ShopStaticSetting_CreatedDateTime AS 建立時間,
+    *
+FROM ShopStaticSetting(NOLOCK)
+WHERE ShopStaticSetting_ValidFlag = 1
+    AND ShopStaticSetting_GroupName = 'PromotionEngine'
+    AND ShopStaticSetting_Key = 'SupportMemberCollection';
 ```
 
-<br>
-
----
-
-## 10. TradesOrder
+### 🔍 9.3 PromotionReward
 
 ```sql
-SELECT TradesOrderSlave_Qty,*
-FROM TradesOrderGroup(NOLOCK)
-INNER JOIN TradesOrder(NOLOCK)
-ON TradesOrder_TradesOrderGroupId = TradesOrderGroup_Id
-INNER JOIN TradesOrderSlave(NOLOCK)
-ON TradesOrderSlave_TradesOrderId = TradesOrder_Id
-WHERE TradesOrderGroup_ValidFlag = 1
-AND TradesOrderGroup_Code = 'TG250812PB0001'
-```
+-- 店鋪完整靜態設定查詢
+USE WebStoreDB;
 
-
-```sql
-USE WebStoreDB
-select *
-from TradesOrderGroup(nolock)
-where TradesOrderGroup_ValidFlag = 1
-and TradesOrderGroup_Code >= 'TG250808BA00LN'
-AND TradesOrderGroup_ShopId = 41571
-AND TradesOrderGroup_CrmShopMemberCardId IN (4521,4522,4523)
-AND TradesOrderGroup_TotalPayment >= 8800
-AND TradesOrderGroup_TrackSourceTypeDef IN ('AndriodApp','iOSApp')
---and TradesOrderGroup_CreatedDateTime >= '2025-08-08 11:00'
+SELECT 
+    ShopStaticSetting_ShopId AS 店鋪ID,
+    ShopStaticSetting_GroupName AS 設定群組,
+    ShopStaticSetting_Key AS 設定鍵值,
+    ShopStaticSetting_Value AS 設定值,
+    ShopStaticSetting_DataType AS 資料類型,
+    ShopStaticSetting_Description AS 設定說明,
+    ShopStaticSetting_ValidFlag AS 有效標記,
+    ShopStaticSetting_CreatedDateTime AS 建立時間,
+    ShopStaticSetting_UpdatedDateTime AS 更新時間
+FROM ShopStaticSetting(NOLOCK)
+WHERE ShopStaticSetting_ValidFlag = 1
+    AND ShopStaticSetting_ShopId = 41571  -- 指定店鋪ID
+    AND ShopStaticSetting_GroupName IN ('PromotionReward', 'PromotionEngine')  -- 促銷相關設定
+ORDER BY ShopStaticSetting_GroupName, ShopStaticSetting_Key;
 ```
 
 <br>
@@ -485,7 +791,7 @@ order by CrmShopMemberCard.CrmShopMemberCard_ShopId,CrmShopMemberCard.CrmShopMem
 
 ---
 
-## 12. BatchUpload 相關
+## 12. BatchUpload
 
 ### 12.1 插入新 BatchUpload Type
 
@@ -610,98 +916,3 @@ and Job_Name = 'BatchModifyPromotionSalePageTask'
 ```
 
 <br>
-
----
-
-## 14. SalesOrder
-
-```sql
-use ERPDB
-SELECT SalesOrderGroup_DateTime,SalesOrderGroup_ShopId,SalesOrderSlave_StatusDef,*
-FROM SalesOrderGroup(NOLOCK)
-inner join SalesOrder(nolock)
-on SalesOrder_SalesOrderGroupId = SalesOrderGroup_Id
-inner join SalesOrderSlave(nolock)
-on SalesOrder_Id = SalesOrderSlave_SalesOrderId
-WHERE SalesOrderGroup_TradesOrderGroupCode IN ('TG250821M00003')
-
-
-use ERPDB
-
-SELECT SalesOrderSlave_Id,SalesOrder_TradesOrderGroupId,SalesOrderSlave_StatusDef,SalesOrderThirdPartyPayment_StatusDef,SalesOrder_PayProfileTypeDef
-FROM dbo.SalesOrderSlave WITH (NOLOCK)
-INNER JOIN dbo.SalesOrder SO WITH(NOLOCK ) ON SO.SalesOrder_Id = SalesOrderSlave.SalesOrderSlave_SalesOrderId AND SalesOrder_ValidFlag = 1
-INNER JOIN dbo.SalesOrderThirdPartyPayment WITH (NOLOCK) on SalesOrderThirdPartyPayment_ValidFlag = 1 AND SalesOrderThirdPartyPayment_TradesOrderGroupId = SalesOrder_TradesOrderGroupId
-WHERE SalesOrderSlave_ValidFlag = 1
---AND SalesOrderSlave_TradesOrderSlaveCode IN ('TS250828J000019','TS250828J000013','TS250828J000025')
-```
-
-<br>
-
----
-
-## 15. LoyaltyPoint
-
-```sql
-USE LoyaltyDB
-
-DECLARE @shopId BIGINT = 17
-
-SELECT 
-	LoyaltyPointTransaction_CreatedDateTime AS CDT
-	, LoyaltyPointTransactionInfo_OuterMemberId AS OuterMemberId
-	, LoyaltyPointTransaction_EventTypeDef AS EventType
-	, LoyaltyPointTransactionInfo_OccurType AS OccurType
-	, LoyaltyPointTransaction_OccurTypeId
-	, LoyaltyPointTransaction_Code
-	, LoyaltyPointTransaction_TotalPoints
-	, LoyaltyPointTransactionInfo_OccurDescription
-	, LoyaltyPointTransaction_CreatedUser
-	--, REPLACE(LoyaltyPointTransaction_OccurTypeId, '|25721', '') AS TGCode
-	--,*
-	--,LoyaltyPointTransactionInfo.*
-FROM dbo.LoyaltyPointTransaction(NOLOCK)
-JOIN dbo.LoyaltyPointTransactionInfo(NOLOCK)
-	ON LoyaltyPointTransactionInfo_ValidFlag = 1
-	AND LoyaltyPointTransactionInfo_LoyaltyPointTransactionId = LoyaltyPointTransaction_Id
-WHeRE LoyaltyPointTransaction_ValidFlag = 1
-	AND LoyaltyPointTransaction_ShopId = @shopId
-	--AND LoyaltyPointTransaction_CreatedDateTime >= '2025-08-28' -- CONVERT(DATE,GETDATE())
-	--AND LoyaltyPointTransaction_Code IN ('LT2508281400059')
-	--AND LoyaltyPointTransaction_SystemType IN ('PromotionReward','PromotionRewardStore') -- PromotionReward PromotionRewardStore
-	--AND LoyaltyPointTransaction_CreatedUser IN ('PromotionRewardLoyaltyPointsV2','RecycleLoyaltyPointsV2Job') --PromotionRewardLoyaltyPointsV2
-	--AND LoyaltyPointTransactionInfo_OccurType IN ('PromotionReward','PromotionRewardRecycle','PromotionRewardStore')--'PromotionRewardStore',
-	--AND LoyaltyPointTransaction_OccurTypeId = 'MS250828Q000022|8738'
-	--AND LoyaltyPointTransaction_OccurTypeId IN ('0704ambertest004|7438','0704ambertest004|7263','0704ambertest004|7439')
-	--AND LoyaltyPointTransaction_OccurTypeId LIKE 'TG250327K00042|%'
-	AND LoyaltyPointTransaction_OccurTypeId LIKE '%34957%'
-	--AND LoyaltyPointTransaction_OccurTypeId LIKE '%LT2508281400059%'
-	--AND LoyaltyPointTransaction_OccurTypeId NOT LIKE 'TS25%'
-	--AND LoyaltyPointTransactionInfo_OuterMemberId = 'K46night'
-	--AND LoyaltyPointTransactionInfo_OccurDescription LIKE '%Sprint 198 Demo'
-	and LoyaltyPointTransaction_EventTypeDef = 'Recycle'
---ORDER BY LoyaltyPointTransaction_CreatedDateTime
-```
-
-<br>
-
-**常見的 OccurTypeId 範例**：
-
-<br>
-
-```sql
---4|6156
---UAT702R|6177_LT250311J000000024
---UAT1102RA|6200_LT250312J000000065
---FTL-250312182334-dA4QP3YM____|6198
-
---test0001|753_LT2506261400005
---0625ambertest003|753
---753_CrmSalesOrder:0625ambertest003
---753_CrmSalesOrder:1753
---658_CrmSalesOrder:1705
-```
-
-<br>
-
----
