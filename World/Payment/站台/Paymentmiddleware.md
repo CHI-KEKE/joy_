@@ -113,6 +113,6 @@ https://monitoring-dashboard.91app.io/d/Wc3ALtv4k/payment-middleware-monitor?org
 
 <br>
 
-![alt text](./image-9.png)
+![alt text](./Img/image-9.png)
 
 <br>

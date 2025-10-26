@@ -8,6 +8,7 @@
 5. [加價購](#5-加價購)
 6. [回饋活動加入全新的活動類型需實作](#6-回饋活動加入全新的活動類型需實作)
 7. [計算過程發生錯誤 - salepage collection](#7-計算過程發生錯誤---salepage-collection)
+8. [促購前台計算排序](#8-促購前台計算排序)
 
 <br>
 
@@ -1644,5 +1645,93 @@ https://tag-api.qa1.my.91dev.tw/swagger/index.html
 <br>
 
 https://salepage-service-api-internal.qa1.hk.91dev.tw/swagger/index.html#/
+
+<br>
+
+---
+
+## 8. 促購前台計算排序
+
+### 8.1 Group 處理流程
+
+**GetProcessGroupList**：
+
+<br>
+
+拉出 group list 會有 priority，最後面是 bottom group
+
+<br>
+
+**CalculateByProcessGroupAsync**：
+
+<br>
+
+會 order by priority 依序計算
+
+<br>
+
+**CreateGroupContext**：
+
+<br>
+
+每個 group 會 GetProcessRuleList，把每個 group 的活動類型都拉出來
+
+<br>
+
+設定進去 `groupContext.ProcessRuleList`
+
+<br>
+
+### 8.2 中間處理流程
+
+**商品貼標處理**：
+
+<br>
+
+中間就是一系列 salepage 貼標等等
+
+<br>
+
+### 8.3 Rule 處理流程
+
+**UpdateProcessRuleListAsync**：
+
+<br>
+
+`PromotionRuleRepository.GetRuleInfoListAsync` 會把商品有 match 到的 promotionIds 都拉出來
+
+<br>
+
+並一個個塞進 `context.ProcessRuleList`（用活動類型匹配）
+
+<br>
+
+所以維持原順序
+
+<br>
+
+**LoadRuleAndModifyPriority**：
+
+<br>
+
+會把 RuleList 丟進：
+
+<br>
+
+```csharp
+_promotionEngine.LoadRules(RuleLoader.AssemblyFullName, ruleList.Select(i => i.Rule).ToList());
+```
+
+<br>
+
+**Priority 設定**：
+
+<br>
+
+這邊會依據活動類型設定的 priority 設定 `rule.Priority`
+
+<br>
+
+最後促購引擎依據 priority 排序 如果排序相同就依據 Id , for loop 依序計算
 
 <br>

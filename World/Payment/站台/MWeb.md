@@ -22,6 +22,8 @@
 19. [Query 後流程](#19-query-後流程)
 20. [APP跳轉行為防止重複Request](#20-app跳轉行為防止重複request)
 21. [APP 跳轉](#21-app-跳轉)
+22. [商品頁 web / app](#22-商品頁-web--app)
+23. [商品分類頁](#23-商品分類頁)
 
 <br>
 
@@ -46,6 +48,11 @@ GetSalePageDataProcessor
 GetPayTypeProcessor
 GetPayTypeDescriptionProcessor
 
+
+ThirdPartyFinishProcess
+ThirdPartyProcess
+
+FinishPayment
 <br>
 
 ---
@@ -55,6 +62,8 @@ GetPayTypeDescriptionProcessor
 **Config 設定**：
 
 <br>
+
+這個在 V1 站台
 
 ```xml
 <!--單一Domain開關，上線觀察無異常後拔除-->
@@ -1357,6 +1366,154 @@ Config : string value = this._configService.GetAppSetting($"PayChannel.PaymentTi
 
 ```
 hk-com-nineyi-shop
+```
+
+<br>
+
+---
+
+## 22. 商品頁 web / app
+
+<br>
+
+**桌面版**：
+
+<br>
+
+```
+/SalePageV2/Index
+```
+
+<br>
+
+**APP用API**：
+
+<br>
+
+```
+Webapi/SalePageV2/GetSalePageV2Info
+```
+
+<br>
+
+**使用處理器**：
+
+<br>
+
+```
+ISalePageV2Processor
+```
+
+<br>
+
+**付款方式**：
+
+<br>
+
+```
+GetPayTypeProcessor
+```
+
+<br>
+
+**分期資訊**：
+
+<br>
+
+```
+GetInstallmentsProcessor
+```
+
+<br>
+
+---
+
+## 23. 商品分類頁
+
+**範例 URL**：
+
+<br>
+
+https://moiicrm.shop.qa1.my.91dev.tw/v2/official/SalePageCategory/378?sortMode=Curator&payType=CreditCardInstallment_Razer
+
+<br>
+
+**API**：
+
+<br>
+
+https://webapi.cdn.qa1.my.91dev.tw/webapi/SearchV2/GetShopPayTypeAndShippingTypeList?shopId=32&lang=zh-TW
+
+<br>
+
+### 22.1 db 設定
+
+**shopPayType 要塞**：
+
+<br>
+
+```
+ShopPayType_PayProfileTypeDef
+```
+
+<br>
+
+### 22.2 MWeb
+
+**檔案位置**：
+
+<br>
+
+```
+C:\91APP\NineYi.WebStore.MobileWebMall\WebStore\Frontend\BLV2\Search\SearchService.cs
+```
+
+金流順序
+GetAdjustedShopPayTypeListForSearch
+line 1806
+
+<br>
+
+### 22.3 多語系
+
+**Module**：
+
+<br>
+
+```
+backend.webapi.search_v2
+```
+
+<br>
+
+**Key**：
+
+<br>
+
+```
+credit_card_installment_razer
+```
+
+<br>
+
+### 22.4 Cache
+
+**快取時間**：
+
+<br>
+
+```
+30min
+```
+
+<br>
+
+**快取 Key**：
+
+<br>
+
+```
+Search-GetShopPayTypeAndShippingType-2017051718
 ```
 
 <br>

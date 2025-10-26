@@ -17,6 +17,7 @@
 14. [記住信用卡](#14-記住信用卡)
 15. [切換帳戶](#15-切換帳戶)
 16. [卡別](#16-卡別)
+17. [3D 驗證失敗後,後續 Query 完結果更新資料庫失敗](#17-3d-驗證失敗後後續-query-完結果更新資料庫失敗)
 
 <br>
 
@@ -1476,6 +1477,63 @@ Stripe 支援以下主要信用卡類型：
 - **mastercard** - MasterCard 卡
 - **american_express** - American Express 卡
 - **union_pay** - 銀聯卡
+
+<br>
+
+---
+
+## 17. 3D 驗證失敗後,後續 Query 完結果更新資料庫失敗
+
+### 17.1 監控
+
+<br>
+
+https://91app.slack.com/archives/C7T5CTALV/p1738461751955299
+
+<br>
+
+### 17.2 過程
+
+<br>
+
+**2025-02-02 01:16:55.049** - 綁定支付方式 建立 payment_method / 建立 payment_intent
+
+<br>
+
+**2025-02-02T01:16:58.78072266Z** - WaitingToPay 支付尚未完成("next_action": {redirect_to_url)，系統正在等待用戶 完成 3D Secure 認證
+
+<br>
+
+**2025-02-02T01:21:10.334423269Z** - Query "requires_action" 仍需用戶完成 3D Secure 驗證 目前 amount_received = 0，表示 尚未扣款成功 仍是 waiting to pay
+
+<br>
+
+**2025-02-02T01:27:37.290428613Z** - Query payment_intent_authentication_failure 這筆交易 未通過 3D Secure 驗證或其他身份驗證機制, 回復失敗, pmw 回mweb 失敗, mweb 會處理 stripe 取消api
+
+<br>
+
+**2025-02-02T01:27:37.350341125** - stripe api Cancel success, 後續回 webapi處理取消操作
+
+<br>
+
+**2025-02-02T01:31:07.879361224Z** - Query 當前支付狀態： "canceled"（交易已取消）
+=> stripe query 未 handle 這個狀態, pmw 給 mweb 9999, query 走到 else 訂單將由 Console 進行處理 繼續無限迴圈
+
+<br>
+
+![alt text](./Img/image31.png)
+
+<br>
+
+直到後續過期 webapi 會一直跳 無法取得付款流程上下文 NineYi.WebStore.Frontend.BLV2.PayProcesses.GetPayProcessDataProcessorException
+
+<br>
+
+### 17.3 處理
+
+<br>
+
+可以用 timeout 處理方式壓DB資料並轉單
 
 <br>
 

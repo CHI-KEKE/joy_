@@ -12,6 +12,7 @@
 9. [PayProfile](#9-payprofile)
 10. [PayShippingMapping](#10-payshippingmapping)
 11. [PayShippingDefault](#11-payshippingdefault)
+12. [Config DB](#12-config-db)
 
 <br>
 
@@ -226,6 +227,32 @@ from PayShippingMapping(nolock)
 select Shop_IsPayShippingDefault,*
 from Shop(nolock)
 where Shop_Id =44;
+```
+
+<br>
+
+---
+
+## 12. Config DB
+
+<br>
+
+CSP.Payment.PayTypes
+
+```sql
+SELECT TOP (1000) [AppSetting_Id]
+      ,[AppSetting_Key]
+      ,[AppSetting_Value]
+      ,[AppSetting_CreatedDateTime]
+      ,[AppSetting_CreatedUser]
+      ,[AppSetting_UpdatedTimes]
+      ,[AppSetting_UpdatedDateTime]
+      ,[AppSetting_UpdatedUser]
+      ,[AppSetting_ValidFlag]
+      ,[AppSetting_Rowversion]
+      ,[AppSetting_Description]
+  FROM [ConfigDB].[dbo].[AppSetting]
+  where AppSetting_Key = 'CSP.Payment.PayTypes'
 ```
 
 <br>

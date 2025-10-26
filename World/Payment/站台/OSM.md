@@ -3,6 +3,7 @@
 ## 目錄
 1. [三方金物流設定相關](#1-三方金物流設定相關)
 2. [加解密](#2-加解密)
+3. [付款類型的列表與排序](#3-付款類型的列表與排序)
 
 <br>
 
@@ -242,6 +243,26 @@ private static string Decode(string inputData, string keyVersion)
     string s = Encoding.Unicode.GetString(plainText);
     return s;
 }
+```
+
+<br>
+
+---
+
+## 3. 付款類型的列表與排序
+
+<br>
+
+查閱 Definition Table 的 Sort 欄位
+
+<br>
+
+```sql
+select *
+from Definition(nolock)
+where Definition_ValidFlag = 1
+and Definition_ColumnName = 'PayProfile_StatisticsTypeDef'
+order by Definition_Sort
 ```
 
 <br>
