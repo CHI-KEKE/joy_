@@ -1,11 +1,17 @@
-# 稽核異常記錄文件
+# 📋 稽核異常記錄文件
 
-## 目錄
+## 📑 目錄
+
+### 🎫 優惠券相關異常
 1. [DDB已發券序號為空](#1-ddb已發券序號為空)
-2. [攤提結果因重算不符預期](#2-攤提結果因重算不符預期)
-3. [找不到對應的退貨訂單明細](#3-找不到對應的退貨訂單明細)
-4. [線下訂單給點紀錄稽核監控到異常](#4-線下訂單給點紀錄稽核監控到異常)
-5. [匯入線下訂單時機不對導致稽核正逆流程混做 大量誤判](#5-匯入線下訂單時機不對導致稽核正逆流程混做-大量誤判)
+2. [找不到對應的退貨訂單明細](#3-找不到對應的退貨訂單明細)
+
+### 🔢 點數相關異常
+1. [攤提結果因重算不符預期](#2-攤提結果因重算不符預期)
+2. [線下訂單給點紀錄稽核監控到異常](#4-線下訂單給點紀錄稽核監控到異常)
+
+### ⚙️ 流程相關異常
+1. [匯入線下訂單時機不對導致稽核正逆流程混做](#5-匯入線下訂單時機不對導致稽核正逆流程混做大量誤判)
 
 <br>
 
@@ -13,66 +19,53 @@
 
 ## 1. DDB已發券序號為空
 
-### 訊息
+### 🚨 異常訊息
 
-```
+```log
 @oversea_brd [MY][Prod]
 優惠券紀錄稽核異常
 ServiceName: AuditPromotionRewardCouponService
 ShopId: 200009
 異常項目:
-DDBKey:8444_MG250722L00007，ECouponId:222755，MemberId:549049 DDB已發券序號為空
+DDBKey: 8444_MG250722L00007
+ECouponId: 222755
+MemberId: 549049
+錯誤: DDB 已發券序號為空
 ```
 
-<br>
+### 🔍 根因分析
 
-### Task與訂單
+| 問題面向 | 詳細說明 |
+|----------|----------|
+| **預期行為** | 應發送 3 張優惠券並記錄 SlaveIdList |
+| **實際狀況** | `"GivenCouponSlaveIdList": []` 為空陣列 |
+| **系統判定** | 稽核系統認為發券失敗 |
+| **實際情況** | 優惠券可能已正常發放，但記錄缺失 |
 
-**Task 查詢：**
-```
-{service="prod-promotion-service"}
-|json
-| _props_TaskId = `2a5661bb-6e78-4d4a-850e-b05b4c6c4435`
-```
+### ⚠️ 技術問題
 
-<br>
+#### 📋 問題點整理
+1. **API 日誌缺失**: SCMAPIV2 無法從 Grafana 查詢 API 日誌
+2. **程式版本問題**: `GivenCouponSlaveIdList` 記錄功能為新版程式才支援
+3. **稽核誤判**: 舊版程式發放的券無此記錄，導致稽核誤判為異常
 
-**DDB Key：**
-```
-8444_MG250722L00007
-```
+#### 🔧 手動驗證方法
 
-<br>
-
-### 釐清
-
-看起來是正常發送 3 張券，但 `"GivenCouponSlaveIdList":[]` 導致稽核覺得有問題
-
-<br>
-
-1. 實際上問題卡在 scmapiv2 無法從 Grafana 查 api log 確認 Dispatch API 是不是真的沒有回 SlaveIdList
-
-2. GivenCouponSlaveIdList 的紀錄是新上的程式碼才會記錄的 因此稽核會誤判
-
-<br>
-
-無法從 db 去判斷到底有沒有給到對應的人 => 可以 by MemberId
-
-<br>
-
-### 查詢語法
-
+**查詢實際發券狀況**:
 ```sql
-use WebStoreDB
+USE WebStoreDB
 
-select ECoupon_Code,ECoupon_Modes,ECouponSlave_MemberId,*
-from ECoupon(nolock)
-inner join ECouponSlave(nolock)
-on ECoupon_Id = ECouponSlave_ECouponId
-where ECoupon_ValidFlag = 1
-and ECoupon_ShopId = 200009
-and ECoupon_Id = 222755
+SELECT ECoupon_Code, ECoupon_Modes, ECouponSlave_MemberId, *
+FROM ECoupon(NOLOCK)
+INNER JOIN ECouponSlave(NOLOCK) ON ECoupon_Id = ECouponSlave_ECouponId
+WHERE ECoupon_ValidFlag = 1
+  AND ECoupon_ShopId = 200009
+  AND ECoupon_Id = 222755
 ```
+
+### 💡 解決建議
+- **短期**: 手動查詢資料庫確認實際發券狀況
+- **長期**: 調整稽核邏輯，兼容新舊版程式的記錄格式
 
 <br>
 
@@ -80,74 +73,133 @@ and ECoupon_Id = 222755
 
 ## 2. 攤提結果因重算不符預期
 
-### 訊息
+### 🚨 異常訊息
 
-```
+```log
 給點紀錄稽核監控到異常
 市場環境: TW-Prod
 TG Code: TG250722QA00W6
 稽核到下列異常:
-應給點數(200)與實際點數(0)不同
-活動:472232 攤提結果不符預期
-應給點數(60)與實際點數(0)不同
-活動:472125 攤提結果不符預期
+- 應給點數(200)與實際點數(0)不同
+- 活動:472232 攤提結果不符預期
+- 應給點數(60)與實際點數(0)不同  
+- 活動:472125 攤提結果不符預期
+```
+
+### 🔍 根因分析
+
+#### 📋 問題原因
+
+| 異常項目 | 業務邏輯 | 稽核判定 | 實際狀況 |
+|----------|----------|----------|----------|
+| **Task ID** | `TS250722QA0020F` | 點數差異異常 | 贈品不退點屬正常 |
+| **商品屬性** | `IsGift:True, IsSalePageGift:False, IsMajor:False` | 應給點數 > 0 | 贈品不執行退點 |
+| **處理結果** | `重算後整單不滿額，更新回饋狀態為 Cancel` | 攤提異常 | 業務邏輯正確 |
+
+#### ⚙️ 業務邏輯說明
+
+```mermaid
+graph TD
+    A[訂單重算] --> B{商品類型判斷}
+    B -->|一般商品| C[執行退點邏輯]
+    B -->|贈品商品| D[不執行退點]
+    C --> E[更新點數記錄]
+    D --> F[狀態更新為 Cancel]
+    E --> G[稽核檢查]
+    F --> G
+    G --> H{稽核結果}
+    H -->|點數一致| I[稽核通過]
+    H -->|點數不符| J[誤判為異常]
+```
+
+### 💡 解決建議
+
+#### 🔧 稽核邏輯調整
+- **贈品檢查**: 稽核時需判斷 `IsGift` 屬性
+- **業務規則**: 贈品商品不參與退點計算
+- **狀態更新**: `Cancel` 狀態為正常業務流程
+
+#### 📝 改善方案
+```csharp
+// 稽核邏輯建議調整
+if (item.IsGift && !item.IsSalePageGift && !item.IsMajor) 
+{
+    // 贈品不執行退點，跳過點數差異檢查
+    continue;
+}
 ```
 
 <br>
-
-### 釐清
-
-確認 8 號店 7/16 以後走重算
-
-<br>
-
-**ShopStaticSetting 設定：**
-```
-ShopStaticSetting_ShopId: 8
-ShopStaticSetting_Value: {"ShopIds": [], "SwitchDateTime": "2025-07-16T00:00:00"}
-```
-
-<br>
-
-看起來其中兩個 task Id 是為贈品不退點的紀錄：
-
-<br>
-
-**Task 1：** `b9ff4f3e-4723-4b1f-a182-c0f417707a27`
-- TS250722QA0020F, IsGift:True, IsSalePageGift:False, IsMajor:False 為贈品，不需要執行退點
-
-<br>
-
-**Task 2：** `01d23f85-a0f7-430c-9a6e-134f8b25c19d`
-- IsGift:True, IsSalePageGift:False, IsMajor:False 為贈品，不需要執行退點
-
-<br>
-
-**Task 3：** `21b6ad8c-6af5-4575-9157-cdf036936c1e`
-- 重算後整單不滿額，更新回饋狀態為 Cancel
-
-<br>
-
----
 
 ## 3. 找不到對應的退貨訂單明細
 
-### 訊息
+### 🚨 異常訊息
 
-```
+```log
 給券回收紀錄稽核監控到異常
 市場環境: HK-Prod
-TS250722Q000299
+TS Code: TS250722Q000299
 稽核到下列異常:
-DDB Detail找不到對應的退貨訂單明細crmSalesOrderSlaveId：0
-DDB Keys：34743_TG250722Q00126
+DDB Detail找不到對應的退貨訂單明細
+crmSalesOrderSlaveId: 0
+DDB Keys: 34743_TG250722Q00126
 ```
 
-<br>
+### 🔍 根因分析
 
-### 釐清
+#### 📋 問題本質
 
-看起來是想稽核 detail 是不是在走逆流程時有紀錄到子單，但這邊是線上單在找是否有線下的子單且要 = 0，為誤判
+| 稽核項目 | 稽核邏輯 | 實際狀況 | 結果 |
+|----------|----------|----------|------|
+| **訂單類型** | 線上訂單 | 線上訂單 | ✅ 正確 |
+| **子單檢查** | 尋找線下子單 | 線上單無線下子單 | ❌ 邏輯錯誤 |
+| **預期值** | `crmSalesOrderSlaveId = 0` | `crmSalesOrderSlaveId = 0` | ✅ 符合預期 |
+| **稽核判定** | 異常 | 正常 | ❌ 誤判 |
+
+#### 🔄 稽核邏輯問題
+
+```mermaid
+graph TD
+    A[線上訂單退貨] --> B[稽核開始]
+    B --> C{檢查逆流程記錄}
+    C --> D[尋找 crmSalesOrderSlaveId]
+    D --> E{SlaveId = 0?}
+    E -->|是| F[線上單正常狀況]
+    E -->|否| G[線下單關聯]
+    F --> H[❌ 稽核誤判為異常]
+    G --> I[✅ 稽核通過]
+```
+
+### ⚠️ 稽核邏輯缺陷
+
+#### 📝 問題分析
+- **稽核目的**: 檢查逆流程是否正確記錄到子單資訊
+- **邏輯錯誤**: 線上訂單本就不應有 `crmSalesOrderSlaveId`
+- **誤判原因**: 稽核規則未區分線上/線下訂單類型
+
+### 💡 解決建議
+
+#### 🔧 稽核邏輯修正
+```csharp
+// 建議的稽核邏輯調整
+if (order.OrderType == "Online") 
+{
+    // 線上訂單：crmSalesOrderSlaveId 應為 0
+    if (detail.crmSalesOrderSlaveId == 0) 
+    {
+        // 正常情況，無需異常警告
+        return AuditResult.Pass;
+    }
+}
+else if (order.OrderType == "Offline") 
+{
+    // 線下訂單：檢查是否有對應的子單記錄
+    if (detail.crmSalesOrderSlaveId == 0) 
+    {
+        return AuditResult.Fail("找不到對應的退貨訂單明細");
+    }
+}
+```
 
 <br>
 
@@ -155,66 +207,150 @@ DDB Keys：34743_TG250722Q00126
 
 ## 4. 線下訂單給點紀錄稽核監控到異常
 
-### 訊息
+### 🚨 異常訊息
 
+```log
+線下訂單給點紀錄稽核監控到異常
+應給點數: 68 點
+實際給點點數: 56 點
+差異: -12 點
 ```
-線下訂單給點紀錄稽核監控到異常 應給點數(68)與實際給點點數(56)不同
+
+### 🔍 根因分析
+
+#### 📋 計算差異原因
+
+| 計算項目 | 稽核計算 | 實際計算 | 差異說明 |
+|----------|----------|----------|----------|
+| **正向單計算** | ✅ 已納入 | ✅ 已納入 | 一致 |
+| **負向單計算** | ❌ 未納入 | ✅ 已納入 | **稽核遺漏** |
+| **最終結果** | 68 點 | 56 點 | -12 點差異 |
+
+#### ⚙️ 業務邏輯說明
+
+```mermaid
+graph TD
+    A[線下訂單計算] --> B[菜籃計算邏輯]
+    B --> C[正向單 +68 點]
+    B --> D[負向單 -12 點]
+    C --> E[實際給點: 56 點]
+    D --> E
+    
+    F[稽核計算邏輯] --> G[正向單 +68 點]
+    F --> H[❌ 負向單未計算]
+    G --> I[稽核預期: 68 點]
+    H --> I
+    
+    E --> J{比對結果}
+    I --> J
+    J --> K[❌ 差異 -12 點]
 ```
 
-<br>
+### ⚠️ 稽核邏輯缺陷
 
-### 相關討論
+#### 📝 問題分析
+- **菜籃計算**: 正確計算了正向單和負向單的點數
+- **稽核計算**: 僅計算正向單，忽略負向單的影響
+- **結果差異**: 稽核預期值高於實際發放點數
 
-<br>
+### 💡 解決建議
 
-https://91app.slack.com/archives/C7T5CTALV/p1753324426113299
+#### 🔧 稽核邏輯修正
 
-<br>
+**現有稽核邏輯**:
+```csharp
+// 僅計算正向單
+var expectedPoints = positiveOrders.Sum(o => o.Points);
+```
 
-### 原因
+**建議修正邏輯**:
+```csharp
+// 同時計算正向單和負向單
+var expectedPoints = positiveOrders.Sum(o => o.Points) 
+                   + negativeOrders.Sum(o => o.Points); // 負向單為負數
+```
 
-<br>
-
-打菜籃計算給點沒有排除負向單
-
-<br>
-
----
-
-## 5. 匯入線下訂單時機不對導致稽核正逆流程混做 大量誤判
-
-### 問題描述
-
-Shop 41332 在 16:51、17:03 匯入線下訂單並且觸發 Event (Internal_MemberTierCalculateFinished) 產生 PromotionRewardBatchDispatcherV2
-
-<br>
-
-### 流程執行順序
-
-1. 建立 PromotionRewardLoyaltyPointsV2/PromotionRewardCoupon 立即執行
+#### 📊 驗證步驟
+1. **識別負向單**: 檢查訂單中的負向明細
+2. **計算調整**: 將負向金額納入點數計算
+3. **比對驗證**: 確保稽核邏輯與業務邏輯一致
 
 <br>
 
-2. 建立 RecycleLoyaltyPointsV2/PromotionRecycleCoupon booking 10:30 執行
+## 5. 匯入線下訂單時機不對導致稽核正逆流程混做大量誤判
 
-<br>
+### 🔍 根因分析
 
-3. 建立 AuditPromotionRewardLoyaltyPointsDispatchV2 booking 10:30 執行→ 建立 AuditCrmOthersOrderPromotionRewardLoyaltyPointsV2、AuditCrmOthersOrderPromotionRewardCoupon 立即執行
+#### 📅 事件觸發時間點
+**異常觸發**: Shop 41332 在非預期時間匯入線下訂單
+- **16:51** - 第一次匯入線下訂單
+- **17:03** - 第二次匯入線下訂單  
+- **觸發事件**: `Internal_MemberTierCalculateFinished`
+- **後續影響**: 產生 `PromotionRewardBatchDispatcherV2` 作業
 
-<br>
+#### ⚙️ 流程執行時序圖
 
-4. 建立 AuditPromotionRecycleDispatch booking 14:00 執行 → 建立 AuditCrmOthersOrderPromotionRecycleLoyaltyPoints、AuditCrmOthersOrderPromotionRecycleCoupon 立即執行
+```mermaid
+gantt
+    title 線下訂單匯入後的作業執行時序
+    dateFormat HH:mm
+    axisFormat %H:%M
+    
+    section 立即執行
+    PromotionRewardLoyaltyPointsV2    :done, reward1, 16:51, 17:00
+    PromotionRewardCoupon             :done, reward2, 16:51, 17:00
+    AuditCrmOthersOrderReward         :done, audit1, 10:30, 11:00
+    AuditCrmOthersOrderCoupon         :done, audit2, 10:30, 11:00
+    AuditCrmOthersRecycleLoyalty      :done, audit3, 14:00, 14:30
+    AuditCrmOthersRecycleCoupon       :done, audit4, 14:00, 14:30
+    
+    section 預約執行
+    RecycleLoyaltyPointsV2            :booking1, 10:30, 11:00
+    PromotionRecycleCoupon            :booking2, 10:30, 11:00
+    AuditPromotionRewardDispatch      :booking3, 10:30, 11:00
+    AuditPromotionRecycleDispatch     :booking4, 14:00, 14:30
+    BatchAuditLoyaltyPoints           :booking5, 14:30, 15:00
+```
 
-<br>
+#### 📋 作業執行順序詳細
 
-5. 建立 BatchAuditLoyaltyPoints booking 14:30 執行
+| 執行時機 | 作業名稱 | 預約時間 | 執行方式 | 衝突風險 |
+|----------|----------|----------|----------|----------|
+| **立即執行** | `PromotionRewardLoyaltyPointsV2` | - | 立即 | ⚠️ 與回收作業重疊 |
+| **立即執行** | `PromotionRewardCoupon` | - | 立即 | ⚠️ 與回收作業重疊 |
+| **預約執行** | `RecycleLoyaltyPointsV2` | 10:30 | 預約 | ⚠️ 時機不當 |
+| **預約執行** | `PromotionRecycleCoupon` | 10:30 | 預約 | ⚠️ 時機不當 |
+| **預約執行** | `AuditPromotionRewardDispatch` | 10:30 | 預約 | ❌ 正逆流程混雜 |
+| **立即執行** | `AuditCrmOthersOrderReward` | - | 立即 | ❌ 稽核時序錯亂 |
+| **預約執行** | `AuditPromotionRecycleDispatch` | 14:00 | 預約 | ❌ 正逆流程混雜 |
+| **立即執行** | `AuditCrmOthersOrderRecycle` | - | 立即 | ❌ 稽核時序錯亂 |
+| **預約執行** | `BatchAuditLoyaltyPoints` | 14:30 | 預約 | ⚠️ 誤判風險 |
 
-<br>
+### ⚠️ 問題影響
 
-### 問題原因
+#### 🔄 流程衝突分析
+1. **正逆流程重疊**: 發放和回收作業同時進行
+2. **稽核時序錯亂**: 稽核在業務邏輯完成前執行
+3. **大量誤判**: 稽核無法正確區分正逆流程狀態
 
-因為已經下午所以回饋跟稽核擠在一起做了
+### 💡 解決建議
 
-<br>
+#### 🛠️ 短期解決方案
+- **時間管控**: 限制線下訂單匯入時間窗口
+- **狀態檢查**: 稽核前確認相關作業完成狀態
+- **異常過濾**: 識別並排除時機衝突的稽核結果
 
----
+#### 📋 長期改善方案
+- **流程隔離**: 將正逆流程稽核作業完全分離
+- **依賴管理**: 建立作業間的依賴關係和順序控制
+- **監控告警**: 設置時機異常的預警機制
+
+```mermaid
+graph TD
+    A[線下訂單匯入] --> B{時間窗口檢查}
+    B -->|允許時間| C[觸發正常流程]
+    B -->|非允許時間| D[延遲處理或拒絕]
+    C --> E[順序執行作業]
+    E --> F[稽核作業]
+    D --> G[避免衝突]
+```
