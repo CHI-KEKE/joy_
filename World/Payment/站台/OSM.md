@@ -268,3 +268,41 @@ order by Definition_Sort
 <br>
 
 ---
+
+
+
+
+
+
+
+
+
+
+
+
+## 交易黑名單
+
+
+創新帳號
+
+
+USE WebStoreDB
+
+
+SELECT MemberCode_MemberCode,*
+FROM VipMemberInfo(NOLOCK)
+INNER JOIN MemberCode(NOLOCK)
+ON MemberCode_MemberID = VipMemberInfo_MemberId
+WHERE VipMemberInfo_CellPhone = '077777777'
+AND VipMemberInfo_ShopId = 32
+
+
+要用 MemberCode
+
+
+BatchCreateBlackList
+
+匯入時
+比對 Definition 的 Desc
+
+myqa : E:\Storage\Docs

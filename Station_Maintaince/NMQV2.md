@@ -124,7 +124,7 @@
     "ClassName": "NineYi.SCM.Frontend.NMQV2.ThirdPartyPayment.ThirdPartyPaymentReCheckProcess"
   },
   "Id": 2,
-  "Data": "{\"ThirdPartyPaymentType\":\"TwoCTwoP\",\"startTime\":\"2023-12-16 22:15:00\",\"endTime\":\"2023-12-20 23:40:00\",\"PaymentServiceProvider\":\"PaymentMiddleware\"}"
+  "Data": "{\"RefundRequestIds\":[8957],\"TradesOrderGroupId\":34437,\"PayType\":\"QFPay\"}"
 }
 ```
 

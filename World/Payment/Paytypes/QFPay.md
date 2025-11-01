@@ -79,10 +79,6 @@ QFPay 為支援多種付款方式的金流服務商，目前用 hosted payment p
 
 ## 付款
 
-
-#### API 端點
-`/api/v1.0/pay/QFPay/TG240618K00002`
-
 <br>
 
 #### 技術架構特性
@@ -335,3 +331,12 @@ https://openapi-int.qfapi.com/checkstand/#/?appcode=51E1B3648E92428A8507BFE0918E
 
 - **"時間區間的禁止退款"** : 可 Retry
 - **"關帳退款的禁止"** : 需壓成 Fail
+
+<br>
+
+### 不同 TG 退款造成 Refund API Request 間格過近
+
+Refund => 1143
+RefundQuery => 1143
+
+https://91appinc.visualstudio.com/DailyResource/_workitems/edit/542134

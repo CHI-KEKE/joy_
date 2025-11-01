@@ -1,6 +1,6 @@
 ## 報表
 
-### API
+### 績效報表
 
 https://sms.qa1.hk.91dev.tw/Api/PromotionEnginePerformance/GetPerformanceReport
 

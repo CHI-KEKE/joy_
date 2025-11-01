@@ -83,7 +83,7 @@
 
 | 端點類型 | URL | 用途 |
 |----------|-----|------|
-| **基礎 API** | `https://api.cybersource.com` | API 呼叫基礎網址 |
+| **Base API** | `https://api.cybersource.com` | API 呼叫基礎網址 |
 | **付款頁面** | `https://secureacceptance.cybersource.com/pay` | 託管付款頁面網址 |
 
 <br>
@@ -446,7 +446,7 @@
 | 4 | 系統 Redo | 因逾時重新處理 |
 | 5 | Transmitted | 最終退款狀態為成功 |
 
-#### 根本原因
+#### 原因
 **Cybersource 退款查詢回應時間較長**，可能需要數小時才能取得最終結果
 
 <br>
@@ -471,7 +471,7 @@
 }
 ```
 
-**查詢回應錯誤**
+**Query API Response**
 ```json
 {
   "request_id": "checkRefundStatus",
@@ -483,6 +483,7 @@
 ```
 
 #### 處理方式
+
 **聯繫 AM 進行線下退款處理**
 
 <br>
@@ -491,11 +492,11 @@
 
 #### 問題分析
 - **現象**：付款流程完成但無法查詢訂單狀態
-- **影響**：可能導致付款成功但系統判定為 Timeout
+- **影響**：可能導致付款成功但91系統判定為 Timeout
 - **參考**：[Slack 討論串](https://91app.slack.com/archives/C01BRM657TN/p1731381407624779)
 
 #### 解決流程
-1. **通報 AM** 並提供受影響的訂單號碼
+1. **通報 AM** 提供受影響的訂單號碼
 2. **請 Cybersource 釐清** 系統狀態與查詢結果
 3. **監控機制** 定期檢查失敗與逾期訂單的付款狀態
 
@@ -515,7 +516,7 @@
 
 <br>
 
-### 5. 退款 SYSTEM_ERROR 處理
+### 5. 退款 SYSTEM_ERROR
 
 #### 錯誤特徵
 - **狀態代碼**：`SYSTEM_ERROR`

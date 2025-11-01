@@ -412,6 +412,7 @@ limit 100;
 
 - **Cart 處理**：在 GetPayDataProcessor.AssignPayProcessFlowTypeAsync 判斷是 GooglePay 後從 ExtendInfo 去 Resolve 出 paymentMethodId ==> payment_method，放在 checkoutContext.OldPayProcessContext.ThirdPartyPaymentInfo.ExtendInfo
 
+
 <br>
 
 - **前台付款**：GetMobileWalletPayExtendInfo 取出送到 PMW
@@ -676,3 +677,378 @@ Middleware Refund Response
 <br>
 
 ---
+
+
+## 5. publishableKey
+
+### 5.1 概述
+
+**publishableKey** 是 Stripe SDK 與 Stripe 後台互動的「公開金鑰」，用於識別商家身份並啟用付款功能。
+
+### 5.2 核心功能
+
+| 功能項目 | 說明 | 作用 |
+|----------|------|------|
+| **商家身份驗證** | 確認你是哪一個商家（Merchant） | 系統識別商家帳戶 |
+| **付款設定載入** | 載入商家的付款選項設定 | 啟用 Apple Pay、信用卡等功能 |
+| **付款操作執行** | 產生 PaymentMethod、Token、PaymentIntent | 處理實際付款流程 |
+
+### 5.3 各平台初始化設定
+
+#### 5.3.1 Apple Pay 設定
+
+**用途**：在應用程式啟動時配置 Stripe SDK
+
+**設定方式**：
+```swift
+// 使用 publishableKey 配置 SDK，讓應用程式能與 Stripe API 通訊
+StripeAPI.defaultPublishableKey = "pk_test_..."
+```
+
+**重要性**：必須在 App 啟動時完成設定，才能使用 Stripe API 功能
+
+#### 5.3.2 Google Pay 設定
+
+**適用平台**：React Native 應用程式
+
+**初始化方法**：有兩種方式可選擇
+
+| 方法 | 使用方式 | 適用場景 |
+|------|----------|----------|
+| **StripeProvider 組件** | 包裝付款畫面 | 單一付款頁面 |
+| **initStripe 方法** | 程式化初始化 | 全域初始化 |
+
+**必要參數**：僅需要 `publishableKey`
+
+**範例設定**：
+```javascript
+// 方法 1：使用 StripeProvider 組件
+<StripeProvider publishableKey="pk_test_...">
+  <PaymentScreen />
+</StripeProvider>
+
+// 方法 2：使用 initStripe 方法
+initStripe({
+  publishableKey: 'pk_test_...'
+});
+```
+
+### 5.4 技術原理
+
+#### 5.4.1 身份識別機制
+
+**公開金鑰特性**：
+- 可在前端安全使用
+- 不包含敏感資訊
+- 用於識別特定商家帳戶
+
+#### 5.4.2 SDK 連線流程
+
+```
+1. SDK 初始化 → 2. 連線 Stripe 伺服器 → 3. 商家身份驗證 → 4. 載入付款設定
+```
+
+**各步驟說明**：
+1. **SDK 初始化**：使用 publishableKey 設定 SDK
+2. **連線 Stripe 伺服器**：建立與 Stripe API 的安全連線
+3. **商家身份驗證**：透過 publishableKey 識別商家
+4. **載入付款設定**：根據商家設定啟用對應的付款方式
+
+### 5.5 安全性說明
+
+| 金鑰類型 | 用途 | 安全等級 | 使用位置 |
+|----------|------|----------|----------|
+| **Publishable Key** | 前端 SDK 初始化 | 公開安全 | 客戶端應用程式 |
+| **Secret Key** | 後端 API 呼叫 | 高度機密 | 伺服器端 |
+
+**注意事項**：
+- publishableKey 可安全地在前端程式碼中使用
+- 不會洩露敏感的商家資訊
+- 僅能執行客戶端允許的操作
+
+---
+
+## 6. App 設定值處理
+
+### 6.1 概述
+
+App 設定值處理負責管理行動應用程式中 Stripe 相關的配置資訊，包括 API 金鑰、帳戶類型、國家代碼等重要參數。
+
+### 6.2 App 設定檔 API
+
+#### 6.2.1 API 基本資訊
+
+| 項目 | 內容 |
+|------|------|
+| **API 端點** | `/webapi/AppNotification/GetMobileAppSettings/{shopId}` |
+| **範例 URL** | `https://shop2.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/2?r=t` |
+| **設定位置** | `ExtendInfo.StripeConfiguration` 節點 |
+
+#### 6.2.2 快取重新整理參數
+
+| 參數 | 說明 | 用途 |
+|------|------|------|
+| `r=t` | 重新載入設定 | 清除伺服器端快取，強制重新取得最新設定 |
+| `lang` | 語言設定 | 指定回傳內容的語言 |
+| `shopId` | 商店編號 | 指定要取得設定的商店 |
+
+![alt text](./Img/image-2.png)
+
+### 6.3 設定項目詳細說明
+
+#### 6.3.1 PublishableKey 設定
+
+**用途**：前端 SDK 初始化所需的公開金鑰
+
+**資料庫配置**：
+| 項目 | 值 |
+|------|-----|
+| **資料庫** | WebstoreDB |
+| **資料表** | ShopSecret |
+| **群組** | Stripe |
+| **金鑰格式** | `{accountType}PublishableKey` |
+
+**金鑰命名規則**：
+- Custom 帳戶：`CustomPublishableKey`
+- Standard 帳戶：`StandardPublishableKey`
+- UAT 環境：`CustomUATPublishableKey`
+
+#### 6.3.2 帳戶類型設定
+
+**用途**：決定商店使用的 Stripe 帳戶類型
+
+**資料庫配置**：
+| 項目 | 值 |
+|------|-----|
+| **資料庫** | WebStoreDB |
+| **資料表** | ShopDefault |
+| **欄位** | ShopDefault_NewValue |
+| **設定鍵** | StripeAccountType |
+
+##### 帳戶類型覆寫機制
+
+**問題描述**：資料庫中的帳戶類型可能被程式邏輯動態覆寫
+
+| 情況 | 資料庫值 | 實際使用值 | 原因 |
+|------|----------|------------|------|
+| **正常情況** | Custom | Custom | EnableCustomDate 已啟用且時間已到 |
+| **覆寫情況** | Custom | Standard | EnableCustomDate 未設定或時間未到 |
+
+**技術細節**：
+- 系統會檢查 `EnableCustomDate` 設定
+- 若未達指定時間，Custom 帳戶會自動切換為 Standard
+- **相關問題追蹤**：[VSTS #433159](https://91appinc.visualstudio.com/G11n/_workitems/edit/433159)
+
+##### Google Pay 帳戶狀態確認
+
+**檢查項目**：GooglePay CustomUATTest 帳戶是否已啟用
+
+**驗證方式**：
+1. 登入 Stripe 後台
+2. 檢查 GooglePay 設定狀態
+3. 確認帳戶類型為 CustomUATTest
+
+#### 6.3.3 CountryCode 設定
+
+**用途**：定義商店所在的國家代碼，影響付款處理邏輯
+
+**資料庫配置**：
+| 項目 | 值 |
+|------|-----|
+| **資料表** | shopStaticSetting |
+| **群組名稱** | Stripe |
+| **設定鍵** | CountryCode |
+
+**設定方式**：
+| 商店類型 | ShopId | GroupName | Key | 值範例 |
+|----------|--------|-----------|-----|-------|
+| **一般商店** | 0 | Stripe | CountryCode | HK, TW, SG |
+| **美金站** | 125 | Stripe | CountryCode | US |
+
+#### 6.3.4 Currency 設定
+
+**用途**：設定商店支援的交易幣別
+
+**資料來源**：
+| 項目 | 說明 |
+|------|------|
+| **資料表** | Supplier |
+| **欄位** | SalesMarketCurrency |
+| **用途** | 決定交易使用的幣別（如 HKD, TWD, USD） |
+
+### 6.4 快取管理
+
+#### 6.4.1 伺服器端快取
+
+**清除方式**：在 API URL 加入 `r=t` 參數
+
+**HK QA 環境範例**：
+
+| 商店 | URL | 說明 |
+|------|-----|------|
+| **2號店** | `https://shop2.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/2?lang=zh-TW&shopId=2&r=t` | 一般商店 |
+| **5號店** | `https://cccrrrmmm1.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/5?lang=zh-TW&shopId=5&r=t` | 測試商店 |
+| **125號店** | `https://usdshop.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/125?lang=en-US&shopId=125&r=t` | 美金站 |
+
+#### 6.4.2 BFF 快取
+
+**特性**：
+- **快取時間**：約 5 分鐘
+- **自動更新**：超過快取時間後自動重新載入
+- **影響範圍**：前端應用程式的設定取得
+
+#### 6.4.3 快取管理建議
+
+| 場景 | 建議作法 | 注意事項 |
+|------|----------|----------|
+| **設定更新後** | 使用 `r=t` 參數強制重新載入 | 確保取得最新設定 |
+| **開發測試** | 定期清除快取 | 避免設定延遲生效 |
+| **正式環境** | 依賴自動快取機制 | 降低伺服器負載 |
+
+### 6.5 設定驗證與除錯
+
+#### 6.5.1 常見問題排查
+
+| 問題 | 可能原因 | 解決方案 |
+|------|----------|----------|
+| PublishableKey 無效 | 帳戶類型設定錯誤 | 檢查 ShopDefault 中的 StripeAccountType |
+| 帳戶類型異常 | EnableCustomDate 設定問題 | 確認時間設定是否正確 |
+| 快取未更新 | BFF 快取延遲 | 使用 `r=t` 強制重新載入 |
+
+#### 6.5.2 設定檢查清單
+
+**部署前檢查**：
+- [ ] PublishableKey 設定正確
+- [ ] 帳戶類型與環境匹配
+- [ ] CountryCode 設定適當
+- [ ] Currency 設定正確
+- [ ] 快取機制運作正常
+
+
+## 7. 第三方金物流 pk + acct 設定根據帳戶類型差異
+
+### 7.1 概述
+
+根據 Stripe 帳戶類型的不同，系統會自動調整 **PublishableKey (pk)** 和 **帳戶設定 (acct)** 的配置，確保付款流程使用正確的金鑰和帳戶資訊。
+
+### 7.2 設定差異對比
+
+| 項目 | Custom 帳戶類型 | Standard 帳戶類型 |
+|------|-----------------|-------------------|
+| **付款流程** | DestinationCharge | DirectCharge |
+| **金鑰管理** | 使用 Custom 系列金鑰 | 使用 Standard 系列金鑰 |
+| **帳戶設定** | 需要指定子帳戶 (SubAccount) | 直接使用主帳戶 |
+| **費用處理** | 支援 ApplicationFee | 無 ApplicationFee |
+
+### 7.3 Custom 帳戶類型設定
+
+#### 7.3.1 視覺化配置
+
+![alt text](./Img/image-5.png)
+
+#### 7.3.2 設定特點
+
+| 設定項目 | 值 | 說明 |
+|----------|-----|------|
+| **PublishableKey** | `CustomPublishableKey` | 前端 SDK 使用的公開金鑰 |
+| **SecretKey** | `CustomAcctLiveSecretKey` | 後端 API 使用的私密金鑰 |
+| **SubAccount** | `StripeCustomSubAccount` | 指定的子帳戶 ID |
+| **PaymentFlow** | `DestinationCharge` | 使用目的地收費模式 |
+
+#### 7.3.3 配置邏輯
+
+```csharp
+// Custom 帳戶的金鑰選擇邏輯
+if (accountType.StartsWith("Custom"))
+{
+    publishableKey = GetCustomPublishableKey(accountType);
+    secretKey = GetCustomSecretKey(accountType);
+    subAccount = GetCustomSubAccount();
+    
+    // 支援 ApplicationFee 處理
+    supportApplicationFee = true;
+}
+```
+
+### 7.4 Standard 帳戶類型設定
+
+#### 7.4.1 視覺化配置
+
+![alt text](./Img/image-6.png)
+
+#### 7.4.2 設定特點
+
+| 設定項目 | 值 | 說明 |
+|----------|-----|------|
+| **PublishableKey** | `StandardPublishableKey` | 前端 SDK 使用的公開金鑰 |
+| **SecretKey** | `StandardAcctLiveSecretKey` | 後端 API 使用的私密金鑰 |
+| **SubAccount** | `StripeSubAccount` | 標準帳戶 ID |
+| **PaymentFlow** | `DirectCharge` | 使用直接收費模式 |
+
+#### 7.4.3 配置邏輯
+
+```csharp
+// Standard 帳戶的金鑰選擇邏輯
+if (accountType.StartsWith("Standard"))
+{
+    publishableKey = GetStandardPublishableKey(accountType);
+    secretKey = GetStandardSecretKey(accountType);
+    subAccount = GetStandardSubAccount();
+    
+    // 不支援 ApplicationFee
+    supportApplicationFee = false;
+}
+```
+
+### 7.5 金鑰與帳戶對應表
+
+#### 7.5.1 PublishableKey 對應
+
+| 帳戶類型 | 環境 | PublishableKey |
+|----------|------|----------------|
+| Custom | Live | `CustomPublishableKey` |
+| Custom | Test | `CustomTestPublishableKey` |
+| Custom | UAT | `CustomUATPublishableKey` |
+| Standard | Live | `StandardPublishableKey` |
+| Standard | UAT | `StandardUATPublishableKey` |
+
+#### 7.5.2 SecretKey 對應
+
+| 帳戶類型 | 環境 | SecretKey |
+|----------|------|-----------|
+| Custom | Live | `CustomAcctLiveSecretKey` |
+| Custom | Test | `CustomAcctTestSecretKey` |
+| Custom | UAT | `CustomUATAcctLiveSecretKey` |
+| Standard | Live | `StandardAcctLiveSecretKey` |
+| Standard | UAT | `StandardUATAcctLiveSecretKey` |
+
+### 7.6 動態設定切換
+
+#### 7.6.1 帳戶類型判斷
+
+**系統會根據以下條件動態決定使用的帳戶類型**：
+
+```csharp
+public string GetRuntimeAccountType()
+{
+    var currentType = GetConfiguredAccountType();
+    
+    // 檢查 EnableCustomDate 設定
+    if (currentType.StartsWith("Custom") && !IsCustomDateEnabled())
+    {
+        // 自動切換為對應的 Standard 帳戶
+        return currentType.Replace("Custom", "Standard")
+                         .Replace("Test", "");
+    }
+    
+    return currentType;
+}
+```
+
+#### 7.6.2 切換影響
+
+| 切換情況 | 原帳戶類型 | 實際使用類型 | 影響 |
+|----------|------------|-------------|------|
+| **時間未到** | Custom | Standard | 金鑰、付款流程自動切換 |
+| **時間已到** | Custom | Custom | 維持原設定 |
+| **標準帳戶** | Standard | Standard | 無影響 |

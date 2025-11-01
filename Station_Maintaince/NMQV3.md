@@ -460,3 +460,15 @@ string GetNmqV3Url(string market, string environment)
 <br>
 
 ---
+
+
+
+
+
+
+
+## SG-HK-NMQ3 C 槽已經塞爆 主要是 _SendTemplateMailPriorityLow log 先刪舊log
+
+跑 treesizeFree 看哪裡爆掉
+
+https://91app.slack.com/archives/G666578TX/p1761805951676429

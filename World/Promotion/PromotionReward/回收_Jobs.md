@@ -10,6 +10,32 @@
 
 ## 1. PromotionRecycleCouponJob
 
+
+#### IsValidForRecycleAsync
+
+`回收活動回饋優惠券 {ddbPk} 不符合回收條件，將不進行後續處理`
+
+- couponReward 沒資料 & OrderTypeDefEnum = ECom & SalesOrder.CheckIsValid = Valid => throw new PromotionRewardFailAndReleaseLockableException("訂單已付款，但查無給券紀錄")
+
+- couponReward 沒資料 & OrderTypeDefEnum = ECom & SalesOrder.CheckIsValid = Invalid =>
+
+log1 : 取消付款，不回收優惠券
+log2 回收活動回饋優惠券 {ddbPk} 不符合回收條件，將不進行後續處理
+回 false finish
+
+- couponReward 沒資料 & OrderTypeDefEnum = ECom & SalesOrder.CheckIsValid = Checking =>
+
+log1 : 付款處理中，不回收優惠券
+log2 回收活動回饋優惠券 {ddbPk} 不符合回收條件，將不進行後續處理
+回 false finish
+
+
+
+- 其他情況會 => throw new PromotionRewardFailAndReleaseLockableException($"查無訂單 DDB 給券資料 {ddbPk}")
+
+
+
+
 ### 1.1 準備 PromotionRewardRequestEntity
 
 ```csharp
@@ -84,34 +110,59 @@ promotionRequest.RelatedOrderSlaveIdList.Add(request.CrmSalesOrderSlaveId);
 
 <br>
 
-### 1.6 比對計算結果，更新 DDB
+### 1.6 比對計算結果，更新 主子表 DDB
 
-#### 不更新 DDB 條件
+#### 數量一致的情況
+
 `calculateResult.TotalCouponQty == couponReward.TotalCouponQty`
 
-<br>
+仍需更新以記錄退貨單
 
-#### 主表更新邏輯
 
-**當 `calculateResult.TotalCouponQty == 0`：**
-- `RewardStatus = Cancel`
+#### 優惠券數量不一致，更新 DDB 資料
 
-**其他情況：**
-- `TotalCouponQty = calculateResult.TotalCouponQty`
+一定會複寫
+couponReward.TotalCouponQty = calculateResult.TotalCouponQty
 
-<br>
+`calculateResult.TotalCouponQty == 0 && couponReward.GivenCouponQty == 0`
 
-#### 子表更新邏輯
+逆流程重新計算後優惠券應給數量為 0, 且目前未給任何優惠券，狀態更新為 {nameof(RewardDetailStatusEnum.Cancel)}
 
-**當 `calculateResult.TotalCouponQty > originalCouponQty`：**
-- `ShouldGiveCouponQty : + ( calculateResult.TotalCouponQty - originalCouponQty )`
 
-**當 `calculateResult.TotalCouponQty <= originalCouponQty`：**
-- `CanceledCouponQty + ( originalCouponQty - calculateResult.TotalCouponQty )`
+`calculateResult.TotalCouponQty <= couponReward.GivenCouponQty`
+
+逆流程重新計算後優惠券應給數量為 {calculateResult.TotalCouponQty}，目前已給優惠券數量為 {couponReward.GivenCouponQty}，已不須補發，狀態更新為 {nameof(RewardDetailStatusEnum.Reward)}
 
 <br>
+
+
+### 1.7 比對計算結果，更新道具表 DDB
+
+
+#### 重算後應給券數量變少 & calculateResult.TotalCouponQty > couponReward.GivenCouponQty
+
+更新取消數量 cancelledQty
+
+正流程還會繼續給券 
+cancelledQty = originalCouponQty - calculateResult.TotalCouponQty
+
+
+#### 重算後應給券數量變少 & calculateResult.TotalCouponQty < couponReward.GivenCouponQty
+
+更新取消數量 cancelledQty
+
+正流程不繼續給券 
+cancelledQty = originalCouponQty - couponReward.GivenCouponQty
 
 ---
+
+
+#### 重算後應給券數量變多
+
+重算後應給券數量變多, 則更新應給數量
+ShouldGiveCouponQty = calculateResult.TotalCouponQty - originalCouponQty
+
+
 
 ## 2. RecycleLoyaltyPointsV2
 

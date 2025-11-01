@@ -1,55 +1,36 @@
 # Promotion FrontEnd 文件
 
 ## 目錄
-1. [Domain](#1-domain)
-2. [購物車計算](#2-購物車計算)
-3. [菜籃計算](#3-菜籃計算)
-4. [生日壽星貼標](#4-生日壽星貼標)
-5. [加價購](#5-加價購)
-6. [回饋活動加入全新的活動類型需實作](#6-回饋活動加入全新的活動類型需實作)
-7. [計算過程發生錯誤 - salepage collection](#7-計算過程發生錯誤---salepage-collection)
-8. [促購前台計算排序](#8-促購前台計算排序)
+1. [API](#api)
+2. [菜籃計算](#菜籃計算)
+3. [生日壽星貼標](#生日壽星貼標)
+4. [加價購](#加價購)
+5. [回饋活動加入全新的活動類型需實作](#回饋活動加入全新的活動類型需實作)
+6. [計算過程發生錯誤 - salepage collection](#計算過程發生錯誤---salepage-collection)
+7. [促購前台計算排序](#促購前台計算排序)
+8. [確實為當月壽星應中沒中](#確實為當月壽星應中沒中)
 
 <br>
 
 ---
 
-## 1. Domain
+## API
 
-測試環境 API 網址：
-
-<br>
-
-```
-https://promotion-api-frontend-internal.qa1.hk.91dev.tw
-```
+`https://promotion-api-frontend-internal.qa1.hk.91dev.tw`
+`/api/cart-calculate`
 
 <br>
 
 ---
 
-## 2. 購物車計算
-
-API 端點：
-
-<br>
-
-```
-/api/cart-calculate
-```
-
-<br>
-
----
-
-## 3. 菜籃計算
+## 菜籃計算
 
 ### Request Body 範例
 
-注意：Qty 會被拆出來，-1 也會被改成 1
+**Qty 會被拆出來，-1 也會被改成 1**
 
 <br>
-
+SAMPLE1
 ```json
 {
   "PromotionRuleId": 0,
@@ -195,8 +176,7 @@ API 端點：
 }
 ```
 
-<br>
-
+SAMPLE2
 Request
 ```json
 {
@@ -635,8 +615,8 @@ Request
 }
 
 ```
-有中的 Response
 
+SAMPLE Response
 ```json
 {
   "code": "Success",
@@ -1187,24 +1167,15 @@ Request
 
 ---
 
-## 4. 生日壽星貼標
+## 生日壽星貼標
 
 ### DDB Table
 
 <br>
 
 **Table Name:** HK_QA_OSM_MemberCollectionMapping
-
-<br>
-
 **Key:** System_BirthdayMonth_5
-
-<br>
-
 **說明:** 該 shop 的 12 個 Birthday CollectionIds
-
-<br>
-
 **組成:** Name / Month / CollectionId
 
 <br>
@@ -1227,15 +1198,8 @@ C:\91APP\Promotion\frontEnd\nine1.promotion.web.api.frontend\src\BusinessLogic\N
 
 <br>
 
-promotionCollectionId + birthdayCollectionId + memberId 送去打 memberCollection
-
-<br>
-
-有 match 的會貼標在 context.Calculate.User.Tags
-
-<br>
-
-壽星要置換成純文字 CurrentBirthdayMonth
+拉訂單對應的時間 promotionCollectionId + birthdayCollectionId + memberId 送去打 memberCollection，有 match 的會貼標在 context.Calculate.User.Tags
+，壽星要置換成純文字 CurrentBirthdayMonth
 
 <br>
 
@@ -1276,9 +1240,9 @@ promotionCollectionId + birthdayCollectionId + memberId 送去打 memberCollecti
 
 ---
 
-## 5. 加價購
+## 加價購
 
-### 5.1 Request 處理流程
+### Request 處理流程
 
 **request 進來**
 
@@ -1348,23 +1312,14 @@ public bool Purchase(long id, ProductItem item, ISet<string> flags = null)
 ### 5.2 商品範例
 
 **加購品：** 60393 貓腿
-
-<br>
-
 **主商品：** 62227 有 SKU
-
-<br>
-
 **當下的 Request Data**
+**主商品：** 4.5 * 14 = 63，Flag：`"AddOnsSalepageMajor"`
+**加購品：** 6.66，Flags：`"AddOnsSalepageSub"`
 
 <br>
 
-- **主商品：** 4.5 * 14 = 63，Flag：`"AddOnsSalepageMajor"`
-- **加購品：** 6.66，Flags：`"AddOnsSalepageSub"`
-
-<br>
-
-### 5.3 完整 Request 範例
+### 完整 Request 範例
 
 ```json
 {
@@ -1498,7 +1453,7 @@ public bool Purchase(long id, ProductItem item, ISet<string> flags = null)
 
 <br>
 
-### 5.4 Collection 資訊
+### Collection 資訊
 
 **62227：**
 
@@ -1538,7 +1493,7 @@ public override void RuleInitProcess()
 
 <br>
 
-也就是說促購前台有一步 LoadRules，每個活動 Init 流程實作需要排除哪些 Flag 的商品
+促購前台有一步 LoadRules，每個活動 Init 流程實作需要排除哪些 Flag 的商品
 
 <br>
 
@@ -1564,12 +1519,11 @@ public IEnumerable<PurchasedItem> PurchasedItems =>
 ```
 
 <br>
+<br>
 
----
+## 回饋活動加入全新的活動類型需實作
 
-## 6. 回饋活動加入全新的活動類型需實作
-
-新增回饋活動類型時需要實作的檔案列表：
+新增回饋活動類型時需要實作的檔案列表
 
 <br>
 
@@ -1592,7 +1546,7 @@ public IEnumerable<PurchasedItem> PurchasedItems =>
 
 ---
 
-## 7. 計算過程發生錯誤 - salepage collection
+## 計算過程發生錯誤 - salepage collection
 
 ### 錯誤日誌範例
 
@@ -1612,19 +1566,8 @@ public IEnumerable<PurchasedItem> PurchasedItems =>
 
 <br>
 
-**1. 搜尋相關日誌**：
-
-<br>
-
-到 shoppingcart-loki 搜尋 salepage-service
-
-<br>
-
-**2. API 測試**：
-
-<br>
-
-打 POST {{host}}api/salepage-collections:match 測試
+- 到 shoppingcart-loki 搜尋 salepage-service
+- 打 POST {{host}}api/salepage-collections:match 測試
 
 <br>
 
@@ -1632,81 +1575,40 @@ public IEnumerable<PurchasedItem> PurchasedItems =>
 
 <br>
 
-**Tag API Swagger**：
+[Tag API Swagger](https://tag-api.qa1.my.91dev.tw/swagger/index.html)
+[Salepage Collection SWAGGER](https://salepage-service-api-internal.qa1.hk.91dev.tw/swagger/index.html#/)
 
 <br>
 
-https://tag-api.qa1.my.91dev.tw/swagger/index.html
+## 促購前台計算排序
+
+### Group 處理流程
+
+**GetProcessGroupList**：拉出 group list 會有 priority，最後面是 bottom group
 
 <br>
 
-**Salepage Collection API**：
+**CalculateByProcessGroupAsync**：會 order by priority 依序計算
 
 <br>
 
-https://salepage-service-api-internal.qa1.hk.91dev.tw/swagger/index.html#/
+**CreateGroupContext**：每個 group 會 GetProcessRuleList，把每個 group 的活動類型都拉出來，且活動類型也都有 priority，到引擎處理步驟，這邊會先設定進去 `groupContext.ProcessRuleList`
 
 <br>
 
----
+### 中間處理流程
 
-## 8. 促購前台計算排序
-
-### 8.1 Group 處理流程
-
-**GetProcessGroupList**：
+**商品貼標處理**：中間就是一系列 salepage 貼標等等
 
 <br>
 
-拉出 group list 會有 priority，最後面是 bottom group
-
-<br>
-
-**CalculateByProcessGroupAsync**：
-
-<br>
-
-會 order by priority 依序計算
-
-<br>
-
-**CreateGroupContext**：
-
-<br>
-
-每個 group 會 GetProcessRuleList，把每個 group 的活動類型都拉出來
-
-<br>
-
-設定進去 `groupContext.ProcessRuleList`
-
-<br>
-
-### 8.2 中間處理流程
-
-**商品貼標處理**：
-
-<br>
-
-中間就是一系列 salepage 貼標等等
-
-<br>
-
-### 8.3 Rule 處理流程
+### Rule 處理流程
 
 **UpdateProcessRuleListAsync**：
 
 <br>
 
-`PromotionRuleRepository.GetRuleInfoListAsync` 會把商品有 match 到的 promotionIds 都拉出來
-
-<br>
-
-並一個個塞進 `context.ProcessRuleList`（用活動類型匹配）
-
-<br>
-
-所以維持原順序
+`PromotionRuleRepository.GetRuleInfoListAsync` 會把商品有 match 到的 promotionIds 都拉出來，並一個個塞進 `context.ProcessRuleList`（用活動類型匹配），所以維持原順序
 
 <br>
 
@@ -1728,10 +1630,88 @@ _promotionEngine.LoadRules(RuleLoader.AssemblyFullName, ruleList.Select(i => i.R
 
 <br>
 
-這邊會依據活動類型設定的 priority 設定 `rule.Priority`
+這邊會依據活動類型設定的 priority 設定 `rule.Priority`，最後促購引擎依據 priority 排序 如果排序相同就依據 Id , for loop 依序計算
 
 <br>
 
-最後促購引擎依據 priority 排序 如果排序相同就依據 Id , for loop 依序計算
+---
+
+## 確實為當月壽星應中沒中
+
+### 案例背景
+
+**會員註冊時間**: 2025-10-20 23:04:58.270  
+**訂單成立時間**: 2025-10-20 23:13:35.756  
+**回饋執行時間**: 2025-10-20 23:14:14.386
 
 <br>
+
+### 問題分析
+
+<br>
+
+#### 📸 問題截圖記錄
+
+![alt text](./image.png)
+![alt text](./image-1.png)
+![alt text](./image-2.png)
+
+#### ✅ MemberCollection 驗證結果
+
+現在 MemberCollection 打 10月 Tag 會中：
+
+![alt text](./image-3.png)
+
+<br>
+
+### 🔍 根本原因
+
+<br>
+
+**時間順序分析**：
+- 會員於 **23:04** 註冊
+- 訂單於 **23:13** 成立  
+- 回饋於 **23:14** 執行
+- 會員於 **23:22** 才填寫生日資訊（下單後才操作）
+
+**問題核心**: 由於會員是在下單後才填寫生日，在訂單成立當下並不符合當月壽星條件，因此此筆訂單應該維持不中。
+
+<br>
+
+### 🛠️ 處理方案
+
+<br>
+
+#### 📋 DDB 資料修正
+
+**原 DDB Key 修正**：
+```
+原: 36974_TG251020Z00028_VSTS540944  
+改為: TG251020Z00028_VSTS540944
+```
+
+**GroupCode 處理**：
+- groupCode 為空
+- 此檔活動沒有佔額，不須解除佔額
+
+**Detail 資料修正**：
+- 原 DDB Detail TG 共有 7 筆
+- 改為: `TG251020Z00028_VSTS540944`
+
+<br>
+
+#### ✅ 最終處理結果
+
+1. **MemberService 協助查詢確認**: 會員 23:22 才填生日，是下單後才操作的
+2. **維持原判定**: 此筆訂單應維持不中
+3. **資料還原**: 手動還原該資料，並將新資料刪除
+
+<br>
+
+### 💡 經驗總結
+
+<br>
+
+- **時間點很重要**: 壽星貼標需以下單當下的會員資訊為準
+- **資料完整性**: 確保會員生日資訊在下單前已完整填寫
+- **追溯處理**: 後續補填的資訊不應影響已成立的訂單判定

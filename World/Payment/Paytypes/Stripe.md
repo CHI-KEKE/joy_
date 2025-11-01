@@ -22,6 +22,183 @@
 
 ---
 
+## 1. 技術文件與資源
+
+#### Stripe Custom Account 需求規劃
+
+**主要文件**：
+
+| 文件類型 | 連結 | 用途 |
+|----------|------|------|
+| **需求規劃簡報** | [Stripe Custom Account-需求規劃](https://docs.google.com/presentation/d/1rf8MKdV2Vh6ofZq6repFjUd-2DUYjhpv9I2ppT0rSYI/edit?slide=id.p#slide=id.p) | Custom Account 的完整需求規劃與技術設計 |
+
+---
+
+## 2. 帳戶類型與金鑰
+
+### 2.1 帳戶類型對比
+
+| 類型 | 說明 | 費率設定 | 適用對象 | 範例 |
+|------|------|----------|----------|------|
+| **Custom** | 平台統一費率 | 由平台設定統一費率 | 小型商店 | 在 OSM 按按鈕即可開設帳戶 |
+| **Standard** | 個別談判費率 | 商店自行與 Stripe 談判 | 大型商店 | SASA 等大型零售商 |
+
+### 2.2 系統帳戶類型清單
+
+#### 帳戶類型分類
+- **Custom 系列**
+  - `Custom` - Custom 正式環境
+  - `CustomTest` - Custom 測試環境
+  - `CustomUAT` - Custom UAT 環境
+  - `CustomUATTest` - Custom UAT 測試環境
+
+- **Standard 系列**
+  - `Standard` - Standard 正式環境
+  - `StandardUAT` - Standard UAT 環境
+
+### 2.3 帳戶類型查詢
+
+#### 資料庫查詢語法
+```sql
+-- 查詢商店的 Stripe 帳戶類型
+SELECT *
+FROM ShopDefault (NOLOCK)
+WHERE ShopDefault_ValidFlag = 1
+  AND ShopDefault_ShopId = @shopId
+  AND ShopDefault_Key = 'StripeAccountType'
+```
+
+### 2.4 系統設定管理
+
+#### 取得商店 Stripe 設定
+```csharp
+public StripeSettingsEntity GetShopStripeSetting(long shopId, bool cleanCache = false)
+{
+    // 從資料庫取得 Stripe 相關設定
+    IEnumerable<ShopDefaultEntity> shopDefault = 
+        this.ShopDefaultRepository.GetShopDefaultListByGroupTypeDef(shopId, new List<string> { "Stripe" });
+
+    return new StripeSettingsEntity
+    {
+        StripeAccountType = shopDefault.SingleOrDefault(x => x.Key == "StripeAccountType").NewValue,
+        StripeAccountSettingType = shopDefault.SingleOrDefault(x => x.Key == "StripeAccountSettingType").NewValue,
+        StripeSubAccount = shopDefault.SingleOrDefault(x => x.Key == "StripeSubAccount").NewValue,
+        StripeCustomSubAccount = shopDefault.SingleOrDefault(x => x.Key == "StripeCustomSubAccount").NewValue,
+        StripeCustomTestSubAccount = shopDefault.SingleOrDefault(x => x.Key == "StripeCustomTestSubAccount").NewValue,
+        EnableCustomDate = shopDefault.SingleOrDefault(x => x.Key == "EnableCustomDate").NewValue,
+    };
+}
+```
+
+### 2.5 執行時期帳戶類型邏輯
+
+#### 動態帳戶類型切換
+```csharp
+private string GetRuntimeAccountType()
+{
+    // 確保 Account Type 不會因為時間差而有所變動
+    if (string.IsNullOrEmpty(this._runtimeStripeAccountType))
+    {
+        this._runtimeStripeAccountType = this._stripeAccountType;
+
+        // Account Type 由 Custom 改為 Standard 的條件
+        // 1. EnableCustomDate 未指定時間
+        // 2. EnableCustomDate 未達指定時間
+        if (this._runtimeStripeAccountType.StartsWith(StripeAccountTypeConstants.Custom, StringComparison.OrdinalIgnoreCase)
+            && (DateTime.TryParse(this.EnableCustomDate, out DateTime enableCustomDate) == false
+                || enableCustomDate > DateTime.Now))
+        {
+            // 將 Custom 替換為 Standard
+            this._runtimeStripeAccountType = this._runtimeStripeAccountType.Replace(
+                StripeAccountTypeConstants.Custom, StripeAccountTypeConstants.Standard);
+            this._runtimeStripeAccountType = this._runtimeStripeAccountType.Replace(
+                StripeAccountTypeConstants.Test, string.Empty);
+        }
+    }
+
+    return this._runtimeStripeAccountType;
+}
+```
+
+### 2.6 帳戶類型判斷與設定
+
+#### 帳戶類型判斷方法
+```csharp
+// 判斷是否為 Custom 類型帳戶
+public bool IsCustomAccountType() => 
+    this.StripeAccountType.StartsWith(StripeAccountTypeConstants.Custom, StringComparison.OrdinalIgnoreCase);
+```
+
+#### 付款流程決定
+```csharp
+public string GetStripePaymentFlow()
+{
+    // Custom 帳戶使用 DestinationCharge，Standard 使用 DirectCharge
+    return this.IsCustomAccountType() ? "DestinationCharge" : "DirectCharge";
+}
+```
+
+#### 子帳戶選擇
+```csharp
+public string GetSubAccount()
+{
+    if (this.IsCustomAccountType())
+    {
+        // Custom 帳戶：根據測試模式選擇對應子帳戶
+        return this.IsTestMode() ? this.StripeCustomTestSubAccount : this.StripeCustomSubAccount;
+    }
+    else
+    {
+        // Standard 帳戶：使用標準子帳戶
+        return this.StripeSubAccount;
+    }
+}
+```
+
+### 2.7 API 金鑰管理
+
+#### 根據帳戶類型取得 API 金鑰
+```csharp
+private string GetStripeApiKey(long shopId, string accountType)
+{
+    return accountType switch
+    {
+        // Custom 系列
+        StripeAccountTypeConstants.Custom => 
+            this._stripeConfigurations.CustomAcctLiveSecretKey,
+        StripeAccountTypeConstants.CustomTest => 
+            this._stripeConfigurations.CustomAcctTestSecretKey,
+        StripeAccountTypeConstants.CustomUAT => 
+            this._stripeConfigurations.CustomUATAcctLiveSecretKey,
+        StripeAccountTypeConstants.CustomUATTest => 
+            this._stripeConfigurations.CustomUATAcctTestSecretKey,
+        
+        // Standard 系列
+        StripeAccountTypeConstants.Standard => 
+            this._stripeConfigurations.StandardAcctLiveSecretKey,
+        StripeAccountTypeConstants.StandardUAT => 
+            this._stripeConfigurations.StandardUATAcctLiveSecretKey,
+        
+        // 預設使用 Standard Live Key
+        _ => this._stripeConfigurations.StandardAcctLiveSecretKey
+    };
+}
+```
+
+#### API 金鑰對應表
+| 帳戶類型 | 對應 API 金鑰 |
+|----------|---------------|
+| Custom | CustomAcctLiveSecretKey |
+| CustomTest | CustomAcctTestSecretKey |
+| CustomUAT | CustomUATAcctLiveSecretKey |
+| CustomUATTest | CustomUATAcctTestSecretKey |
+| Standard | StandardAcctLiveSecretKey |
+| StandardUAT | StandardUATAcctLiveSecretKey |
+
+<br>
+
+---
+
 ## 1. 異常案例紀錄
 
 ### 1.1 特定消費者無法完成信用卡付款 - CU APP
@@ -276,171 +453,6 @@ ORDER BY HOURLY;
 - 確認 Stripe 服務狀態
 - 監控系統恢復情況
 - 分析白頁原因並提供解決方案
-
-<br>
-
----
-
-## 2. 帳戶類型
-
-### 2.1 帳戶類型對比
-
-| 類型 | 說明 | 費率設定 | 適用對象 | 範例 |
-|------|------|----------|----------|------|
-| **Custom** | 平台統一費率 | 由平台設定統一費率 | 小型商店 | 在 OSM 按按鈕即可開設帳戶 |
-| **Standard** | 個別談判費率 | 商店自行與 Stripe 談判 | 大型商店 | SASA 等大型零售商 |
-
-### 2.2 系統帳戶類型清單
-
-#### 帳戶類型分類
-- **Custom 系列**
-  - `Custom` - Custom 正式環境
-  - `CustomTest` - Custom 測試環境
-  - `CustomUAT` - Custom UAT 環境
-  - `CustomUATTest` - Custom UAT 測試環境
-
-- **Standard 系列**
-  - `Standard` - Standard 正式環境
-  - `StandardUAT` - Standard UAT 環境
-
-### 2.3 帳戶類型查詢
-
-#### 資料庫查詢語法
-```sql
--- 查詢商店的 Stripe 帳戶類型
-SELECT *
-FROM ShopDefault (NOLOCK)
-WHERE ShopDefault_ValidFlag = 1
-  AND ShopDefault_ShopId = @shopId
-  AND ShopDefault_Key = 'StripeAccountType'
-```
-
-### 2.4 系統設定管理
-
-#### 取得商店 Stripe 設定
-```csharp
-public StripeSettingsEntity GetShopStripeSetting(long shopId, bool cleanCache = false)
-{
-    // 從資料庫取得 Stripe 相關設定
-    IEnumerable<ShopDefaultEntity> shopDefault = 
-        this.ShopDefaultRepository.GetShopDefaultListByGroupTypeDef(shopId, new List<string> { "Stripe" });
-
-    return new StripeSettingsEntity
-    {
-        StripeAccountType = shopDefault.SingleOrDefault(x => x.Key == "StripeAccountType").NewValue,
-        StripeAccountSettingType = shopDefault.SingleOrDefault(x => x.Key == "StripeAccountSettingType").NewValue,
-        StripeSubAccount = shopDefault.SingleOrDefault(x => x.Key == "StripeSubAccount").NewValue,
-        StripeCustomSubAccount = shopDefault.SingleOrDefault(x => x.Key == "StripeCustomSubAccount").NewValue,
-        StripeCustomTestSubAccount = shopDefault.SingleOrDefault(x => x.Key == "StripeCustomTestSubAccount").NewValue,
-        EnableCustomDate = shopDefault.SingleOrDefault(x => x.Key == "EnableCustomDate").NewValue,
-    };
-}
-```
-
-### 2.5 執行時期帳戶類型邏輯
-
-#### 動態帳戶類型切換
-```csharp
-private string GetRuntimeAccountType()
-{
-    // 確保 Account Type 不會因為時間差而有所變動
-    if (string.IsNullOrEmpty(this._runtimeStripeAccountType))
-    {
-        this._runtimeStripeAccountType = this._stripeAccountType;
-
-        // Account Type 由 Custom 改為 Standard 的條件
-        // 1. EnableCustomDate 未指定時間
-        // 2. EnableCustomDate 未達指定時間
-        if (this._runtimeStripeAccountType.StartsWith(StripeAccountTypeConstants.Custom, StringComparison.OrdinalIgnoreCase)
-            && (DateTime.TryParse(this.EnableCustomDate, out DateTime enableCustomDate) == false
-                || enableCustomDate > DateTime.Now))
-        {
-            // 將 Custom 替換為 Standard
-            this._runtimeStripeAccountType = this._runtimeStripeAccountType.Replace(
-                StripeAccountTypeConstants.Custom, StripeAccountTypeConstants.Standard);
-            this._runtimeStripeAccountType = this._runtimeStripeAccountType.Replace(
-                StripeAccountTypeConstants.Test, string.Empty);
-        }
-    }
-
-    return this._runtimeStripeAccountType;
-}
-```
-
-### 2.6 帳戶類型判斷與設定
-
-#### 帳戶類型判斷方法
-```csharp
-// 判斷是否為 Custom 類型帳戶
-public bool IsCustomAccountType() => 
-    this.StripeAccountType.StartsWith(StripeAccountTypeConstants.Custom, StringComparison.OrdinalIgnoreCase);
-```
-
-#### 付款流程決定
-```csharp
-public string GetStripePaymentFlow()
-{
-    // Custom 帳戶使用 DestinationCharge，Standard 使用 DirectCharge
-    return this.IsCustomAccountType() ? "DestinationCharge" : "DirectCharge";
-}
-```
-
-#### 子帳戶選擇
-```csharp
-public string GetSubAccount()
-{
-    if (this.IsCustomAccountType())
-    {
-        // Custom 帳戶：根據測試模式選擇對應子帳戶
-        return this.IsTestMode() ? this.StripeCustomTestSubAccount : this.StripeCustomSubAccount;
-    }
-    else
-    {
-        // Standard 帳戶：使用標準子帳戶
-        return this.StripeSubAccount;
-    }
-}
-```
-
-### 2.7 API 金鑰管理
-
-#### 根據帳戶類型取得 API 金鑰
-```csharp
-private string GetStripeApiKey(long shopId, string accountType)
-{
-    return accountType switch
-    {
-        // Custom 系列
-        StripeAccountTypeConstants.Custom => 
-            this._stripeConfigurations.CustomAcctLiveSecretKey,
-        StripeAccountTypeConstants.CustomTest => 
-            this._stripeConfigurations.CustomAcctTestSecretKey,
-        StripeAccountTypeConstants.CustomUAT => 
-            this._stripeConfigurations.CustomUATAcctLiveSecretKey,
-        StripeAccountTypeConstants.CustomUATTest => 
-            this._stripeConfigurations.CustomUATAcctTestSecretKey,
-        
-        // Standard 系列
-        StripeAccountTypeConstants.Standard => 
-            this._stripeConfigurations.StandardAcctLiveSecretKey,
-        StripeAccountTypeConstants.StandardUAT => 
-            this._stripeConfigurations.StandardUATAcctLiveSecretKey,
-        
-        // 預設使用 Standard Live Key
-        _ => this._stripeConfigurations.StandardAcctLiveSecretKey
-    };
-}
-```
-
-#### API 金鑰對應表
-| 帳戶類型 | 對應 API 金鑰 |
-|----------|---------------|
-| Custom | CustomAcctLiveSecretKey |
-| CustomTest | CustomAcctTestSecretKey |
-| CustomUAT | CustomUATAcctLiveSecretKey |
-| CustomUATTest | CustomUATAcctTestSecretKey |
-| Standard | StandardAcctLiveSecretKey |
-| StandardUAT | StandardUATAcctLiveSecretKey |
 
 <br>
 
@@ -805,380 +817,10 @@ POST /v1/application_fees/{applicationFeeId}/refunds
 
 ---
 
-## 5. publishableKey
 
-### 5.1 概述
-
-**publishableKey** 是 Stripe SDK 與 Stripe 後台互動的「公開金鑰」，用於識別商家身份並啟用付款功能。
-
-### 5.2 核心功能
-
-| 功能項目 | 說明 | 作用 |
-|----------|------|------|
-| **商家身份驗證** | 確認你是哪一個商家（Merchant） | 系統識別商家帳戶 |
-| **付款設定載入** | 載入商家的付款選項設定 | 啟用 Apple Pay、信用卡等功能 |
-| **付款操作執行** | 產生 PaymentMethod、Token、PaymentIntent | 處理實際付款流程 |
-
-### 5.3 各平台初始化設定
-
-#### 5.3.1 Apple Pay 設定
-
-**用途**：在應用程式啟動時配置 Stripe SDK
-
-**設定方式**：
-```swift
-// 使用 publishableKey 配置 SDK，讓應用程式能與 Stripe API 通訊
-StripeAPI.defaultPublishableKey = "pk_test_..."
-```
-
-**重要性**：必須在 App 啟動時完成設定，才能使用 Stripe API 功能
-
-#### 5.3.2 Google Pay 設定
-
-**適用平台**：React Native 應用程式
-
-**初始化方法**：有兩種方式可選擇
-
-| 方法 | 使用方式 | 適用場景 |
-|------|----------|----------|
-| **StripeProvider 組件** | 包裝付款畫面 | 單一付款頁面 |
-| **initStripe 方法** | 程式化初始化 | 全域初始化 |
-
-**必要參數**：僅需要 `publishableKey`
-
-**範例設定**：
-```javascript
-// 方法 1：使用 StripeProvider 組件
-<StripeProvider publishableKey="pk_test_...">
-  <PaymentScreen />
-</StripeProvider>
-
-// 方法 2：使用 initStripe 方法
-initStripe({
-  publishableKey: 'pk_test_...'
-});
-```
-
-### 5.4 技術原理
-
-#### 5.4.1 身份識別機制
-
-**公開金鑰特性**：
-- 可在前端安全使用
-- 不包含敏感資訊
-- 用於識別特定商家帳戶
-
-#### 5.4.2 SDK 連線流程
-
-```
-1. SDK 初始化 → 2. 連線 Stripe 伺服器 → 3. 商家身份驗證 → 4. 載入付款設定
-```
-
-**各步驟說明**：
-1. **SDK 初始化**：使用 publishableKey 設定 SDK
-2. **連線 Stripe 伺服器**：建立與 Stripe API 的安全連線
-3. **商家身份驗證**：透過 publishableKey 識別商家
-4. **載入付款設定**：根據商家設定啟用對應的付款方式
-
-### 5.5 安全性說明
-
-| 金鑰類型 | 用途 | 安全等級 | 使用位置 |
-|----------|------|----------|----------|
-| **Publishable Key** | 前端 SDK 初始化 | 公開安全 | 客戶端應用程式 |
-| **Secret Key** | 後端 API 呼叫 | 高度機密 | 伺服器端 |
-
-**注意事項**：
-- publishableKey 可安全地在前端程式碼中使用
-- 不會洩露敏感的商家資訊
-- 僅能執行客戶端允許的操作
 
 ---
 
-## 6. App 設定值處理
-
-### 6.1 概述
-
-App 設定值處理負責管理行動應用程式中 Stripe 相關的配置資訊，包括 API 金鑰、帳戶類型、國家代碼等重要參數。
-
-### 6.2 App 設定檔 API
-
-#### 6.2.1 API 基本資訊
-
-| 項目 | 內容 |
-|------|------|
-| **API 端點** | `/webapi/AppNotification/GetMobileAppSettings/{shopId}` |
-| **範例 URL** | `https://shop2.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/2?r=t` |
-| **設定位置** | `ExtendInfo.StripeConfiguration` 節點 |
-
-#### 6.2.2 快取重新整理參數
-
-| 參數 | 說明 | 用途 |
-|------|------|------|
-| `r=t` | 重新載入設定 | 清除伺服器端快取，強制重新取得最新設定 |
-| `lang` | 語言設定 | 指定回傳內容的語言 |
-| `shopId` | 商店編號 | 指定要取得設定的商店 |
-
-![alt text](./Img/image-2.png)
-
-### 6.3 設定項目詳細說明
-
-#### 6.3.1 PublishableKey 設定
-
-**用途**：前端 SDK 初始化所需的公開金鑰
-
-**資料庫配置**：
-| 項目 | 值 |
-|------|-----|
-| **資料庫** | WebstoreDB |
-| **資料表** | ShopSecret |
-| **群組** | Stripe |
-| **金鑰格式** | `{accountType}PublishableKey` |
-
-**金鑰命名規則**：
-- Custom 帳戶：`CustomPublishableKey`
-- Standard 帳戶：`StandardPublishableKey`
-- UAT 環境：`CustomUATPublishableKey`
-
-#### 6.3.2 帳戶類型設定
-
-**用途**：決定商店使用的 Stripe 帳戶類型
-
-**資料庫配置**：
-| 項目 | 值 |
-|------|-----|
-| **資料庫** | WebStoreDB |
-| **資料表** | ShopDefault |
-| **欄位** | ShopDefault_NewValue |
-| **設定鍵** | StripeAccountType |
-
-##### 帳戶類型覆寫機制
-
-**問題描述**：資料庫中的帳戶類型可能被程式邏輯動態覆寫
-
-| 情況 | 資料庫值 | 實際使用值 | 原因 |
-|------|----------|------------|------|
-| **正常情況** | Custom | Custom | EnableCustomDate 已啟用且時間已到 |
-| **覆寫情況** | Custom | Standard | EnableCustomDate 未設定或時間未到 |
-
-**技術細節**：
-- 系統會檢查 `EnableCustomDate` 設定
-- 若未達指定時間，Custom 帳戶會自動切換為 Standard
-- **相關問題追蹤**：[VSTS #433159](https://91appinc.visualstudio.com/G11n/_workitems/edit/433159)
-
-##### Google Pay 帳戶狀態確認
-
-**檢查項目**：GooglePay CustomUATTest 帳戶是否已啟用
-
-**驗證方式**：
-1. 登入 Stripe 後台
-2. 檢查 GooglePay 設定狀態
-3. 確認帳戶類型為 CustomUATTest
-
-#### 6.3.3 CountryCode 設定
-
-**用途**：定義商店所在的國家代碼，影響付款處理邏輯
-
-**資料庫配置**：
-| 項目 | 值 |
-|------|-----|
-| **資料表** | shopStaticSetting |
-| **群組名稱** | Stripe |
-| **設定鍵** | CountryCode |
-
-**設定方式**：
-| 商店類型 | ShopId | GroupName | Key | 值範例 |
-|----------|--------|-----------|-----|-------|
-| **一般商店** | 0 | Stripe | CountryCode | HK, TW, SG |
-| **美金站** | 125 | Stripe | CountryCode | US |
-
-#### 6.3.4 Currency 設定
-
-**用途**：設定商店支援的交易幣別
-
-**資料來源**：
-| 項目 | 說明 |
-|------|------|
-| **資料表** | Supplier |
-| **欄位** | SalesMarketCurrency |
-| **用途** | 決定交易使用的幣別（如 HKD, TWD, USD） |
-
-### 6.4 快取管理
-
-#### 6.4.1 伺服器端快取
-
-**清除方式**：在 API URL 加入 `r=t` 參數
-
-**HK QA 環境範例**：
-
-| 商店 | URL | 說明 |
-|------|-----|------|
-| **2號店** | `https://shop2.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/2?lang=zh-TW&shopId=2&r=t` | 一般商店 |
-| **5號店** | `https://cccrrrmmm1.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/5?lang=zh-TW&shopId=5&r=t` | 測試商店 |
-| **125號店** | `https://usdshop.shop.qa1.hk.91dev.tw/webapi/AppNotification/GetMobileAppSettings/125?lang=en-US&shopId=125&r=t` | 美金站 |
-
-#### 6.4.2 BFF 快取
-
-**特性**：
-- **快取時間**：約 5 分鐘
-- **自動更新**：超過快取時間後自動重新載入
-- **影響範圍**：前端應用程式的設定取得
-
-#### 6.4.3 快取管理建議
-
-| 場景 | 建議作法 | 注意事項 |
-|------|----------|----------|
-| **設定更新後** | 使用 `r=t` 參數強制重新載入 | 確保取得最新設定 |
-| **開發測試** | 定期清除快取 | 避免設定延遲生效 |
-| **正式環境** | 依賴自動快取機制 | 降低伺服器負載 |
-
-### 6.5 設定驗證與除錯
-
-#### 6.5.1 常見問題排查
-
-| 問題 | 可能原因 | 解決方案 |
-|------|----------|----------|
-| PublishableKey 無效 | 帳戶類型設定錯誤 | 檢查 ShopDefault 中的 StripeAccountType |
-| 帳戶類型異常 | EnableCustomDate 設定問題 | 確認時間設定是否正確 |
-| 快取未更新 | BFF 快取延遲 | 使用 `r=t` 強制重新載入 |
-
-#### 6.5.2 設定檢查清單
-
-**部署前檢查**：
-- [ ] PublishableKey 設定正確
-- [ ] 帳戶類型與環境匹配
-- [ ] CountryCode 設定適當
-- [ ] Currency 設定正確
-- [ ] 快取機制運作正常
-
----
-
-## 7. 第三方金物流 pk + acct 設定根據帳戶類型差異
-
-### 7.1 概述
-
-根據 Stripe 帳戶類型的不同，系統會自動調整 **PublishableKey (pk)** 和 **帳戶設定 (acct)** 的配置，確保付款流程使用正確的金鑰和帳戶資訊。
-
-### 7.2 設定差異對比
-
-| 項目 | Custom 帳戶類型 | Standard 帳戶類型 |
-|------|-----------------|-------------------|
-| **付款流程** | DestinationCharge | DirectCharge |
-| **金鑰管理** | 使用 Custom 系列金鑰 | 使用 Standard 系列金鑰 |
-| **帳戶設定** | 需要指定子帳戶 (SubAccount) | 直接使用主帳戶 |
-| **費用處理** | 支援 ApplicationFee | 無 ApplicationFee |
-
-### 7.3 Custom 帳戶類型設定
-
-#### 7.3.1 視覺化配置
-
-![alt text](./Img/image-5.png)
-
-#### 7.3.2 設定特點
-
-| 設定項目 | 值 | 說明 |
-|----------|-----|------|
-| **PublishableKey** | `CustomPublishableKey` | 前端 SDK 使用的公開金鑰 |
-| **SecretKey** | `CustomAcctLiveSecretKey` | 後端 API 使用的私密金鑰 |
-| **SubAccount** | `StripeCustomSubAccount` | 指定的子帳戶 ID |
-| **PaymentFlow** | `DestinationCharge` | 使用目的地收費模式 |
-
-#### 7.3.3 配置邏輯
-
-```csharp
-// Custom 帳戶的金鑰選擇邏輯
-if (accountType.StartsWith("Custom"))
-{
-    publishableKey = GetCustomPublishableKey(accountType);
-    secretKey = GetCustomSecretKey(accountType);
-    subAccount = GetCustomSubAccount();
-    
-    // 支援 ApplicationFee 處理
-    supportApplicationFee = true;
-}
-```
-
-### 7.4 Standard 帳戶類型設定
-
-#### 7.4.1 視覺化配置
-
-![alt text](./Img/image-6.png)
-
-#### 7.4.2 設定特點
-
-| 設定項目 | 值 | 說明 |
-|----------|-----|------|
-| **PublishableKey** | `StandardPublishableKey` | 前端 SDK 使用的公開金鑰 |
-| **SecretKey** | `StandardAcctLiveSecretKey` | 後端 API 使用的私密金鑰 |
-| **SubAccount** | `StripeSubAccount` | 標準帳戶 ID |
-| **PaymentFlow** | `DirectCharge` | 使用直接收費模式 |
-
-#### 7.4.3 配置邏輯
-
-```csharp
-// Standard 帳戶的金鑰選擇邏輯
-if (accountType.StartsWith("Standard"))
-{
-    publishableKey = GetStandardPublishableKey(accountType);
-    secretKey = GetStandardSecretKey(accountType);
-    subAccount = GetStandardSubAccount();
-    
-    // 不支援 ApplicationFee
-    supportApplicationFee = false;
-}
-```
-
-### 7.5 金鑰與帳戶對應表
-
-#### 7.5.1 PublishableKey 對應
-
-| 帳戶類型 | 環境 | PublishableKey |
-|----------|------|----------------|
-| Custom | Live | `CustomPublishableKey` |
-| Custom | Test | `CustomTestPublishableKey` |
-| Custom | UAT | `CustomUATPublishableKey` |
-| Standard | Live | `StandardPublishableKey` |
-| Standard | UAT | `StandardUATPublishableKey` |
-
-#### 7.5.2 SecretKey 對應
-
-| 帳戶類型 | 環境 | SecretKey |
-|----------|------|-----------|
-| Custom | Live | `CustomAcctLiveSecretKey` |
-| Custom | Test | `CustomAcctTestSecretKey` |
-| Custom | UAT | `CustomUATAcctLiveSecretKey` |
-| Standard | Live | `StandardAcctLiveSecretKey` |
-| Standard | UAT | `StandardUATAcctLiveSecretKey` |
-
-### 7.6 動態設定切換
-
-#### 7.6.1 帳戶類型判斷
-
-**系統會根據以下條件動態決定使用的帳戶類型**：
-
-```csharp
-public string GetRuntimeAccountType()
-{
-    var currentType = GetConfiguredAccountType();
-    
-    // 檢查 EnableCustomDate 設定
-    if (currentType.StartsWith("Custom") && !IsCustomDateEnabled())
-    {
-        // 自動切換為對應的 Standard 帳戶
-        return currentType.Replace("Custom", "Standard")
-                         .Replace("Test", "");
-    }
-    
-    return currentType;
-}
-```
-
-#### 7.6.2 切換影響
-
-| 切換情況 | 原帳戶類型 | 實際使用類型 | 影響 |
-|----------|------------|-------------|------|
-| **時間未到** | Custom | Standard | 金鑰、付款流程自動切換 |
-| **時間已到** | Custom | Custom | 維持原設定 |
-| **標準帳戶** | Standard | Standard | 無影響 |
 
 ---
 
@@ -1459,59 +1101,6 @@ MachineConfig/Frontend/AppSettings.QA300.config
 | **定期檢查** | 每季 | 技術負責人 | 確保資訊正確性 |
 | **即時更新** | 變更時 | 開發人員 | 變更後立即更新文件 |
 | **權限管理** | 按需求 | 系統管理員 | 控制存取權限 |
-
----
-
-## 10. 技術文件與資源
-
-### 10.1 概述
-
-本章節整理 Stripe 相關的技術文件、需求規劃和參考資源，提供開發團隊完整的技術支援資訊。
-
-### 10.2 核心技術文件
-
-#### 10.2.1 Stripe Custom Account 需求規劃
-
-**主要文件**：
-
-| 文件類型 | 連結 | 用途 |
-|----------|------|------|
-| **需求規劃簡報** | [Stripe Custom Account-需求規劃](https://docs.google.com/presentation/d/1rf8MKdV2Vh6ofZq6repFjUd-2DUYjhpv9I2ppT0rSYI/edit?slide=id.p#slide=id.p) | Custom Account 的完整需求規劃與技術設計 |
-
-#### 10.2.2 文件內容概要
-
-**涵蓋範圍**：
-- **需求分析**：Custom Account 的業務需求和技術需求
-- **架構設計**：系統架構和整合方案
-- **實作規劃**：開發時程和里程碑
-- **測試策略**：測試計畫和驗證方法
-
-#### 10.2.3 文件使用指南
-
-**使用建議**：
-| 角色 | 重點章節 | 使用目的 |
-|------|----------|----------|
-| **產品經理** | 需求分析 | 了解業務需求和功能規格 |
-| **系統架構師** | 架構設計 | 規劃系統整合方案 |
-| **開發人員** | 實作規劃 | 了解開發任務和技術細節 |
-| **測試人員** | 測試策略 | 規劃測試案例和驗證流程 |
-
-### 10.3 技術資源管理
-
-#### 10.3.1 文件版本控制
-
-**版本管理**：
-- **主版本**：Google Docs 作為官方版本
-- **備份機制**：定期下載 PDF 備份
-- **變更追蹤**：使用 Google Docs 版本歷史功能
-
-#### 10.3.2 存取權限管理
-
-| 權限等級 | 適用人員 | 存取範圍 |
-|----------|----------|----------|
-| **編輯權限** | 技術負責人、產品經理 | 可編輯所有內容 |
-| **評論權限** | 開發人員、測試人員 | 可查看和評論 |
-| **檢視權限** | 相關利害關係人 | 僅可查看內容 |
 
 ---
 
