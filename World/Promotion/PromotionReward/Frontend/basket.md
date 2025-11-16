@@ -1,36 +1,220 @@
-# Promotion FrontEnd 文件
 
-## 目錄
-1. [API](#api)
-2. [菜籃計算](#菜籃計算)
-3. [生日壽星貼標](#生日壽星貼標)
-4. [加價購](#加價購)
-5. [回饋活動加入全新的活動類型需實作](#回饋活動加入全新的活動類型需實作)
-6. [計算過程發生錯誤 - salepage collection](#計算過程發生錯誤---salepage-collection)
-7. [促購前台計算排序](#促購前台計算排序)
-8. [確實為當月壽星應中沒中](#確實為當月壽星應中沒中)
 
-<br>
-
----
-
-## API
-
-`https://promotion-api-frontend-internal.qa1.hk.91dev.tw`
-`/api/cart-calculate`
-
-<br>
+## 📋 目錄
+1. [請求實體 BasketCalculateRequestEntity](#1-請求實體-basketcalculaterequestentity)
+2. [資料轉換流程](#2-資料轉換流程)
+   - [轉換成 SalepageSkuItemList](#轉換成-salepageskuitemlist)
+   - [組成 ProcessContext](#組成-processcontext)
+   - [取得菜籃群組 GetBasketGroup](#取得菜籃群組-getbasketgroup)
+   - [建立群組上下文 CreateGroupContext](#建立群組上下文-creategroupcontext)
+3. [計算處理流程 Calculate](#3-計算處理流程-calculate)
+   - [更新處理規則清單 UpdateProcessRuleListAsync](#更新處理規則清單-updateprocessrulelistasync)
+   - [更新商品項目清單 UpdateSalepageSkuItemListAsync](#更新商品項目清單-updatesalepageskuitemlistasync)
+   - [更新門市標籤 UpdateLocationTagsAsync](#更新門市標籤-updatelocationtagsasync)
+   - [載入規則並修改優先級 LoadRuleAndModifyPriority](#載入規則並修改優先級-loadruleandmodifypriority)
+   - [建立購物車上下文 CreateShoppingCartContext](#建立購物車上下文-createshoppingcartcontext)
+   - [執行購買 Purchase](#執行購買-purchase)
+4. [範例資料](#4-範例資料)
+   - [菜籃 Request Body JSON](#菜籃-request-body-json)
+   - [菜籃 Response 回應](#菜籃-response-回應)
 
 ---
 
-## 菜籃計算
+## 1. 請求實體 BasketCalculateRequestEntity
 
-### Request Body 範例
+### 🔑 主要欄位
 
-**Qty 會被拆出來，-1 也會被改成 1**
+| 欄位 | 說明 |
+|------|------|
+| **PromotionRuleId** | 單一活動規則ID |
+| **PromotionRuleIds** | 多個活動規則ID清單 |
+| **PromotionRules** | 點數活動規則（需要以訂單當下版本為主，從外部傳入） |
+| **CalculateDateTime** | 計算時間（點數活動需要以訂單當下時間為準） |
+| **PromotionSourceType** | 促銷來源類型：Promotion / Coupon / LoyaltyPoint / ExtraPurchase / FeePromotion |
 
-<br>
-SAMPLE1
+### 👤 使用者資訊 (User)
+
+| 欄位 | 說明 |
+|------|------|
+| **Id** | 會員ID (MemberId) |
+| **Tags** | 會員標籤（首購、會員等級） |
+| **OuterId** | 會員外部編號 (VipMember上的) |
+| **Channel** | 通路 |
+| **CurrencyDecimalDigits** | 幣別小數位數 |
+
+### 🛒 商品清單 (SalepageSkuList)
+
+```json
+{
+  "SalepageId": 0,
+  "SkuId": 0,
+  "Price": 8,
+  "SuggestPrice": 0,
+  "Qty": 1,
+  "Flags": [],
+  "OuterId": "",
+  "Tags": null,
+  "OptionalTypeDef": "",
+  "OptionalTypeId": 0,
+  "CartExtendInfoItemGroup": 828042,
+  "CartExtendInfoItemType": "TradesOrderSlaveId",
+  "PointsPayPair": null,
+  "CartExtendInfos": [],
+  "CartId": 0
+}
+```
+
+---
+
+## 2. 資料轉換流程
+
+### 轉換成 SalepageSkuItemList
+
+根據 Request.Qty 組成 SalepageSkuItemEntity List
+
+#### 🏷️ 基礎欄位 (Base)
+- **Index** - 索引
+- **SalepageId** - 商品頁ID
+- **SkuId** - SKU ID
+- **OuterId** - 外部編號
+- **CartId** - 購物車ID
+
+#### 💰 價格欄位 (Price)
+- **Price** = Price
+- **Payment** = Price
+
+#### 🏪 標籤欄位 (Tags)
+- **Tags** - 標籤
+- **Flags** - 旗標
+
+#### 💎 點數加金 (PointsPayPair)
+- **PointsPayPair** - 點數支付配對
+
+#### ⚙️ 特殊邏輯欄位
+- **OptionalTypeDef** - 可選類型定義
+- **OptionalTypeId** - 可選類型ID
+- **CartExtendInfoItemGroup** - 購物車擴展資訊群組
+- **CartExtendInfoItemType** - 購物車擴展資訊類型
+- **CartExtendInfos** - 購物車擴展資訊
+
+### 組成 ProcessContext
+
+| 欄位 | 說明 |
+|------|------|
+| **Calculate** | 放入 request entity |
+| **SalepageSkuItemList** | 商品SKU清單 |
+| **ShopId** | 商店ID |
+
+### 取得菜籃群組 GetBasketGroup
+
+🔄 **回傳**: `PromotionBasketGroup`
+
+### GetInstance
+
+因為
+var useCustomRule = basketCalculateRequest.PromotionRules?.Any() == true;
+
+🔄 **回傳**: `CustomRuleBasketGroup`
+
+### 建立群組上下文 CreateGroupContext
+
+#### 📊 GroupContext 組成
+| 欄位 | 說明 |
+|------|------|
+| **ShopId** | 商店ID |
+| **Group** | PromotionBasketGroup |
+| **ProcessRuleList** | 全活動類型都拿 |
+| **Calculate** | request entity |
+| **SalepageSkuItemList** | 商品清單 |
+| **Shipping** | 運送資訊 |
+
+
+---
+
+## 3. 計算處理流程 Calculate
+
+### 更新處理規則清單 UpdateProcessRuleListAsync
+
+#### 🔍 GetRuleInfoListAsync 處理步驟
+
+1️⃣ **取得活動ID清單**
+   - `Ids = 指定商品活動 Id + 指定料號活動 Id + 全站活動 Id`
+
+2️⃣ **處理會員集合 (MemberCollection)**
+   - 當月壽星解析Rule，取得當下時間並取得對應 `birthdayCollectionId`
+   - 加入 MemberCollection
+   - 打 match，若有中就改成 `CurrentBirthdayMonth` 貼在 UserTag
+
+3️⃣ **設定規則清單**
+   - 拿剛剛撈的 Ids 設定 `_rulesList`
+   - 格式：`RuleEntity(i.PromotionEngineId, this.SourceType, i.TypeDef, i.Rule, i.PayProfileTypeDef)`
+
+📌 **條件**: 商品與 promotion 有交集到才 `UpdateProcessRule` => 設定 `context.ProcessRuleList.RuleList`
+
+### 更新商品項目清單 UpdateSalepageSkuItemListAsync
+
+🏷️ **處理邏輯**: 商品頁、料號有交集的就貼 Tags
+
+### 更新門市標籤 UpdateLocationTagsAsync
+
+📍 **處理流程**:
+- 取得 `context.Shipping.LocationId`
+- 設定 `context.Shipping.LocationTags = locationTags.ToArray()`
+- 比對 S3 的 Locations 資料：
+  - `LocationId`
+  - `TagId`
+
+### 載入規則並修改優先級 LoadRuleAndModifyPriority
+
+#### 🔄 LoadRules 流程
+```csharp
+var ruleList = context.ProcessRuleList.SelectMany(i => i.RuleList).ToList();
+_promotionEngine.LoadRules(RuleLoader.AssemblyFullName, ruleList.Select(i => i.Rule).ToList());
+```
+
+📊 **引擎設定**:
+- 在引擎設定 `Rules[promotionRuleBase.Id] = promotionRuleBase`
+- 型別: `public IDictionary<long, PromotionRuleBase> Rules { get; private set; } = new Dictionary<long, PromotionRuleBase>();`
+
+#### ⚡ 更新規則 Priority
+- `context.ProcessRuleList.Single(i => i.Name == type).Priority => _promotionEngine.Rules.Values`
+
+### 建立購物車上下文 CreateShoppingCartContext
+
+| 參數 | 設定值 |
+|------|--------|
+| **userContext** | `new UserContext(context.Calculate.User.Id, context.Calculate.User.Tags)` |
+| **locationContext** | `new LocationContext(context.Shipping.LocationId, context.Shipping.LocationTags, isLocationAlwaysMatch)` (線上訂單) |
+| **Channel** | `context.Calculate.Channel` |
+| **CurrencyDecimalDigits** | `context.Calculate.CurrencyDecimalDigits` |
+
+### 執行購買 Purchase
+
+🛒 **資料處理**: 打資料倒進 `_purchasedItems`
+
+#### 📦 ProductItem 結構
+```csharp
+productItem
+- Id = item.SalepageId
+- SkuId = item.SkuId
+- ListPrice = item.Payment
+- Tags = item.Tags
+```
+
+#### 💰 計算邏輯
+- `ISet<string> flags = item.Flags.ToHashSet()`
+- `TotalPrice += purchasedItem.SalePrice` (SalePrice = item.ListPrice)
+
+---
+
+## 4. 範例資料
+
+### 菜籃 Request Body JSON
+
+📌 **重要說明**:
+- Qty 會被拆出來，-1 也會被改成 1
+- 只會帶一個 ruleId
+
 ```json
 {
   "PromotionRuleId": 0,
@@ -176,8 +360,6 @@ SAMPLE1
 }
 ```
 
-SAMPLE2
-Request
 ```json
 {
   "promotionRules": [
@@ -616,7 +798,11 @@ Request
 
 ```
 
-SAMPLE Response
+
+
+### 菜籃 Response 回應
+
+#### ✅ 符合活動條件 (中活動)
 ```json
 {
   "code": "Success",
@@ -1005,7 +1191,7 @@ SAMPLE Response
 }
 ```
 
-沒中
+#### ❌ 不符合活動條件 (沒中活動)
 ```json
 {
   "code": "Success",
@@ -1164,554 +1350,3 @@ SAMPLE Response
 }
 
 ```
-
----
-
-## 生日壽星貼標
-
-### DDB Table
-
-<br>
-
-**Table Name:** HK_QA_OSM_MemberCollectionMapping
-**Key:** System_BirthdayMonth_5
-**說明:** 該 shop 的 12 個 Birthday CollectionIds
-**組成:** Name / Month / CollectionId
-
-<br>
-
-### 程式碼路徑
-
-<br>
-
-```
-C:\91APP\Promotion\frontEnd\nine1.promotion.web.api.frontend\src\BusinessLogic\Nine1.Promotion.BL.Services\Rules\Repositories\PromotionRuleRepository.cs
-```
-
-<br>
-
-### GetRuleInfoListAsync
-
-<br>
-
-以活動是否有 "rule.IsBirthdayMonthEnabled" 來確認是否為當月壽星
-
-<br>
-
-拉訂單對應的時間 promotionCollectionId + birthdayCollectionId + memberId 送去打 memberCollection，有 match 的會貼標在 context.Calculate.User.Tags
-，壽星要置換成純文字 CurrentBirthdayMonth
-
-<br>
-
-### 時間判斷
-
-<br>
-
-- **cart-calculate:** context.Cart.Now.Month
-- **basket-calculate:** basketCalculateRequest.CalculateDateTime.Value
-
-<br>
-
-### MatchedUserScopes 範例
-
-<br>
-
-```json
-"MatchedUserScopes": [
-  {
-    "UserScopeType": "NineYi.Msa.Promotion.Engine.AllUserScope"
-  },
-  {
-    "UserScopeType": "NineYi.Msa.Tagging.TagUserScope",
-    "Tag": "CurrentBirthdayMonth"
-  }
-]
-```
-
-<br>
-
-### 引擎判斷邏輯
-
-<br>
-
-引擎會看 IsBirthdayMonthEnabled + CurrentBirthdayMonth有貼才中
-
-<br>
-
----
-
-## 加價購
-
-### Request 處理流程
-
-**request 進來**
-
-<br>
-
-```csharp
-entity.SalepageSkuList
-```
-
-<br>
-
-**mapping ProcessContext**
-
-<br>
-
-```csharp
-salePageSkuItemList.Add(
-    new SalepageSkuItemEntity
-    {
-        Index = index++,
-        SalepageId = salePage.SalepageId,
-        SkuId = salePage.SkuId,
-        Price = salePage.Price,
-        Payment = salePage.Price,
-        // ...
-    });
-```
-
-<br>
-
-**建立 CreateShoppingCartContext**
-
-<br>
-
-```csharp
-foreach (var item in context.SalepageSkuItemList)
-{
-    var productItem = new ProductItem
-    {
-        Id = item.SalepageId,
-        SkuId = item.SkuId,
-        ListPrice = item.Payment,
-        // ...
-    };
-}
-```
-
-<br>
-
-**引擎作法**
-
-<br>
-
-```csharp
-public bool Purchase(long id, ProductItem item, ISet<string> flags = null)
-{
-    PurchasedItem purchasedItem = new PurchasedItem(id, item, flags)
-    {
-        SalePrice = item.ListPrice,
-        // ...
-    };
-}
-```
-
-<br>
-
-### 5.2 商品範例
-
-**加購品：** 60393 貓腿
-**主商品：** 62227 有 SKU
-**當下的 Request Data**
-**主商品：** 4.5 * 14 = 63，Flag：`"AddOnsSalepageMajor"`
-**加購品：** 6.66，Flags：`"AddOnsSalepageSub"`
-
-<br>
-
-### 完整 Request 範例
-
-```json
-{
-  "Shop": {
-    "Id": 11,
-    "Tags": ["EnableAddOns"]
-  },
-  "User": {
-    "Id": "33502",
-    "Tags": [
-      "AllUserScope",
-      "CrmShopMemberCard:24",
-      "FirstPurchase"
-    ],
-    "OuterId": null,
-    "ShopMemberCode": "97+Gy73RMbUYz5ZqI4EuEA=="
-  },
-  "Shipping": {
-    "ShippingProfileTypeDef": "Home",
-    "ShippingAreaId": 0,
-    "CountryProfileId": 85,
-    "LocationId": 0
-  },
-  "Payment": {
-    "PayProfileTypeDef": "TwoCTwoP"
-  },
-  "Channel": "AppIOS",
-  "CurrencyDecimalDigits": 2,
-  "SalepageSkuList": [
-    {
-      "SalepageId": 62227,
-      "SkuId": 86642,
-      "Price": 4.5,
-      "SuggestPrice": 10000.0,
-      "Qty": 14,
-      "Flags": ["AddOnsSalepageMajor"],
-      "OuterId": "123",
-      "Tags": null,
-      "OptionalTypeDef": "",
-      "OptionalTypeId": 0,
-      "CartExtendInfoItemGroup": 1748912653812,
-      "CartExtendInfoItemType": "Major",
-      "PointsPayPair": null,
-      "CartExtendInfos": [
-        {
-          "RuleTypeDef": "AddOnsSalepageExtraPurchase",
-          "RuleId": 10000050,
-          "RelatedItemCartIds": [45514],
-          "RelatedSubItemCount": 0
-        }
-      ],
-      "CartId": 45513
-    },
-    {
-      "SalepageId": 60393,
-      "SkuId": 84109,
-      "Price": 6.66,
-      "SuggestPrice": 100.0,
-      "Qty": 1,
-      "Flags": ["AddOnsSalepageSub"],
-      "OuterId": "",
-      "Tags": null,
-      "OptionalTypeDef": "",
-      "OptionalTypeId": 0,
-      "CartExtendInfoItemGroup": 1748912653812,
-      "CartExtendInfoItemType": "Sub",
-      "PointsPayPair": null,
-      "CartExtendInfos": [
-        {
-          "RuleTypeDef": "AddOnsSalepageExtraPurchase",
-          "RuleId": 10000050,
-          "RelatedItemCartIds": [],
-          "RelatedSubItemCount": 0
-        }
-      ],
-      "CartId": 45514
-    }
-  ],
-  "FeeList": [
-    {
-      "Id": 221,
-      "Type": "ShippingFee",
-      "Price": 0,
-      "Payment": 0,
-      "ExtendInfo": {
-        "ShippingProfileTypeDef": "Home",
-        "IsDomesticWeightPricing": false,
-        "TemperatureTypeDef": "Normal",
-        "ShippingType": "221",
-        "ShippingAreaId": 84,
-        "IsLocal": true
-      }
-    }
-  ],
-  "Promotion": {
-    "Code": null,
-    "PromoCodePoolGroupId": null,
-    "SelectedDesignatePaymentPromotionId": 0
-  },
-  "CouponSetting": {
-    "MultipleRedeem": {
-      "Discount": {
-        "IsMultiple": false,
-        "Qty": 1
-      },
-      "Gift": {
-        "IsMultiple": true,
-        "Qty": 9999
-      },
-      "Shipping": {
-        "IsMultiple": false,
-        "Qty": 1
-      }
-    },
-    "CouponList": [],
-    "Options": {
-      "IsVerbose": false,
-      "IsCouponPreSelect": true,
-      "IncludeRecordDetail": false
-    },
-    "LoyaltyPoint": {
-      "CheckoutPoint": 0,
-      "CheckoutDiscountPrice": 0,
-      "IsSelected": false,
-      "IsSetDiscountPrice": false,
-      "TotalPoint": 0.0
-    }
-  }
-}
-```
-
-<br>
-
-### Collection 資訊
-
-**62227：**
-
-<br>
-
-- `"Collection:d_320231983465890560"`
-- `"Collection:d_320479663883691264"`
-
-<br>
-
-**60393：**
-
-<br>
-
-- `"Collection:d_320231983465890560"`
-- `"Collection:d_320479663883691264"`
-
-<br>
-
-### 5.5 排除邏輯實作
-
-**RuleInitProcess**
-
-<br>
-
-```csharp
-/// <summary>
-/// The RuleInitProcess
-/// </summary>
-public override void RuleInitProcess()
-{
-    this.ExclusiveTags ??= new HashSet<string>();
-    this.ExclusiveTags.Add(FlagConstants.AddOnsSalepageSub);
-    this.ExclusiveTags.Add(FlagConstants.CouponExcludedByOrder);
-}
-```
-
-<br>
-
-促購前台有一步 LoadRules，每個活動 Init 流程實作需要排除哪些 Flag 的商品
-
-<br>
-
-**PurchasedItems 排除機制**
-
-<br>
-
-PurchasedItems 會需要把該 Tags vs Flag 交集有結果要排除掉
-
-<br>
-
-```csharp
-/// <summary>
-/// Gets the PurchasedItems
-/// </summary>
-public IEnumerable<PurchasedItem> PurchasedItems =>
-    this._currentRule == null ?
-        this._purchasedItems :
-        this._purchasedItems.Where(x => ((this._currentRule.ExclusiveTags ?? new HashSet<string>()).Union(this.ExclusiveTags))
-                                       .Intersect(x.Flags).Any() == false
-                                        && (this._currentRule.GlobalExcludedProductIds == null ? true : this._currentRule.GlobalExcludedProductIds.Contains(x.Product.Id) == false)
-                                   );
-```
-
-<br>
-<br>
-
-## 回饋活動加入全新的活動類型需實作
-
-新增回饋活動類型時需要實作的檔案列表
-
-<br>
-
-- **PromotionConditionTypeEnum.cs**
-- **PromotionEngineTypeDefEnum.cs**
-- **PromotionEngineForCartEntity.cs**
-- **PromotionEngineRuleEntity.cs**
-- **新增 PromotionRewardCouponRuleEntity.cs**
-- **套件升級**
-- **ProcessRepository.cs**
-- **S3LocationRepository.cs**
-- **PromotionEngineService.cs**
-- **新增 RewardReachPriceWithCouponRuleService.cs**
-- **PromotionRuleRepository.cs**
-- **Program.cs**
-- **PromotionTagOuterIdRepository.cs**
-- **S3OuterIdRepository.cs**
-
-<br>
-
----
-
-## 計算過程發生錯誤 - salepage collection
-
-### 錯誤日誌範例
-
-<br>
-
-```
-2025-09-26T03:23:42.4021843Z [Information] Start processing HTTP request "POST" https://promotion-api-frontend-internal.qa1.hk.91dev.tw/api/basket-calculate
-
-2025-09-26T03:23:42.8605746Z [Error] 回收活動回饋優惠券 9230_CrmSalesOrder:330481 發生錯誤System.Net.Http.HttpRequestException: Response status code does not indicate success: 500 (Internal Server Error).
-
-2025-09-26T03:23:42.8602800Z [Information] Response content: {"errorCode":"SalepageCollectionException","message":"HttpRequestException","data":"Response status code does not indicate success: 400 (Bad Request)."}
-```
-
-<br>
-
-### 問題排查步驟
-
-<br>
-
-- 到 shoppingcart-loki 搜尋 salepage-service
-- 打 POST {{host}}api/salepage-collections:match 測試
-
-<br>
-
-### 相關 API 文件
-
-<br>
-
-[Tag API Swagger](https://tag-api.qa1.my.91dev.tw/swagger/index.html)
-[Salepage Collection SWAGGER](https://salepage-service-api-internal.qa1.hk.91dev.tw/swagger/index.html#/)
-
-<br>
-
-## 促購前台計算排序
-
-### Group 處理流程
-
-**GetProcessGroupList**：拉出 group list 會有 priority，最後面是 bottom group
-
-<br>
-
-**CalculateByProcessGroupAsync**：會 order by priority 依序計算
-
-<br>
-
-**CreateGroupContext**：每個 group 會 GetProcessRuleList，把每個 group 的活動類型都拉出來，且活動類型也都有 priority，到引擎處理步驟，這邊會先設定進去 `groupContext.ProcessRuleList`
-
-<br>
-
-### 中間處理流程
-
-**商品貼標處理**：中間就是一系列 salepage 貼標等等
-
-<br>
-
-### Rule 處理流程
-
-**UpdateProcessRuleListAsync**：
-
-<br>
-
-`PromotionRuleRepository.GetRuleInfoListAsync` 會把商品有 match 到的 promotionIds 都拉出來，並一個個塞進 `context.ProcessRuleList`（用活動類型匹配），所以維持原順序
-
-<br>
-
-**LoadRuleAndModifyPriority**：
-
-<br>
-
-會把 RuleList 丟進：
-
-<br>
-
-```csharp
-_promotionEngine.LoadRules(RuleLoader.AssemblyFullName, ruleList.Select(i => i.Rule).ToList());
-```
-
-<br>
-
-**Priority 設定**：
-
-<br>
-
-這邊會依據活動類型設定的 priority 設定 `rule.Priority`，最後促購引擎依據 priority 排序 如果排序相同就依據 Id , for loop 依序計算
-
-<br>
-
----
-
-## 確實為當月壽星應中沒中
-
-### 案例背景
-
-**會員註冊時間**: 2025-10-20 23:04:58.270  
-**訂單成立時間**: 2025-10-20 23:13:35.756  
-**回饋執行時間**: 2025-10-20 23:14:14.386
-
-<br>
-
-### 問題分析
-
-<br>
-
-#### 📸 問題截圖記錄
-
-![alt text](./image.png)
-![alt text](./image-1.png)
-![alt text](./image-2.png)
-
-#### ✅ MemberCollection 驗證結果
-
-現在 MemberCollection 打 10月 Tag 會中：
-
-![alt text](./image-3.png)
-
-<br>
-
-### 🔍 根本原因
-
-<br>
-
-**時間順序分析**：
-- 會員於 **23:04** 註冊
-- 訂單於 **23:13** 成立  
-- 回饋於 **23:14** 執行
-- 會員於 **23:22** 才填寫生日資訊（下單後才操作）
-
-**問題核心**: 由於會員是在下單後才填寫生日，在訂單成立當下並不符合當月壽星條件，因此此筆訂單應該維持不中。
-
-<br>
-
-### 🛠️ 處理方案
-
-<br>
-
-#### 📋 DDB 資料修正
-
-**原 DDB Key 修正**：
-```
-原: 36974_TG251020Z00028_VSTS540944  
-改為: TG251020Z00028_VSTS540944
-```
-
-**GroupCode 處理**：
-- groupCode 為空
-- 此檔活動沒有佔額，不須解除佔額
-
-**Detail 資料修正**：
-- 原 DDB Detail TG 共有 7 筆
-- 改為: `TG251020Z00028_VSTS540944`
-
-<br>
-
-#### ✅ 最終處理結果
-
-1. **MemberService 協助查詢確認**: 會員 23:22 才填生日，是下單後才操作的
-2. **維持原判定**: 此筆訂單應維持不中
-3. **資料還原**: 手動還原該資料，並將新資料刪除
-
-<br>
-
-### 💡 經驗總結
-
-<br>
-
-- **時間點很重要**: 壽星貼標需以下單當下的會員資訊為準
-- **資料完整性**: 確保會員生日資訊在下單前已完整填寫
-- **追溯處理**: 後續補填的資訊不應影響已成立的訂單判定

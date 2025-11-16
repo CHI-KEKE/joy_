@@ -10,6 +10,11 @@
 
 ---
 
+## Tips
+
+- date 是 UTC 時間要比實際要早一點
+- 要一個個測試是否語法有差異, EX : LIKE, Action 切換,requestid vs message
+
 ## 1. webapi 結帳
 
 ```sql
@@ -29,6 +34,15 @@ where date = '2024/12/21'
 and controller = 'tradesOrderLite'
 and action = 'CompleteForNewCart'
 and requestid = '{"message":"202412211334273896'
+limit 100;
+
+
+select * from "hk_prod_webstore"."webstore_web_nlog"
+where date = '2025/11/02'
+and controller = 'tradesOrderLite'
+and action = 'CompleteForNewCartV2'
+--and message LIKE '%TG251103B00024%'
+and requestid like '%{"message":"202511030132390014%'
 limit 100;
 ```
 
@@ -82,3 +96,14 @@ limit 100;
 ```
 
 <br>
+
+
+## 5. InternalFinishPayment
+
+```sql
+SELECT * FROM "hk_prod_webstore"."webstore_web_nlog"
+where controller = 'PayChannel'
+and action = 'InternalFinishPayment'
+and date = '2025/02/01'
+limit 6000;
+```

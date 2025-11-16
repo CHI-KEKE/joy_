@@ -3,6 +3,7 @@
 ## 目錄
 1. [空間不足](#1-空間不足)
 2. [記憶體空間不足](#2-記憶體空間不足)
+3. [NMQ 空間不足](#3-nmq-空間不足)
 
 <br>
 
@@ -83,3 +84,11 @@ C:\inetpub\logs\LogFiles\W3SVC1
 ![alt text](./image-16.png)
 
 <br>
+
+
+## 3. NMQ 空間不足
+
+跑 treesiefree
+
+SG-HK-NMQ3，C 曹已經塞爆，主要都是 _SendTemplateMailPriorityLow log
+我先刪舊log

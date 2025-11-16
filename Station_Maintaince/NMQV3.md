@@ -472,3 +472,28 @@ string GetNmqV3Url(string market, string environment)
 跑 treesizeFree 看哪裡爆掉
 
 https://91app.slack.com/archives/G666578TX/p1761805951676429
+
+
+
+
+## 調整 MaxCount
+
+
+調 maxCount，讓程式不會一次討那麼多
+
+
+
+## 手法
+
+
+booking 下一個自己
+
+
+### 拆分不同的group
+
+loyalty.group1 Dispatcher
+loyalty.group2 Reward
+loyalty.group3 Audit
+
+
+https://91app.slack.com/archives/C06EY77L8N7/p1708649954320599

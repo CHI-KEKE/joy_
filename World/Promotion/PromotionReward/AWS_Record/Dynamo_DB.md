@@ -117,7 +117,7 @@ isMatch = true : WaitingToReward
 3.線下訂單都是訂單完成
 4.線上訂單若抓到規則為 WaitingToShipping 表示立即給點,不會 + N 天
 
-- `TradesOrderGroupCode`
+- `TradesOrderGroupCode` : 線下訂單 :  CrmSalesOrder:{order.CrmSalesOrderId}
 
 <br><br>
 

@@ -9,7 +9,75 @@
 
 ---
 
-## 1. 三方金物流設定相關
+## 三方金物流設定
+
+
+#### API
+
+
+`https://sms.qa1.my.91dev.tw/Api/ThirdPartyServices/Payment/GetPaymentSettingsInfo?shopId=80`
+
+#### Request
+
+shopId = 80
+
+#### Response
+```json
+{
+    "Status": "Success",
+    "Data": [
+        {
+            "ShopId": 80,
+            "Key": 33554432,
+            "IsSettingsValid": true,
+            "SettingsStatus": "NotFilled",
+            "IsDisplayEditHistory": true,
+            "PaymentMethods": [
+                "信用卡一次付清",
+                "信用卡分期付款",
+                "網路銀行",
+                "Touch 'n Go",
+                "Boost",
+                "Grab Pay"
+            ],
+            "ApplyStatusDef": null,
+            "EnableStatusDef": null
+        },
+        {
+            "ShopId": 80,
+            "Key": 4294967296,
+            "IsSettingsValid": false,
+            "SettingsStatus": "NotFilled",
+            "IsDisplayEditHistory": true,
+            "PaymentMethods": [
+                "Atome"
+            ],
+            "ApplyStatusDef": null,
+            "EnableStatusDef": null
+        }
+    ],
+    "ErrorMessage": null,
+    "TimeStamp": "2025-11-06T11:44:07.3877554+08:00"
+}
+```
+
+
+#### 主邏輯
+
+
+ThirdPartyServicesService.cs
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### 1.1 API
 

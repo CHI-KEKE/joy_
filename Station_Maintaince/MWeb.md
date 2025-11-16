@@ -407,6 +407,29 @@ where controller = 'PayChannel'
 and action = 'InternalFinishPayment'
 and date = '2025/02/01'
 limit 6000;
+
+
+--SELECT * FROM "hk_prod_webstore"."webstore_web_nlog" limit 10;
+
+
+
+--PM3284010007
+
+--select * from "hk_prod_webstore"."webstore_web_nlog"
+--where date = '2025/11/11'
+--and message like'%PM3284010007%'
+--limit 100;
+
+--40 : {"message":"202511111840409830
+--10 : {"message":"202511111810297541
+
+select * from "hk_prod_webstore"."webstore_web_nlog"
+where date = '2025/11/11'
+and controller = 'Scan'
+and action = 'GetChannelSkuInfo'
+and requestid = '{"message":"202511111840409830'
+--and message like'%PM3284010007%'
+limit 100;
 ```
 
 <br>

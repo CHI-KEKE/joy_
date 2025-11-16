@@ -35,6 +35,8 @@ promotionId : 970
 
 ### 多語系問題
 
+PromotionEngineSetting_PayProfileTypeDef
+
 多語系 key
 backend.definition.PayProfile
 
@@ -134,3 +136,9 @@ where PromotionEngine_ValidFlag = 1
 and PromotionEngine_TypeDef in ('PromoCodeKOLReachPriceAmount','DiscountReachPriceWithFreeGift')
 and PromotionEngine_ShopId = 32
 ```
+
+
+
+## 指定金流折價
+
+https://91appinc.visualstudio.com/G11n/_workitems/edit/548268

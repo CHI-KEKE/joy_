@@ -51,7 +51,6 @@ Occupy => WaitToReward
 
 ## PCPS API
 
-
 ### GET BY ORDERGROUP
 
 
@@ -79,15 +78,12 @@ Occupy => WaitToReward
 ```
 
 
-## 促購後台
-
-
-#### 取得訂單給點紀錄
+## 取得訂單給點紀錄 (促購後台)
 
 `loyalty-point-query` : 取得訂單給點紀錄 要篩選掉 Unmatch、Occupy
 
 
-###　佔額建立
+##　佔額建立 (促購後台)
 
 佔額無法回朔，過去的訂單，過去的活動可以中，但佔額如果瞄一樣的起始時間不會中
 現在佔額是瞄活動開始時間，並且沒有結束時間
@@ -97,7 +93,7 @@ Occupy => WaitToReward
 - 未來活動不能站未來訂單
 - Quota = 0 表示無佔額設定(無限制)
 
-### 佔額更新
+## 佔額更新
 
 - 還沒開始的活動還是可以更新時間
 
@@ -105,7 +101,7 @@ Occupy => WaitToReward
 資料表 : PromotionEngine_GroupCode
 
 
-### get-rule-record
+## get-rule-record
 
 `rule-record`
 

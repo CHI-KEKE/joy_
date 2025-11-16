@@ -1187,3 +1187,56 @@ shoppingCart.CheckoutType.DisplayPayTypeList 要有資料需要 matchedInstallme
 
 
  https://91app.slack.com/archives/C7T5CTALV/p1761783615941689
+
+
+
+
+ ## OSM_批次匯出訂單資料時，指定付款方式會匯出失敗
+
+
+ csp_BatchExportSalesOrderData
+ csp_BatchExportSalesOrderDataV2
+
+
+
+SELECT DISTINCT 
+    SalesOrderData_SalesOrderSlaveId
+FROM #tmpSalesOrderDataResponse 
+LEFT JOIN dbo.SalesOrderSlavePayProfileType WITH (NOLOCK) 
+    ON SalesOrderSlavePayProfileType_SalesOrderSlaveId = SalesOrderData_SalesOrderSlaveId
+    AND SalesOrderSlavePayProfileType_ValidFlag = 1
+LEFT JOIN dbo.PayProfile WITH (NOLOCK) 
+    ON PayProfile_TypeDef = SalesOrderSlavePayProfileType_PayProfileTypeDef 
+    AND PayProfile_ValidFlag = 1
+WHERE PayProfile_StatisticsTypeDef = @PayProfileStatisticsTypeDef;
+
+
+
+SalesOrderSlavePayProfileType_PayProfileTypeDef
+
+沒再用這張表啦!
+
+
+HK PROD 也這樣呵呵
+
+
+
+
+
+
+## 完成頁付款方式文案
+
+
+WebStore/Frontend/BE/ShoppingCartV2/ShoppingCartClientPayTypeGroupEntity.cs
+
+https://bitbucket.org/nineyi/nineyi.webstore.mobilewebmall/pull-requests/48282/diff#chg-WebStore/Frontend/BE/ShoppingCartV2/ShoppingCartClientPayTypeGroupEntity.cs
+
+
+backend.entity.shopping_cart_client_pay_type_group
+這是訂購完成頁 付款方式那邊會拿到的文案 只會出現 x 期 x 利率 (幾期就是從結帳拿的)
+var installmentDisplayName = string.Format(Translation.Backend.Entity.ShoppingCartClientPayTypeGroup.CreditCardInstallmentRazer, this.InstallmentType.InstallmentDef, this.InstallmentType.HasInterest ? Translation.Backend.Entity.ShoppingCartClientPayTypeGroup.HasInterest : Translation.Backend.Entity.ShoppingCartClientPayTypeGroup.NoInterest);
+                        return installmentDisplayName;
+
+
+
+## 

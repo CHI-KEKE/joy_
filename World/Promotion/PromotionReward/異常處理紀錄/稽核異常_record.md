@@ -442,9 +442,90 @@ graph TD
 
 
 
+## BookingTime與預期不符
 
 給點紀錄稽核監控到異常
 市場環境: HK-Prod
 TG Code: TG251028Z00085
 稽核到下列異常:
 35248_TG251028Z00085 BookingTime與預期不符，時間差異: 24.00 小時，超過允許範圍 1 小時
+
+
+## 已達給券時間但狀態未更新，狀態為：Occupy
+
+狀況 1
+
+2025-10-22 22:26:03.917 成立訂單
+OrderSlaveFlow_StatusDef: WaitingToPay
+還未付款成功，不給券
+因為是誤判
+
+狀況 2
+
+正流程的 job 可能 Failed, 需 redo
+
+
+
+## 已達給券時間但狀態未更新
+
+AuditPromotionRewardCouponService.cs
+
+record.RewardStatus != nameof(RewardStatusEnum.Reward)
+
+現在給券失敗會 catch 起來
+
+
+{
+  "_ts": "2025-11-07T21:32:13.8932294Z",
+  "_msg": "呼叫 ECoupon API失敗，不進行重試：Something went wrong while processing your request. Please contact system administrator.",
+  "_lvl": "Error",
+  "_srctx": "Nine1.Promotion.Console.BL.Services.PromotionReward.CouponService",
+  "_lt": "Common",
+  "_hid": "promotion-console-nmqv3worker-group4-586fc678bc-rdfzg",
+  "_props": {}
+}
+
+
+這個處理的有點間接 給券異常被lock => 重發勸的排程lock 失敗 => 稽核抓到狀態未更新
+
+
+## 回饋活動 - 稽核誤判：逆流程重新計算後優惠券應給數量為 0, 且目前未給任何優惠券，狀態更新為 Cancel
+
+RewardHistory: 
+[{"TotalCouponQty":1,"GivenCouponQty":0,"RewardStatus":"Occupy","RewardTime":"0001-01-01T00:00:00","UpdateUser":"PromotionRewardCoupon","UpdateReason":"活動優惠券回饋:509755，成功佔額","UpdateTime":"2025-11-12T19:31:39.4131304+08:00"},{"TotalCouponQty":0,"GivenCouponQty":0,"RewardStatus":"Cancel","RewardTime":"0001-01-01T08:06:00+08:06","UpdateUser":"PromotionRecycleCoupon","UpdateReason":"逆流程重新計算後優惠券應給數量為 0, 且目前未給任何優惠券，狀態更新為 Cancel","UpdateTime":"2025-11-12T21:38:12.6457264+08:00"}]
+
+
+## 回饋活動 - Promotion.Group3 CPU High
+
+
+在大量資料時 CPU 飆高，主因是它在每次迴圈中同步地呼叫 request.ToJson() 與 INMQv3Client.Task.CreateAsync 兩次，等於把所有 JSON 序列化與 HTTP 請求排成單線程順序執行，壓在單一執行緒上；而且建立 tasks 清單卻沒有任何並行控制。當輸入清單很大時，就形成密集的 CPU 工作與 thread blocking。
+改善方向如下：
+避免重複序列化
+先在迴圈內把 request.ToJson() 結果暫存，兩個任務共用，能明顯降低 CPU 的 JSON 序列化成本。
+參考：Nine1.Promotion.Console.NMQv3Worker.Jobs.PromotionRewardAudit.AuditPromotionRewardLoyaltyPointsDispatchV2Job.ProcessAuditPromotionRewardsAsync
+真正併發處理且限制併發數
+把 CreateAsync 呼叫加入 List<Task> 後用 Task.WhenAll 執行，並透過 SemaphoreSlim 等方式限制同時度，例如 8~16，兼顧併發與外部服務壓力，避免單線程逐筆等待造成 CPU 忙碌。
+批次提交或重試策略
+如果任務量極大，考慮批次送出（例如每 100 筆一次），或利用批次 API 降低迴圈次數。
+總結：先消除重複序列化，再以受控併發送出請求，就能把 ProcessAuditPromotionRewardsAsync 的 CPU 使用率大幅降到合理水位。
+
+## 回饋活動 - 線下訂單整單退貨稽核誤判
+
+https://91app.slack.com/archives/C7T5CTALV/p1761804397028649
+線下訂單點數回收紀錄稽核監控到異常
+市場環境: HK-Prod
+CrmSalesOrderSlaveId: 87339016
+稽核到下列異常:
+訂單36681_CrmSalesOrder:26394997給點後:重新計算預期給點490 與實際回收後點數 0 不同
+
+
+稽核不看退款狀態
+
+
+
+
+## 訂單寫入時間超過排成回饋時間
+
+https://91app.slack.com/archives/C08BE4B4KQW/p1763039843576529
+
+https://91appinc.visualstudio.com/DailyResource/_workitems/edit/548260

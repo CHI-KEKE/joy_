@@ -234,6 +234,21 @@ and action = 'GetListByCustomerlizedFilter'
 
 <br>
 
+**查詢 token 對應數量**
+
+```sql
+SELECT
+    regexp_extract(cs_uri_query, 't=([^&]+)', 1) AS t_value,
+    count(*) AS cnt
+FROM "hk_prod_osm"."osm_api_iislog"
+WHERE date_parse("date", '%Y/%m/%d') = DATE '2025-11-11'
+  AND cs_uri_stem = '/scm/V2/SalePage/UpdateSellingQty'
+  AND cs_uri_query LIKE 't=%'
+  AND "time" > '05:50:00'
+GROUP BY 1
+ORDER BY cnt DESC;
+```
+
 ---
 
 ## 🗄️ 資料庫查詢
