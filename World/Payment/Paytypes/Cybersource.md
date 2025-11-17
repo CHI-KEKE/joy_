@@ -74,6 +74,9 @@
 | **自動轉導** | 伺服器端動態組裝 | 產生 HTML 表單包含跳轉參數 |
 | **最終跳轉** | `/V2/PayChannel/CreditCardOnce/Cybersource/{tgCode}` | 帶入 shopId 和 uniqueKey 參數 |
 
+
+
+
 <br>
 <br>
 
@@ -85,6 +88,27 @@
 |----------|-----|------|
 | **Base API** | `https://api.cybersource.com` | API 呼叫基礎網址 |
 | **付款頁面** | `https://secureacceptance.cybersource.com/pay` | 託管付款頁面網址 |
+
+RouteConfig
+```csharp
+private static void MapPayChannelReturn(RouteCollection routes)
+{
+    routes.MapRoute(
+        name: "PayChannelReturnPost",
+        url: "PayChannel/ReturnPost/{payMethod}/{payChannel}",
+        defaults: new { controller = "PayChannel", action = "PayChannelReturnPost" });
+
+    routes.MapRoute(
+        name: "PayChannelReturn",
+        url: "PayChannel/{payMethod}/{payChannel}/{tgCode}",
+        defaults: new { controller = "PayChannel", action = "PayChannelReturn" });
+
+    routes.MapRoute(
+        name: "PayChannelReturnForSwiftPass",
+        url: "PayChannel/{payMethod}/{payChannel}/{tgCode}/{shopId}/{k}/{lang}",
+        defaults: new { controller = "PayChannel", action = "PayChannelReturn" });
+}
+```
 
 <br>
 
