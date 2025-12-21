@@ -1,0 +1,225 @@
+{
+	"info": {
+		"_postman_id": "2933a251-bbb8-4bd6-a131-00b8efba3f3b",
+		"name": "SCMAPI_會員",
+		"description": "HK_QA : [http://api.qa1.hk.91dev.tw](http://api.qa1.hk.91dev.tw)\n\nLocal :　[http://api.dev.91dev.tw](http://api.dev.91dev.tw)\n\ntwqa : [http://api.qa.91dev.tw](http://api.qa.91dev.tw)\n\nHK_PROD:[http://api.91app.hk](http://api.91app.hk)\n\nmyqa : https://api.qa1.my.91dev.tw",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "29796329"
+	},
+	"item": [
+		{
+			"name": "店員幫手新增",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// 取得Timestamp\r",
+							"let timestamp = getTimestamp();\r",
+							"\r",
+							"// 取得Signature\r",
+							"const signatureApiUrl = pm.collectionVariables.get(\"API_URL\") + \"/scm/v1/Sample/GetEncryptData\";\r",
+							"const apiKey = pm.collectionVariables.get(\"API_Key\");\r",
+							"const saltKey = pm.collectionVariables.get(\"SaltKey\");\r",
+							"const requestBody = pm.request.body;\r",
+							"console.log(\"requestBody\",requestBody);\r",
+							"console.log(\"mode:\" + requestBody.mode);\r",
+							"let body = {};\r",
+							"if(requestBody.mode == \"formdata\"){\r",
+							"    const formdata = requestBody.formdata.members;\r",
+							"    body = convertFormDataToJson(formdata)\r",
+							"}else{\r",
+							"    body = JSON.parse(requestBody.raw);\r",
+							"}\r",
+							"\r",
+							"const bodyJson = JSON.stringify(body);\r",
+							"console.log(\"~~~~~~~~~bodyJson :\" + bodyJson);\r",
+							"\r",
+							"const content = \"ts=\"+ timestamp+\"&data=\" + bodyJson.toLowerCase() + \"&sk=\" + saltKey;\r",
+							"console.log(\"apiKey: \" , apiKey);\r",
+							"console.log(\"timestamp: \", timestamp);\r",
+							"console.log(\"body: \", body);\r",
+							"console.log(\"saltKey: \", saltKey);\r",
+							"console.log(\"content: \", content);\r",
+							"pm.sendRequest({\r",
+							"    url: signatureApiUrl,\r",
+							"    method: 'POST',\r",
+							"    header: {\r",
+							"        'Content-Type': 'multipart/form-data'\r",
+							"    },\r",
+							"    body: {\r",
+							"        mode: 'formdata',\r",
+							"        formdata: [\r",
+							"            { key: \"content\", value: content, type: \"text\" },\r",
+							"            { key: \"key\", value: apiKey, type: \"text\" }\r",
+							"        ]\r",
+							"    }}, function (err, response) {\r",
+							"    const responseBody = response.json();\r",
+							"    pm.collectionVariables.set(\"Signature\", responseBody.Data);\r",
+							"});\r",
+							"\r",
+							"// 重組request\r",
+							" let newBody = {\r",
+							"      data: JSON.stringify(body)\r",
+							"  };\r",
+							"\r",
+							"    pm.request.body.update({\r",
+							"       mode: 'raw',\r",
+							"       raw: JSON.stringify(newBody),\r",
+							"      options:{\r",
+							"         raw:{\r",
+							"              language:\"json\"\r",
+							"           }\r",
+							"       }\r",
+							"    });\r",
+							"\r",
+							"\r",
+							"function getTimestamp(){\r",
+							"    const gtm = new Date(Date.UTC(1970, 0, 1));\r",
+							"\r",
+							"    const utc = new Date();\r",
+							"    const utcOffsetInHours = 8; // UTC+8\r",
+							"    const localTime = new Date(utc.getTime() + (utcOffsetInHours * 60 * 60 * 1000));\r",
+							"\r",
+							"    const timestamp = Math.floor((localTime - gtm) / 1000);\r",
+							"    pm.collectionVariables.set(\"Timestamp\", timestamp);\r",
+							"    return timestamp;\r",
+							"}\r",
+							"\r",
+							"function convertFormDataToJson(obj){\r",
+							"    const formdata = requestBody.formdata.members;\r",
+							"    var result = {};\r",
+							"    formdata.forEach(item => {\r",
+							"        if (item.type === \"file\") {\r",
+							"            result[item.key] = null;\r",
+							"        }else if(item.key === \"data\"){\r",
+							"        }\r",
+							"        else if (typeof item.value === 'string'){\r",
+							"            result[item.key] = Number(item.value);\r",
+							"        }\r",
+							"        else {\r",
+							"            result[item.key] = item.value;\r",
+							"        }\r",
+							"    });\r",
+							"    // return convertStringNumbers(result)\r",
+							"    return result\r",
+							"}\r",
+							"\r",
+							"//  function convertStringNumbers(obj) {\r",
+							"//      for (const key in obj) {\r",
+							"//          if (obj.hasOwnProperty(key)) {\r",
+							"//              if (typeof obj[key] === 'string' ) {\r",
+							"//                  console.log(\"convertStringNumbers_k: \" , key);\r",
+							"//                  console.log(\"convertStringNumbers_v: \" , obj[key]);\r",
+							"//                  obj[key] = Number(obj[key]);\r",
+							"//              } else if (typeof obj[key] === 'object' && obj[key] !== null) {\r",
+							"//                  convertStringNumbers(obj[key]);\r",
+							"//              }\r",
+							"//          }\r",
+							"//      }\r",
+							"//      return obj;\r",
+							"//  }"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"ShopId\": 83,\r\n  \"CellPhone\": \"+6598505280\",\r\n  \"RegisterSourceType\": \"Web\",\r\n  \"RegisterDevice\": \"Chrome\",\r\n  \"AppVersion\": \"1.2.3\",\r\n  \"LocationId\": 12,\r\n  \"LocationEmployeeId\": 345,\r\n  \"MemberId\": 123,\r\n  \"CountryCode\": \"65\",\r\n  \"CountryProfileId\": 35,\r\n  \"IsNotSendSmsAfterRegister\": false,\r\n  \"IsUseRandomPassword\": true,\r\n  \"RegisteredDateTime\": \"2025-12-11T16:20:00\",\r\n  \"VipMemberId\": 123,\r\n  \"IsOpen\": false\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{API_URL}}/scm/V2/Location/RegisterMember?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+					"host": [
+						"{{API_URL}}"
+					],
+					"path": [
+						"scm",
+						"V2",
+						"Location",
+						"RegisterMember"
+					],
+					"query": [
+						{
+							"key": "t",
+							"value": "{{Token}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{Timestamp}}"
+						},
+						{
+							"key": "s",
+							"value": "{{Signature}}"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "API_URL",
+			"value": ""
+		},
+		{
+			"key": "Token",
+			"value": ""
+		},
+		{
+			"key": "Timestamp",
+			"value": ""
+		},
+		{
+			"key": "Signature",
+			"value": ""
+		},
+		{
+			"key": "shopId",
+			"value": ""
+		},
+		{
+			"key": "API_Key",
+			"value": ""
+		},
+		{
+			"key": "SaltKey",
+			"value": ""
+		}
+	]
+}

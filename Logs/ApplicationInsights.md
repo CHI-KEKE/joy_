@@ -1,93 +1,32 @@
-# 📊 Application Insights 監控文件
 
-<br>
+## 連結
 
-  - [🔗 Url](#-監控面板存取)
-  - [📈 效能差異評估方法](#-效能差異評估方法)
-  - [Latency 延遲評估](#latency-延遲評估)
-
-
+[URL](https://portal.azure.com/#view/HubsExtension/ServiceMenuBlade/~/browseAll/extension/Microsoft_Azure_Resources/menuId/ResourceManager/itemId/recents)
 
 ---
 
+## 上線前後的效能變化分析
 
-
-## 🔗 Url
-
-**HK SMS**
-
-<br>
-
-```
-https://portal.azure.com/#@91app.biz/resource/subscriptions/a23bf8eb-057f-4ad3-83ad-e1002205aa29/resourceGroups/91APP-HK-SMS/providers/microsoft.insights/components/Prod-91APP-HK-SMS/performance
-```
-
-<br>
-
-**URL 組成說明**：
-
-<br>
-
-- **Portal**：Azure 入口網站
-- **Tenant**：91app.biz 租戶
-- **Subscription ID**：a23bf8eb-057f-4ad3-83ad-e1002205aa29
-- **Resource Group**：91APP-HK-SMS
-- **Component**：Prod-91APP-HK-SMS
-- **View**：performance（效能監控頁面）
-
-<br>
-
----
-
-## 📈 效能差異評估方法
-
-**回應時間分析範例**：
-
-<br>
-
-以下是實際的效能差異分析案例，展示如何評估系統上線前後的效能變化：
-
-<br>
-
-**TradesOrder/TradesOrderList**：
-
-<br>
+**TradesOrder/TradesOrderList**
 
 - **上線前回應時間**：141.1ms
 - **上線後回應時間**：314.8ms
 - **效能變化**：上升約 55.2%
 - **評估結果**：回應時間明顯增加，需要進一步調查
 
-<br>
-
 **TradesOrder/TradesOrderDetail**：
-
-<br>
 
 - **上線前回應時間**：130.5ms
 - **上線後回應時間**：288.0ms
 - **效能變化**：上升約 54.7%
 - **評估結果**：回應時間顯著延長，影響使用者體驗
 
-<br>
-
-**效能差異計算公式**：
-
-<br>
-
-```
 效能變化百分比 = ((新回應時間 - 原回應時間) / 原回應時間) × 100%
-```
 
 <br>
-
-## Latency 延遲評估
-
 <br>
 
-**Latency 分析範例**：
-
-<br>
+## Latency 延遲案例
 
 ```
 平均 Latency 變化評估：
@@ -107,3 +46,9 @@ https://portal.azure.com/#@91app.biz/resource/subscriptions/a23bf8eb-057f-4ad3-8
 確認個別案例慢在哪裡
 ![alt text](./image-3.png)
 ![alt text](./image-4.png)
+
+
+## ApplicationInsights 看 API RPS
+
+
+https://91app.slack.com/archives/G06A3GDC7/p1731317796981559

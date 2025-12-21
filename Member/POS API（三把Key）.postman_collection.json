@@ -1,0 +1,1385 @@
+{
+	"info": {
+		"_postman_id": "5da92a9c-36d4-4bd4-9ed4-418d79c2402d",
+		"name": "POS API（三把Key）",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "29796329"
+	},
+	"item": [
+		{
+			"name": "查詢會員",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const phone = pm.environment.get(\"phone\");\r",
+							"const outermembercode = pm.environment.get(\"outermembercode\");\r",
+							"const membercode = pm.environment.get(\"member_code\");\r",
+							"const shopId = parseInt(pm.environment.get(\"shop_id\"));\r",
+							"// 修改request-body\r",
+							"var body = {\r",
+							"    \"OuterMemberCode\": outermembercode,\r",
+							"    \"MemberCode\": membercode,\r",
+							"    \"CellPhone\": phone\r",
+							"}\r",
+							"\r",
+							"var body_data = JSON.stringify(body)\r",
+							"\r",
+							"// 取得Timestamp\r",
+							"pm.sendRequest({\r",
+							"    url: pm.environment.get(\"scm_api\") + '/scm/v1/Utils/GetCurrentTime',\r",
+							"    method: 'POST',\r",
+							"    header: {\r",
+							"        'content-type': 'application/json',\r",
+							"    }\r",
+							"}, function (err, response) {\r",
+							"    const timestamp = response.json()\r",
+							"    // console.log(\"取得Timestamp : \" + timestamp)\r",
+							"    pm.environment.set(\"timestamp\", timestamp);\r",
+							"\r",
+							"    var body =  body_data.toLowerCase();\r",
+							"    // 取得Signature\r",
+							"    var content = \"ts=\" + pm.environment.get(\"timestamp\") + \"&data=\" + body + \"&sk=\" + pm.environment.get(\"salt_key\")\r",
+							"\r",
+							"     console.log(\"取得Signature : \" + content)\r",
+							"    pm.sendRequest({\r",
+							"        url: pm.environment.get(\"scm_api\") + '/scm/v1/Sample/GetEncryptData',\r",
+							"        method: 'POST',\r",
+							"        header: {\r",
+							"            'Content-Type': 'multipart/form-data',\r",
+							"            },\r",
+							"        body: {\r",
+							"            mode: 'formdata',\r",
+							"            formdata: [\r",
+							"            {\r",
+							"                key: \"key\", \r",
+							"                value: pm.environment.get(\"api_key\"), \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                },\r",
+							"            {\r",
+							"                key: \"content\", \r",
+							"                value: content, \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                }\r",
+							"            ]\r",
+							"        }\r",
+							"    },  function(err, response) {\r",
+							"        const signature = response.json().Data\r",
+							"        pm.environment.set(\"signature\", signature);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"request_body = body_data\r",
+							"// console.log(\"4. 取得request_body:\" + request_body)\r",
+							"pm.environment.set(\"request_body\", request_body);\r",
+							"\r",
+							"function interpolate (value) {\r",
+							"    const {Property} = require('postman-collection');\r",
+							"    return Property.replaceSubstitutions(value, pm.variables.toObject());\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"tlsPreferServerCiphers": false,
+				"tlsDisabledProtocols": []
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "NY-SHOP-ID",
+						"value": "{{shop_Id}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json;charset=utf-8 ",
+						"type": "text"
+					},
+					{
+						"key": "x-request-id",
+						"value": "{{request_id}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-machine-code",
+						"value": "{{machine_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-location-code",
+						"value": "{{location_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-employee-code",
+						"value": "{{employee_code}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{request_body}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{api_host}}/pos/v1/GetMemberInfo?t={{token}}&ts={{timestamp}}&s={{signature}}",
+					"host": [
+						"{{api_host}}"
+					],
+					"path": [
+						"pos",
+						"v1",
+						"GetMemberInfo"
+					],
+					"query": [
+						{
+							"key": "t",
+							"value": "{{token}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{timestamp}}"
+						},
+						{
+							"key": "s",
+							"value": "{{signature}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "查詢會員紅利點數",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const phone = pm.environment.get(\"phone\");\r",
+							"const outermembercode = pm.environment.get(\"outermembercode\");\r",
+							"const membercode = pm.environment.get(\"member_code\");\r",
+							"const shopId = parseInt(pm.environment.get(\"shop_id\"));\r",
+							"// 修改request-body\r",
+							"var body = {\r",
+							"    \"OuterMemberCode\": outermembercode,\r",
+							"    \"MemberCode\": membercode,\r",
+							"    \"CellPhone\": phone\r",
+							"}\r",
+							"\r",
+							"var body_data = JSON.stringify(body)\r",
+							"\r",
+							"// 取得Timestamp\r",
+							"pm.sendRequest({\r",
+							"    url: pm.environment.get(\"scm_api\") + '/scm/v1/Utils/GetCurrentTime',\r",
+							"    method: 'POST',\r",
+							"    header: {\r",
+							"        'content-type': 'application/json',\r",
+							"    }\r",
+							"}, function (err, response) {\r",
+							"    const timestamp = response.json()\r",
+							"    // console.log(\"取得Timestamp : \" + timestamp)\r",
+							"    pm.environment.set(\"timestamp\", timestamp);\r",
+							"\r",
+							"    var body =  body_data.toLowerCase();\r",
+							"    // 取得Signature\r",
+							"    var content = \"ts=\" + pm.environment.get(\"timestamp\") + \"&data=\" + body + \"&sk=\" + pm.environment.get(\"salt_key\")\r",
+							"\r",
+							"     console.log(\"取得Signature : \" + content)\r",
+							"    pm.sendRequest({\r",
+							"        url: pm.environment.get(\"scm_api\") + '/scm/v1/Sample/GetEncryptData',\r",
+							"        method: 'POST',\r",
+							"        header: {\r",
+							"            'Content-Type': 'multipart/form-data',\r",
+							"            },\r",
+							"        body: {\r",
+							"            mode: 'formdata',\r",
+							"            formdata: [\r",
+							"            {\r",
+							"                key: \"key\", \r",
+							"                value: pm.environment.get(\"api_key\"), \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                },\r",
+							"            {\r",
+							"                key: \"content\", \r",
+							"                value: content, \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                }\r",
+							"            ]\r",
+							"        }\r",
+							"    },  function(err, response) {\r",
+							"        const signature = response.json().Data\r",
+							"        pm.environment.set(\"signature\", signature);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"request_body = body_data\r",
+							"// console.log(\"4. 取得request_body:\" + request_body)\r",
+							"pm.environment.set(\"request_body\", request_body);\r",
+							"\r",
+							"function interpolate (value) {\r",
+							"    const {Property} = require('postman-collection');\r",
+							"    return Property.replaceSubstitutions(value, pm.variables.toObject());\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "NY-SHOP-ID",
+						"value": "{{shop_Id}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json;charset=utf-8 ",
+						"type": "text"
+					},
+					{
+						"key": "x-request-id",
+						"value": "{{request_id}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-machine-code",
+						"value": "{{machine_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-location-code",
+						"value": "{{location_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-employee-code",
+						"value": "{{employee_code}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{request_body}}"
+				},
+				"url": {
+					"raw": "{{api_host}}/pos/v1/GetMemberPoint?t={{token}}&ts={{timestamp}}&s={{signature}}",
+					"host": [
+						"{{api_host}}"
+					],
+					"path": [
+						"pos",
+						"v1",
+						"GetMemberPoint"
+					],
+					"query": [
+						{
+							"key": "t",
+							"value": "{{token}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{timestamp}}"
+						},
+						{
+							"key": "s",
+							"value": "{{signature}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "查詢會員優惠券",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const phone = pm.environment.get(\"phone\");\r",
+							"const outermembercode = pm.environment.get(\"outermembercode\");\r",
+							"const membercode = pm.environment.get(\"member_code\");\r",
+							"const shopId = parseInt(pm.environment.get(\"shop_id\"));\r",
+							"const usingChannelType = pm.environment.get(\"usingChannelType\");\r",
+							"\r",
+							"// 修改request-body\r",
+							"var body = {\r",
+							"    \"OuterMemberCode\": outermembercode,\r",
+							"    \"MemberCode\": membercode,\r",
+							"    \"CellPhone\": phone,\r",
+							"    \"UsingChannelType\":usingChannelType\r",
+							"}\r",
+							"\r",
+							"var body_data = JSON.stringify(body)\r",
+							"\r",
+							"// 取得Timestamp\r",
+							"pm.sendRequest({\r",
+							"    url: 'https://api.91mai.com' + '/scm/v1/Utils/GetCurrentTime',\r",
+							"    method: 'POST',\r",
+							"    header: {\r",
+							"        'content-type': 'application/json',\r",
+							"    }\r",
+							"}, function (err, response) {\r",
+							"    const timestamp = response.json()\r",
+							"    // console.log(\"取得Timestamp : \" + timestamp)\r",
+							"    pm.environment.set(\"timestamp\", timestamp);\r",
+							"\r",
+							"    var body =  body_data.toLowerCase();\r",
+							"    // 取得Signature\r",
+							"    var content = \"ts=\" + pm.environment.get(\"timestamp\") + \"&data=\" + body + \"&sk=\" + pm.environment.get(\"salt_key\")\r",
+							"\r",
+							"     console.log(\"取得Signature : \" + content)\r",
+							"    pm.sendRequest({\r",
+							"        url: 'https://api.91mai.com' + '/scm/v1/Sample/GetEncryptData',\r",
+							"        method: 'POST',\r",
+							"        header: {\r",
+							"            'Content-Type': 'multipart/form-data',\r",
+							"            },\r",
+							"        body: {\r",
+							"            mode: 'formdata',\r",
+							"            formdata: [\r",
+							"            {\r",
+							"                key: \"key\", \r",
+							"                value: pm.environment.get(\"api_key\"), \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                },\r",
+							"            {\r",
+							"                key: \"content\", \r",
+							"                value: content, \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                }\r",
+							"            ]\r",
+							"        }\r",
+							"    },  function(err, response) {\r",
+							"        const signature = response.json().Data\r",
+							"        pm.environment.set(\"signature\", signature);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"request_body = body_data\r",
+							"// console.log(\"4. 取得request_body:\" + request_body)\r",
+							"pm.environment.set(\"request_body\", request_body);\r",
+							"\r",
+							"function interpolate (value) {\r",
+							"    const {Property} = require('postman-collection');\r",
+							"    return Property.replaceSubstitutions(value, pm.variables.toObject());\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "NY-SHOP-ID",
+						"value": "{{shop_Id}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json;charset=utf-8 ",
+						"type": "text"
+					},
+					{
+						"key": "x-request-id",
+						"value": "{{request_id}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-machine-code",
+						"value": "{{machine_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-location-code",
+						"value": "{{location_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-employee-code",
+						"value": "{{employee_code}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{request_body}}"
+				},
+				"url": {
+					"raw": "{{api_host}}/pos/v1/GetMemberOwnCoupon?t={{token}}&ts={{timestamp}}&s={{signature}}",
+					"host": [
+						"{{api_host}}"
+					],
+					"path": [
+						"pos",
+						"v1",
+						"GetMemberOwnCoupon"
+					],
+					"query": [
+						{
+							"key": "t",
+							"value": "{{token}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{timestamp}}"
+						},
+						{
+							"key": "s",
+							"value": "{{signature}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "綁定品牌會員編號",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const phone = pm.environment.get(\"phone\");\r",
+							"const outermembercode = pm.environment.get(\"outermembercode\");\r",
+							"const shopId = parseInt(pm.environment.get(\"shop_id\"));\r",
+							"// 修改request-body\r",
+							"var body =   {\r",
+							"    \"OuterMemberCode\": outermembercode,\r",
+							"    \"CellPhone\": phone\r",
+							"  }\r",
+							"\r",
+							"var body_data = JSON.stringify(body)\r",
+							"\r",
+							"// 取得Timestamp\r",
+							"pm.sendRequest({\r",
+							"    url: pm.environment.get(\"scm_api\") + '/scm/v1/Utils/GetCurrentTime',\r",
+							"    method: 'POST',\r",
+							"    header: {\r",
+							"        'content-type': 'application/json',\r",
+							"    }\r",
+							"}, function (err, response) {\r",
+							"    const timestamp = response.json()\r",
+							"    // console.log(\"取得Timestamp : \" + timestamp)\r",
+							"    pm.environment.set(\"timestamp\", timestamp);\r",
+							"\r",
+							"    var body =  body_data.toLowerCase();\r",
+							"    // 取得Signature\r",
+							"    var content = \"ts=\" + pm.environment.get(\"timestamp\") + \"&data=\" + body + \"&sk=\" + pm.environment.get(\"salt_key\")\r",
+							"\r",
+							"     console.log(\"取得Signature : \" + content)\r",
+							"    pm.sendRequest({\r",
+							"        url: pm.environment.get(\"scm_api\") + '/scm/v1/Sample/GetEncryptData',\r",
+							"        method: 'POST',\r",
+							"        header: {\r",
+							"            'Content-Type': 'multipart/form-data',\r",
+							"            },\r",
+							"        body: {\r",
+							"            mode: 'formdata',\r",
+							"            formdata: [\r",
+							"            {\r",
+							"                key: \"key\", \r",
+							"                value: pm.environment.get(\"api_key\"), \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                },\r",
+							"            {\r",
+							"                key: \"content\", \r",
+							"                value: content, \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                }\r",
+							"            ]\r",
+							"        }\r",
+							"    },  function(err, response) {\r",
+							"        const signature = response.json().Data\r",
+							"        pm.environment.set(\"signature\", signature);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"request_body = body_data\r",
+							"// console.log(\"4. 取得request_body:\" + request_body)\r",
+							"pm.environment.set(\"request_body\", request_body);\r",
+							"\r",
+							"function interpolate (value) {\r",
+							"    const {Property} = require('postman-collection');\r",
+							"    return Property.replaceSubstitutions(value, pm.variables.toObject());\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "NY-SHOP-ID",
+						"value": "{{shop_Id}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json;charset=utf-8 ",
+						"type": "text"
+					},
+					{
+						"key": "x-request-id",
+						"value": "{{request_id}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-machine-code",
+						"value": "{{machine_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-location-code",
+						"value": "{{location_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-employee-code",
+						"value": "{{employee_code}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{request_body}}"
+				},
+				"url": {
+					"raw": "{{api_host}}/pos/v1/SetOuterMemberId?t={{token}}&ts={{timestamp}}&s={{signature}}",
+					"host": [
+						"{{api_host}}"
+					],
+					"path": [
+						"pos",
+						"v1",
+						"SetOuterMemberId"
+					],
+					"query": [
+						{
+							"key": "t",
+							"value": "{{token}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{timestamp}}"
+						},
+						{
+							"key": "s",
+							"value": "{{signature}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "成立訂單",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const phone = pm.environment.get(\"phone\");\r",
+							"const outermembercode = pm.environment.get(\"outermembercode\");\r",
+							"const shopId = parseInt(pm.environment.get(\"shop_id\"));\r",
+							"// 修改request-body\r",
+							"var body =   {\r",
+							"    \"OuterMemberCode\": outermembercode,\r",
+							"    \"OrderCode\": {\r",
+							"      \"OuterCode1\": \"12345678\",\r",
+							"      \"OuterCode2\": null,\r",
+							"      \"OuterCode3\": null,\r",
+							"      \"OuterCode4\": null,\r",
+							"      \"OuterCode5\": null\r",
+							"    },\r",
+							"    \"Point\": 0,\r",
+							"    \"CouponCodes\": null\r",
+							"  }\r",
+							"\r",
+							"var body_data = JSON.stringify(body)\r",
+							"\r",
+							"// 取得Timestamp\r",
+							"pm.sendRequest({\r",
+							"    url: pm.environment.get(\"scm_api\") + '/scm/v1/Utils/GetCurrentTime',\r",
+							"    method: 'POST',\r",
+							"    header: {\r",
+							"        'content-type': 'application/json',\r",
+							"    }\r",
+							"}, function (err, response) {\r",
+							"    const timestamp = response.json()\r",
+							"    // console.log(\"取得Timestamp : \" + timestamp)\r",
+							"    pm.environment.set(\"timestamp\", timestamp);\r",
+							"\r",
+							"    var body =  body_data.toLowerCase();\r",
+							"    // 取得Signature\r",
+							"    var content = \"ts=\" + pm.environment.get(\"timestamp\") + \"&data=\" + body + \"&sk=\" + pm.environment.get(\"salt_key\")\r",
+							"\r",
+							"     console.log(\"取得Signature : \" + content)\r",
+							"    pm.sendRequest({\r",
+							"        url: pm.environment.get(\"scm_api\") + '/scm/v1/Sample/GetEncryptData',\r",
+							"        method: 'POST',\r",
+							"        header: {\r",
+							"            'Content-Type': 'multipart/form-data',\r",
+							"            },\r",
+							"        body: {\r",
+							"            mode: 'formdata',\r",
+							"            formdata: [\r",
+							"            {\r",
+							"                key: \"key\", \r",
+							"                value: pm.environment.get(\"api_key\"), \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                },\r",
+							"            {\r",
+							"                key: \"content\", \r",
+							"                value: content, \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                }\r",
+							"            ]\r",
+							"        }\r",
+							"    },  function(err, response) {\r",
+							"        const signature = response.json().Data\r",
+							"        pm.environment.set(\"signature\", signature);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"request_body = body_data\r",
+							"// console.log(\"4. 取得request_body:\" + request_body)\r",
+							"pm.environment.set(\"request_body\", request_body);\r",
+							"\r",
+							"function interpolate (value) {\r",
+							"    const {Property} = require('postman-collection');\r",
+							"    return Property.replaceSubstitutions(value, pm.variables.toObject());\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "NY-SHOP-ID",
+						"value": "{{shop_Id}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json;charset=utf-8 ",
+						"type": "text"
+					},
+					{
+						"key": "x-request-id",
+						"value": "{{request_id}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-machine-code",
+						"value": "{{machine_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-location-code",
+						"value": "{{location_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-employee-code",
+						"value": "{{employee_code}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{request_body}}"
+				},
+				"url": {
+					"raw": "{{api_host}}/pos/v1/CreateOrderPOSAction?t={{token}}&ts={{timestamp}}&s={{signature}}",
+					"host": [
+						"{{api_host}}"
+					],
+					"path": [
+						"pos",
+						"v1",
+						"CreateOrderPOSAction"
+					],
+					"query": [
+						{
+							"key": "t",
+							"value": "{{token}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{timestamp}}"
+						},
+						{
+							"key": "s",
+							"value": "{{signature}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "成立退貨單",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const phone = pm.environment.get(\"phone\");\r",
+							"const outermembercode = pm.environment.get(\"outermembercode\");\r",
+							"const shopId = parseInt(pm.environment.get(\"shop_id\"));\r",
+							"// 修改request-body\r",
+							"var body =  {\r",
+							"    \"OuterMemberCode\": outermembercode,\r",
+							"    \"ReturnOrderCode\": {\r",
+							"      \"OuterCode1\": \"\",\r",
+							"      \"OuterCode2\": null,\r",
+							"      \"OuterCode3\": null,\r",
+							"      \"OuterCode4\": null,\r",
+							"      \"OuterCode5\": null\r",
+							"    },\r",
+							"    \"RelativeActionId\": \"\",\r",
+							"    \"ReturnPoint\": 0,\r",
+							"    \"ReturnCouponCodes\": []\r",
+							"}\r",
+							"\r",
+							"var body_data = JSON.stringify(body)\r",
+							"\r",
+							"// 取得Timestamp\r",
+							"pm.sendRequest({\r",
+							"    url: pm.environment.get(\"scm_api\") + '/scm/v1/Utils/GetCurrentTime',\r",
+							"    method: 'POST',\r",
+							"    header: {\r",
+							"        'content-type': 'application/json',\r",
+							"    }\r",
+							"}, function (err, response) {\r",
+							"    const timestamp = response.json()\r",
+							"    // console.log(\"取得Timestamp : \" + timestamp)\r",
+							"    pm.environment.set(\"timestamp\", timestamp);\r",
+							"\r",
+							"    var body =  body_data.toLowerCase();\r",
+							"    // 取得Signature\r",
+							"    var content = \"ts=\" + pm.environment.get(\"timestamp\") + \"&data=\" + body + \"&sk=\" + pm.environment.get(\"salt_key\")\r",
+							"\r",
+							"     console.log(\"取得Signature : \" + content)\r",
+							"    pm.sendRequest({\r",
+							"        url: pm.environment.get(\"scm_api\") + '/scm/v1/Sample/GetEncryptData',\r",
+							"        method: 'POST',\r",
+							"        header: {\r",
+							"            'Content-Type': 'multipart/form-data',\r",
+							"            },\r",
+							"        body: {\r",
+							"            mode: 'formdata',\r",
+							"            formdata: [\r",
+							"            {\r",
+							"                key: \"key\", \r",
+							"                value: pm.environment.get(\"api_key\"), \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                },\r",
+							"            {\r",
+							"                key: \"content\", \r",
+							"                value: content, \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                }\r",
+							"            ]\r",
+							"        }\r",
+							"    },  function(err, response) {\r",
+							"        const signature = response.json().Data\r",
+							"        pm.environment.set(\"signature\", signature);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"request_body = body_data\r",
+							"// console.log(\"4. 取得request_body:\" + request_body)\r",
+							"pm.environment.set(\"request_body\", request_body);\r",
+							"\r",
+							"function interpolate (value) {\r",
+							"    const {Property} = require('postman-collection');\r",
+							"    return Property.replaceSubstitutions(value, pm.variables.toObject());\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "NY-SHOP-ID",
+						"value": "{{shop_Id}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json;charset=utf-8 ",
+						"type": "text"
+					},
+					{
+						"key": "x-request-id",
+						"value": "{{request_id}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-machine-code",
+						"value": "{{machine_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-location-code",
+						"value": "{{location_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-employee-code",
+						"value": "{{employee_code}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{request_body}}"
+				},
+				"url": {
+					"raw": "{{api_host}}/pos/v1/ReturnOrderPOSAction?t={{token}}&ts={{timestamp}}&s={{signature}}",
+					"host": [
+						"{{api_host}}"
+					],
+					"path": [
+						"pos",
+						"v1",
+						"ReturnOrderPOSAction"
+					],
+					"query": [
+						{
+							"key": "t",
+							"value": "{{token}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{timestamp}}"
+						},
+						{
+							"key": "s",
+							"value": "{{signature}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "取得POS操作紀錄",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const phone = pm.environment.get(\"phone\");\r",
+							"const outermembercode = pm.environment.get(\"outermembercode\");\r",
+							"const shopId = parseInt(pm.environment.get(\"shop_id\"));\r",
+							"// 修改request-body\r",
+							"var body =  {\r",
+							"    \"OuterMemberCode\": outermembercode,\r",
+							"    \"SearchRange\": {\r",
+							"        \"StartDateTime\": \"2020-02-01T09:00:00+08:00\",\r",
+							"        \"EndDateTime\": \"2020-03-31T23:59:59+08:00\"\r",
+							"    }\r",
+							"}\r",
+							"\r",
+							"var body_data = JSON.stringify(body)\r",
+							"\r",
+							"// 取得Timestamp\r",
+							"pm.sendRequest({\r",
+							"    url: pm.environment.get(\"scm_api\") + '/scm/v1/Utils/GetCurrentTime',\r",
+							"    method: 'POST',\r",
+							"    header: {\r",
+							"        'content-type': 'application/json',\r",
+							"    }\r",
+							"}, function (err, response) {\r",
+							"    const timestamp = response.json()\r",
+							"    // console.log(\"取得Timestamp : \" + timestamp)\r",
+							"    pm.environment.set(\"timestamp\", timestamp);\r",
+							"\r",
+							"    var body =  body_data.toLowerCase();\r",
+							"    // 取得Signature\r",
+							"    var content = \"ts=\" + pm.environment.get(\"timestamp\") + \"&data=\" + body + \"&sk=\" + pm.environment.get(\"salt_key\")\r",
+							"\r",
+							"     console.log(\"取得Signature : \" + content)\r",
+							"    pm.sendRequest({\r",
+							"        url: pm.environment.get(\"scm_api\") + '/scm/v1/Sample/GetEncryptData',\r",
+							"        method: 'POST',\r",
+							"        header: {\r",
+							"            'Content-Type': 'multipart/form-data',\r",
+							"            },\r",
+							"        body: {\r",
+							"            mode: 'formdata',\r",
+							"            formdata: [\r",
+							"            {\r",
+							"                key: \"key\", \r",
+							"                value: pm.environment.get(\"api_key\"), \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                },\r",
+							"            {\r",
+							"                key: \"content\", \r",
+							"                value: content, \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                }\r",
+							"            ]\r",
+							"        }\r",
+							"    },  function(err, response) {\r",
+							"        const signature = response.json().Data\r",
+							"        pm.environment.set(\"signature\", signature);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"request_body = body_data\r",
+							"// console.log(\"4. 取得request_body:\" + request_body)\r",
+							"pm.environment.set(\"request_body\", request_body);\r",
+							"\r",
+							"function interpolate (value) {\r",
+							"    const {Property} = require('postman-collection');\r",
+							"    return Property.replaceSubstitutions(value, pm.variables.toObject());\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "NY-SHOP-ID",
+						"value": "{{shop_Id}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json;charset=utf-8 ",
+						"type": "text"
+					},
+					{
+						"key": "x-request-id",
+						"value": "{{request_id}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-machine-code",
+						"value": "{{machine_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-location-code",
+						"value": "{{location_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-employee-code",
+						"value": "{{employee_code}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{request_body}}"
+				},
+				"url": {
+					"raw": "{{api_host}}/pos/v1/QueryPOSActions?t={{token}}&ts={{timestamp}}&s={{signature}}",
+					"host": [
+						"{{api_host}}"
+					],
+					"path": [
+						"pos",
+						"v1",
+						"QueryPOSActions"
+					],
+					"query": [
+						{
+							"key": "t",
+							"value": "{{token}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{timestamp}}"
+						},
+						{
+							"key": "s",
+							"value": "{{signature}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "單獨核銷優惠券",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const phone = pm.environment.get(\"phone\");\r",
+							"const outermembercode = pm.environment.get(\"outermembercode\");\r",
+							"const shopId = parseInt(pm.environment.get(\"shop_id\"));\r",
+							"// 修改request-body\r",
+							"var body =   {\r",
+							"    \"OuterMemberCode\": outermembercode,\r",
+							"    \"CouponCodes\": [\"xxx\"]\r",
+							"  }\r",
+							"\r",
+							"var body_data = JSON.stringify(body)\r",
+							"\r",
+							"// 取得Timestamp\r",
+							"pm.sendRequest({\r",
+							"    url: pm.environment.get(\"scm_api\") + '/scm/v1/Utils/GetCurrentTime',\r",
+							"    method: 'POST',\r",
+							"    header: {\r",
+							"        'content-type': 'application/json',\r",
+							"    }\r",
+							"}, function (err, response) {\r",
+							"    const timestamp = response.json()\r",
+							"    // console.log(\"取得Timestamp : \" + timestamp)\r",
+							"    pm.environment.set(\"timestamp\", timestamp);\r",
+							"\r",
+							"    var body =  body_data.toLowerCase();\r",
+							"    // 取得Signature\r",
+							"    var content = \"ts=\" + pm.environment.get(\"timestamp\") + \"&data=\" + body + \"&sk=\" + pm.environment.get(\"salt_key\")\r",
+							"\r",
+							"     console.log(\"取得Signature : \" + content)\r",
+							"    pm.sendRequest({\r",
+							"        url: pm.environment.get(\"scm_api\") + '/scm/v1/Sample/GetEncryptData',\r",
+							"        method: 'POST',\r",
+							"        header: {\r",
+							"            'Content-Type': 'multipart/form-data',\r",
+							"            },\r",
+							"        body: {\r",
+							"            mode: 'formdata',\r",
+							"            formdata: [\r",
+							"            {\r",
+							"                key: \"key\", \r",
+							"                value: pm.environment.get(\"api_key\"), \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                },\r",
+							"            {\r",
+							"                key: \"content\", \r",
+							"                value: content, \r",
+							"                disabled: false, \r",
+							"                description: {content:\"\", type:\"text/plain\"}\r",
+							"                }\r",
+							"            ]\r",
+							"        }\r",
+							"    },  function(err, response) {\r",
+							"        const signature = response.json().Data\r",
+							"        pm.environment.set(\"signature\", signature);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"request_body = body_data\r",
+							"// console.log(\"4. 取得request_body:\" + request_body)\r",
+							"pm.environment.set(\"request_body\", request_body);\r",
+							"\r",
+							"function interpolate (value) {\r",
+							"    const {Property} = require('postman-collection');\r",
+							"    return Property.replaceSubstitutions(value, pm.variables.toObject());\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "NY-SHOP-ID",
+						"value": "{{shop_Id}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json;charset=utf-8 ",
+						"type": "text"
+					},
+					{
+						"key": "x-request-id",
+						"value": "{{request_id}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-machine-code",
+						"value": "{{machine_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-location-code",
+						"value": "{{location_code}}",
+						"type": "text"
+					},
+					{
+						"key": "x-pos-content-employee-code",
+						"value": "{{employee_code}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{request_body}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{api_host}}/pos/v1/RedeemCoupons?t={{token}}&ts={{timestamp}}&s={{signature}}",
+					"host": [
+						"{{api_host}}"
+					],
+					"path": [
+						"pos",
+						"v1",
+						"RedeemCoupons"
+					],
+					"query": [
+						{
+							"key": "t",
+							"value": "{{token}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{timestamp}}"
+						},
+						{
+							"key": "s",
+							"value": "{{signature}}"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					"const phone = pm.collectionVariables.get(\"phone\");\r",
+					"const outermembercode = pm.collectionVariables.get(\"outermembercode\");\r",
+					"const membercode = pm.collectionVariables.get(\"member_code\");\r",
+					"const shopId = parseInt(pm.collectionVariables.get(\"shop_id\"));\r",
+					"const usingChannelType = pm.collectionVariables.get(\"usingChannelType\");\r",
+					"\r",
+					"// 修改request-body\r",
+					"var body = {\r",
+					"    \"OuterMemberCode\": outermembercode,\r",
+					"    \"MemberCode\": membercode,\r",
+					"    \"CellPhone\": \"phone\",\r",
+					"    \"UsingChannelType\":usingChannelType\r",
+					"}\r",
+					"\r",
+					"var body_data = JSON.stringify(body)\r",
+					"\r",
+					"// 取得Timestamp\r",
+					"pm.sendRequest({\r",
+					"    url: 'https://api.91mai.com' + '/scm/v1/Utils/GetCurrentTime',\r",
+					"    method: 'POST',\r",
+					"    header: {\r",
+					"        'content-type': 'application/json',\r",
+					"    }\r",
+					"}, function (err, response) {\r",
+					"    const timestamp = response.json()\r",
+					"    // console.log(\"取得Timestamp : \" + timestamp)\r",
+					"    pm.collectionVariables.set(\"timestamp\", timestamp);\r",
+					"\r",
+					"    var body =  body_data.toLowerCase();\r",
+					"    // 取得Signature\r",
+					"    var content = \"ts=\" + pm.collectionVariables.get(\"timestamp\") + \"&data=\" + body + \"&sk=\" + pm.collectionVariables.get(\"salt_key\")\r",
+					"\r",
+					"     console.log(\"取得Signature : \" + content)\r",
+					"    pm.sendRequest({\r",
+					"        url: 'https://api.91mai.com' + '/scm/v1/Sample/GetEncryptData',\r",
+					"        method: 'POST',\r",
+					"        header: {\r",
+					"            'Content-Type': 'multipart/form-data',\r",
+					"            },\r",
+					"        body: {\r",
+					"            mode: 'formdata',\r",
+					"            formdata: [\r",
+					"            {\r",
+					"                key: \"key\", \r",
+					"                value: pm.collectionVariables.get(\"api_key\"), \r",
+					"                disabled: false, \r",
+					"                description: {content:\"\", type:\"text/plain\"}\r",
+					"                },\r",
+					"            {\r",
+					"                key: \"content\", \r",
+					"                value: content, \r",
+					"                disabled: false, \r",
+					"                description: {content:\"\", type:\"text/plain\"}\r",
+					"                }\r",
+					"            ]\r",
+					"        }\r",
+					"    },  function(err, response) {\r",
+					"        const signature = response.json().Data\r",
+					"        pm.collectionVariables.set(\"signature\", signature);\r",
+					"    });\r",
+					"});\r",
+					"\r",
+					"request_body = body_data\r",
+					"// console.log(\"4. 取得request_body:\" + request_body)\r",
+					"pm.collectionVariables.set(\"request_body\", request_body);\r",
+					"\r",
+					"function interpolate (value) {\r",
+					"    const {Property} = require('postman-collection');\r",
+					"    return Property.replaceSubstitutions(value, pm.collectionVariables.toObject());\r",
+					"}\r",
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "api_host",
+			"value": "http://10.51.102.231",
+			"type": "string"
+		},
+		{
+			"key": "scm_api",
+			"value": "https://api.91mai.com",
+			"type": "string"
+		},
+		{
+			"key": "shop_Id",
+			"value": "2",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "123456782",
+			"type": "string"
+		},
+		{
+			"key": "salt_key",
+			"value": "73073046",
+			"type": "string"
+		},
+		{
+			"key": "request_id",
+			"value": "NY0643",
+			"type": "string"
+		},
+		{
+			"key": "machine_code",
+			"value": "NY0643",
+			"type": "string"
+		},
+		{
+			"key": "location_code",
+			"value": "1234999",
+			"type": "string"
+		},
+		{
+			"key": "employee_code",
+			"value": "124",
+			"type": "string"
+		},
+		{
+			"key": "outermembercode",
+			"value": "M9192066",
+			"type": "string"
+		},
+		{
+			"key": "member_code",
+			"value": "70000330F0",
+			"type": "string"
+		},
+		{
+			"key": "timestamp",
+			"value": "1734435484",
+			"type": "string"
+		},
+		{
+			"key": "signature",
+			"value": "edd407be752d1c7ad42284dc73f7543fe3d0f60bdbb113352dc512802e74e69696a929edaa63b70874056afa0c723be6fa7865efbac9f680e51e6dc064c4b85a",
+			"type": "string"
+		},
+		{
+			"key": "request_body",
+			"value": "{\"OuterMemberCode\":\"M9192066\",\"MemberCode\":\"70000330F0\",\"UsingChannelType\":\"Online\"}",
+			"type": "string"
+		},
+		{
+			"key": "usingChannelType",
+			"value": "Online",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "d80f29af-e686-4a25-8b62-7dc9f4f70417",
+			"type": "string"
+		},
+		{
+			"key": "phone",
+			"value": "+886909871212",
+			"type": "string"
+		}
+	]
+}

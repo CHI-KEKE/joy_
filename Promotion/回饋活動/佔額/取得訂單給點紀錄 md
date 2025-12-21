@@ -1,0 +1,7 @@
+
+## api
+
+
+促購後台
+
+`loyalty-point-query` : 取得訂單給點紀錄 要篩選掉 Unmatch、Occupy
