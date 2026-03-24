@@ -1,0 +1,884 @@
+{
+  "info": {
+    "_postman_id": "625c6e24-5496-4dd4-a462-6237ba7b2980",
+    "name": "商店API 測試_MY_QA",
+    "description": "HK_QA : [http://api.qa1.hk.91dev.tw](http://api.qa1.hk.91dev.tw)\n\nLocal :　[http://api.dev.91dev.tw](http://api.dev.91dev.tw)\n\ntwqa : [http://api.qa.91dev.tw](http://api.qa.91dev.tw)\n\nHK_PROD:[http://api.91app.hk](http://api.91app.hk)\n\nmyqa : [https://api.qa1.my.91dev.tw](https://api.qa1.my.91dev.tw)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "29796329"
+  },
+  "item": [
+    {
+      "name": "1.1.2 訂單查詢 API V1",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "shopId",
+              "value": "2",
+              "type": "text"
+            },
+            {
+              "key": "tmCode",
+              "value": "TM241028T00009 ",
+              "type": "text",
+              "disabled": true
+            },
+            {
+              "key": "tsCode",
+              "value": "TS241028T000009",
+              "type": "text",
+              "disabled": true
+            },
+            {
+              "key": "tgCode",
+              "value": "TG241028T00009",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V1/Order/GetOrder?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V1",
+            "Order",
+            "GetOrder"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "1.1.2 訂單查詢 API V2",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"ShopId\": 83,\r\n    \"TGCode\": \"MG260126T00001\",\r\n    \"TMCode\": \"MM260126T00001\",\r\n    \"TSCode\": \"MS260126T000002\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V2/SalesOrder/Get?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V2",
+            "SalesOrder",
+            "Get"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5.3.1 新增單一商品頁 API",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"ShopId\": 83,\r\n    \"CategoryId\": 0,\r\n    \"MirrorCategoryIdList\": null,\r\n    \"ShopCategoryId\": 457,\r\n    \"MirrorShopCategoryIdList\": null,\r\n    \"Title\": \"商店API測試哦~PayNowAPI\",\r\n    \"SellingStartDateTime\": \"2026-01-26T18:00:00\",\r\n    \"SellingEndDateTime\": \"2027-01-26T18:00:00\",\r\n    \"ApplyType\": \"一般\",\r\n    \"ExpectShippingDate\": null,\r\n    \"ShippingPrepareDay\": null,\r\n    \"ShippingTypes\": [\r\n        508\r\n    ],\r\n    \"PayTypes\": [\r\n        \"PayNow_Razer\",\r\n        \"CreditCardOnce_Razer\"\r\n    ],\r\n    \"SuggestPrice\": 5,\r\n    \"Price\": 5,\r\n    \"Cost\": 5,\r\n    \"ProductHighlight\": \"銷售重點\",\r\n    \"ProductDescription\": \"商品特色\",\r\n    \"MoreInfo\": null,\r\n    \"Brand\": null,\r\n    \"Type\": null,\r\n    \"Specifications\": null,\r\n    \"HasSku\": false,\r\n    \"OnceQty\": 30,\r\n    \"Qty\": 99999,\r\n    \"OuterId\": \"RX-78-2\",\r\n    \"SkuList\": [],\r\n    \"TemperatureTypeDef\": \"Normal\",\r\n    \"Length\": 100,\r\n    \"WIdth\": 50,\r\n    \"Height\": 80,\r\n    \"Weight\": 1200,\r\n    \"Status\": \"Normal\",\r\n    \"IsShowStockQty\": false,\r\n    \"TaxTypeDef\": \"Taxable\",\r\n    \"IsReturnable\": true,\r\n    \"IsEnableBookingPickupDate\": false,\r\n    \"SEOTitle\": null,\r\n    \"SEOKeywords\": null,\r\n    \"SEODescription \": null,\r\n    \"SafetyStockQty\": 10,\r\n    \"IsShowPurchaseList \": false,\r\n    \"IsShowSoldQty\": false,\r\n    \"SoldOutActionType\": \"OutOfStock\",\r\n    \"IsRestricted\": false,\r\n    \"SalesModeTypeDef\": 1,\r\n    \"PointsPayPairs\": null\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V1/SalePage/SubmitMain?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V1",
+            "SalePage",
+            "SubmitMain"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5.6.1 商品頁內容查詢 API",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"Id\": 7263\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V1/SalePage/GetMain?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V1",
+            "SalePage",
+            "GetMain"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5.6.2 商品頁明細查詢 API",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"Id\": 7263\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V1/SalePage/GetMainDetail?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V1",
+            "SalePage",
+            "GetMainDetail"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5.6.8 查詢商店支援的付款方式 API",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V1/Shop/GetPayment?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V1",
+            "Shop",
+            "GetPayment"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5.8.1 新增贈品 API",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"ShopId\": 83,\r\n    \"GiftTypeDef\": \"PromotionFreeGift\",\r\n    \"ShortContent\": \"贈品特色\",\r\n    \"Title\": \"用api建paynow贈品\",\r\n    \"OuterId\": \"RX-78\",\r\n    \"StockQty\": 500,\r\n    \"SafetyStockQty\": 30,\r\n    \"TemperatureTypeDef\": \"Normal\",\r\n    \"ShippingTypes\": [\r\n        508\r\n    ],\r\n    \"PayTypes\": [\r\n        \"PayNow_Razer\",\r\n        \"CreditCardOnce_Razer\"\r\n    ],\r\n    \"Length\": 10,\r\n    \"Width\": 10,\r\n    \"Height\": 10,\r\n    \"Weight\": 100\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V2/Gift/Create?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V2",
+            "Gift",
+            "Create"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5.7.2 贈品明細查詢 API",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"ShopId\": 83,\r\n  \"Id\": 7264\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V2/Gift/GetDetail?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V2",
+            "Gift",
+            "GetDetail"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5.8.3 贈品明細變更 API",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"Id\":7264,\r\n    \"ShopId\": 83,\r\n    \"GiftTypeDef\": \"PromotionFreeGift\",\r\n    \"ShortContent\": \"贈品特色\",\r\n    \"Title\": \"~~~用api建paynow贈品\",\r\n    \"OuterId\": \"RX-78\",\r\n    \"StockQty\": 500,\r\n    \"SafetyStockQty\": 30,\r\n    \"TemperatureTypeDef\": \"Normal\",\r\n    \"ShippingTypes\": [\r\n        508\r\n    ],\r\n    \"PayTypes\": [\r\n        \"PayNow_Razer\",\r\n        \"CreditCardOnce_Razer\"\r\n    ],\r\n    \"Length\": 10,\r\n    \"Width\": 10,\r\n    \"Height\": 10,\r\n    \"Weight\": 100\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V2/Gift/UpdateDetail?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V2",
+            "Gift",
+            "UpdateDetail"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6.1.2 折扣活動明細查詢 API",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"ShopId\": 83,\r\n    \"Id\": 1019\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm//V2/Promotion/GetPromotionDetail?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "",
+            "V2",
+            "Promotion",
+            "GetPromotionDetail"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6.2.1 新增折扣活動",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"ShopId\": 83,\r\n  \"TypeDef\": \"DiscountReachPriceWithFreeGift\",\r\n  \"Name\": \"AllenTestPaynowwwwwAPI\",\r\n  \"StartDateTime\": \"2026-01-26T19:20:00.000Z\",\r\n  \"EndDateTime\": \"2027-11-30T11:50:00.000Z\",\r\n  \"Description\": \"CC\",\r\n  \"CustomCampaignCode\": \"91APP\",\r\n  \"PayTypes\": [\"PayNow_Razer\", \"CreditCardOnce_Razer\"],\r\n  \"TargetMemberTypeDef\": \"All\",\r\n  \"IsRegular\": false,\r\n  \"PromotionTargetRegionTypeDef\": \"All\",\r\n  \"TargetTypeDef\" : \"Shop\",\r\n  \"ExcludeTargetTypeDef\": \"None\",\r\n  \"ShippingTypes\": [],\r\n  \"TargetPlatformTypeList\": [\r\n        {\r\n            \"Platform\": \"Web\",\r\n            \"IsEnabled\": true\r\n        },\r\n        {\r\n            \"Platform\": \"AppIOS\",\r\n            \"IsEnabled\": true\r\n        },\r\n        {\r\n            \"Platform\": \"AppAndroid\",\r\n            \"IsEnabled\": true\r\n        }\r\n    ]\r\n,\r\n  \"Title\": \"超不值\",\r\n  \"Color\": \"#FF5733\",\r\n  \"GiftRuleList\": [\r\n        {\r\n            \"ReachCondition\": 1,\r\n            \"Type\": \"Gift\",\r\n            \"Qty\": 1,\r\n            \"IsRepeatable\" : false,\r\n            \"GiftTypeIds\": [61048],\r\n            \"CollectionId\": \"\",\r\n            \"PromotionTag\": \"\"\r\n        }\r\n    ],\r\n\"CalculateTypeDef\":\"Compatible\"\r\n\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V2/Promotion/CreatePromotion?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V2",
+            "Promotion",
+            "CreatePromotion"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6.2.4 折扣活動明細變更 API",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"ShopId\": 83,\r\n  \"TypeDef\": \"DiscountReachPriceWithFreeGift\",\r\n  \"Name\": \"AllenTestPaynowwwwwAPI\",\r\n  \"StartDateTime\": \"2026-01-26T19:20:00.000Z\",\r\n  \"EndDateTime\": \"2027-11-30T11:50:00.000Z\",\r\n  \"Description\": \"CC\",\r\n  \"CustomCampaignCode\": \"91APP\",\r\n  \"PayTypes\": [\"PayNow_Razer\", \"CreditCardOnce_Razer\",\"GrabPay_Razer\"],\r\n  \"TargetMemberTypeDef\": \"All\",\r\n  \"IsRegular\": false,\r\n  \"PromotionTargetRegionTypeDef\": \"All\",\r\n  \"TargetTypeDef\" : \"Shop\",\r\n  \"ExcludeTargetTypeDef\": \"None\",\r\n  \"ShippingTypes\": [],\r\n  \"TargetPlatformTypeList\": [\r\n        {\r\n            \"Platform\": \"Web\",\r\n            \"IsEnabled\": true\r\n        },\r\n        {\r\n            \"Platform\": \"AppIOS\",\r\n            \"IsEnabled\": true\r\n        },\r\n        {\r\n            \"Platform\": \"AppAndroid\",\r\n            \"IsEnabled\": true\r\n        }\r\n    ]\r\n,\r\n  \"Title\": \"超不值\",\r\n  \"Color\": \"#FF5733\",\r\n  \"GiftRuleList\": [\r\n        {\r\n            \"ReachCondition\": 1,\r\n            \"Type\": \"Gift\",\r\n            \"Qty\": 1,\r\n            \"IsRepeatable\" : false,\r\n            \"GiftTypeIds\": [61048],\r\n            \"CollectionId\": \"\",\r\n            \"PromotionTag\": \"\"\r\n        }\r\n    ],\r\n\"CalculateTypeDef\":\"Compatible\"\r\n\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V2/Promotion/CreatePromotion?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V2",
+            "Promotion",
+            "CreatePromotion"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "訂單狀態",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"shopId\": 83,\r\n    \"SourceType\": \"SalesOrderGroup\",\r\n    \"SourceCode\": \"MG260126T00001\"\r\n} ",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{API_URL}}/scm/V2/SalesOrder/CheckIsValid?t={{Token}}&ts={{Timestamp}}&s={{Signature}}",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "scm",
+            "V2",
+            "SalesOrder",
+            "CheckIsValid"
+          ],
+          "query": [
+            {
+              "key": "t",
+              "value": "{{Token}}"
+            },
+            {
+              "key": "ts",
+              "value": "{{Timestamp}}"
+            },
+            {
+              "key": "s",
+              "value": "{{Signature}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [
+          "// 取得Timestamp",
+          "let timestamp = getTimestamp();",
+          "",
+          "// 取得Signature",
+          "const signatureApiUrl = pm.collectionVariables.get(\"API_URL\") + \"/scm/v1/Sample/GetEncryptData\";",
+          "const apiKey = pm.collectionVariables.get(\"API_Key\");",
+          "const saltKey = pm.collectionVariables.get(\"SaltKey\");",
+          "const requestBody = pm.request.body;",
+          "console.log(\"requestBody\",requestBody);",
+          "console.log(\"mode:\" + requestBody.mode);",
+          "let body = {};",
+          "if(requestBody.mode == \"formdata\"){",
+          "    const formdata = requestBody.formdata.members;",
+          "    body = convertFormDataToJson(formdata)",
+          "}else{",
+          "    body = JSON.parse(requestBody.raw);",
+          "}",
+          "",
+          "const content = \"ts=\"+ timestamp+\"&data=\" + JSON.stringify(body).toLowerCase() + \"&sk=\" + saltKey;",
+          "console.log(\"apiKey: \" , apiKey);",
+          "console.log(\"timestamp: \", timestamp);",
+          "console.log(\"body: \", body);",
+          "console.log(\"saltKey: \", saltKey);",
+          "console.log(\"content: \", content);",
+          "pm.sendRequest({",
+          "    url: signatureApiUrl,",
+          "    method: 'POST',",
+          "    header: {",
+          "        'Content-Type': 'multipart/form-data'",
+          "    },",
+          "    body: {",
+          "        mode: 'formdata',",
+          "        formdata: [",
+          "            { key: \"content\", value: content, type: \"text\" },",
+          "            { key: \"key\", value: apiKey, type: \"text\" }",
+          "        ]",
+          "    }}, function (err, response) {",
+          "    const responseBody = response.json();",
+          "    pm.collectionVariables.set(\"Signature\", responseBody.Data);",
+          "});",
+          "",
+          "console.log(\"開始重組REQUEST\");",
+          "// 重組REQUEST",
+          "let newbody = {",
+          "    data: JSON.stringify(body)",
+          "};",
+          "",
+          "console.log(\"newbody\",newbody);",
+          "pm.request.body.update({",
+          "    mode: 'raw',",
+          "    raw: JSON.stringify(newbody),",
+          "    options: {",
+          "        raw: {",
+          "            language: \"json\"",
+          "        }",
+          "    }",
+          "});",
+          "",
+          "",
+          "function getTimestamp(){",
+          "    const gtm = new Date(Date.UTC(1970, 0, 1));",
+          "",
+          "    const utc = new Date();",
+          "    const utcOffsetInHours = 8; // UTC+8",
+          "    const localTime = new Date(utc.getTime() + (utcOffsetInHours * 60 * 60 * 1000));",
+          "",
+          "    const timestamp = Math.floor((localTime - gtm) / 1000);",
+          "    //const timestamp = \"1722002520\";",
+          "    pm.collectionVariables.set(\"Timestamp\", timestamp);",
+          "    return timestamp;",
+          "}",
+          "",
+          "function convertFormDataToJson(obj){",
+          "    const formdata = requestBody.formdata.members;",
+          "    var result = {};",
+          "    formdata.forEach(item => {",
+          "        result[item.key] = item.value;",
+          "    });",
+          "    return convertStringNumbers(result)",
+          "}",
+          "",
+          "function convertStringNumbers(obj) {",
+          "    for (const key in obj) {",
+          "        if (obj.hasOwnProperty(key)) {",
+          "            if (typeof obj[key] === 'string' && !isNaN(obj[key])) {",
+          "                obj[key] = Number(obj[key]);",
+          "            } else if (typeof obj[key] === 'object' && obj[key] !== null) {",
+          "                convertStringNumbers(obj[key]);",
+          "            }",
+          "        }",
+          "    }",
+          "    return obj;",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "API_URL",
+      "value": "https://api.qa1.hk.91dev.tw"
+    },
+    {
+      "key": "Token",
+      "value": "123456782"
+    },
+    {
+      "key": "SaltKey",
+      "value": "73073046"
+    },
+    {
+      "key": "API_Key",
+      "value": "d80f29af-e686-4a25-8b62-7dc9f4f70417"
+    },
+    {
+      "key": "Timestamp",
+      "value": ""
+    },
+    {
+      "key": "Signature",
+      "value": ""
+    }
+  ]
+}

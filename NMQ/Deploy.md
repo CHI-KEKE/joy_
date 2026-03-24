@@ -45,3 +45,12 @@ NMQV3 Dashboard 網址：https://nmqv3-dashboard.qa1.hk.91dev.tw/router-manageme
 **Library**
 
 `D:\Prod\NineYi\NMQV2\Library\NineYi.Scm.Frontend`
+
+
+
+## deploy 機器本身狀態
+
+
+有一個排程跑 ps
+有一個資料夾會被清空重新放新的
+

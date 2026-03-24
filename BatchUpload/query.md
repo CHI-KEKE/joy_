@@ -1,10 +1,9 @@
-## BatchUpload
+## Jobs
 
-```sql
-SELECT top 1 BatchUpload_Code,BatchUpload_StatusDef,*
-FROM BatchUpload(nolock)
-where BatchUpload_ValidFlag = 1
-```
+- ExportRewardPromotionSalePage
+- BatchModifyPromotionSalePageTask
+- BatchModifyPromotionOuterId
+- ModifyRewardPromotionSalePage
 
 <br>
 

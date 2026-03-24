@@ -49,3 +49,16 @@ http://cart-api-internal.qa.91dev.tw/api/carts/area-set
 "ControllerShortName": "Carts",
 "ActionShortName": "AreaSet",
 "RequestPath": "/api/carts/area-set"
+
+
+
+
+
+## CalculateProcessor
+## ArrangePromotionRuleInfoProcessor
+## GetSalepagePromotionDisplayTextProcessor
+## GetSalepageDiscountDisplayTextProcessor
+## UpdateLoyaltyPointDisplayStatusProcessor
+## GetInsufficientPointsSalepageDisplayTextProcessor
+## GetPurchaseExtraDisplayTextProcessor
+## 

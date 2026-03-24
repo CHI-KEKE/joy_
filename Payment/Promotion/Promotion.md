@@ -1,15 +1,12 @@
 
 
 
-## 折扣活動指定金流 (滿額贈) DiscountReachPriceWithFreeGift
+## 後台折扣活動指定金流 (滿額贈) DiscountReachPriceWithFreeGift
 
 https://sms.qa1.my.91dev.tw/CommerceCloud/PromotionEngine/Create?shopId=32&type=DiscountReachPriceWithFreeGift
 
 
-
-
 https://sms.qa1.my.91dev.tw/Api/Shop/GetShopPayProfiles?shopId=32
-
 
 
 https://91appinc.visualstudio.com/G11n/_workitems/edit/537336
@@ -136,8 +133,6 @@ where PromotionEngine_ValidFlag = 1
 and PromotionEngine_TypeDef in ('PromoCodeKOLReachPriceAmount','DiscountReachPriceWithFreeGift')
 and PromotionEngine_ShopId = 32
 ```
-
-
 
 ## 指定金流折價
 

@@ -1,8 +1,9 @@
 
-## QA 機器
+## 機器
 
+D:\Files\Log\SMS\NLog\202601\20260120\Shop
 `D:\Files\Log\SMS\NLog\202512\20251202\GlobalShipping`
-
+`E:\log\ny-log\Common\NLog\SMS`
 
 ## Athena LOG
 

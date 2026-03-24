@@ -71,6 +71,3 @@ routes.MapRoute(
 ## Filter PR
 
 
-#### 交易黑名單
-
-https://bitbucket.org/nineyi/nineyi.files/pull-requests/464/diff

@@ -1,4 +1,17 @@
 
+## TradesOrderGroup
+
+```sql
+select *
+from TradesOrderGroup(nolock)
+where TradesOrderGroup_ValidFlag = 1
+and TradesOrderGroup_Code in ('TG251121K00002',
+'TG251121K00003',
+'TG251121K00004',
+'TG251121K00006')
+```
+
+
 ## 最新 ts
 
 ```sql

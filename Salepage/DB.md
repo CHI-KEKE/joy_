@@ -27,6 +27,13 @@ INNER JOIN dbo.SalePage WITH (NOLOCK)
 WHERE SaleProductSKU_SalePageId IN (61482)
 ```
 
+## SaleProductSKU
+
+```sql
+select *
+from SaleProductSKU(nolock)
+where SaleProductSKU_SalePageId = 62210
+```
 
 ## 查看訂單數
 

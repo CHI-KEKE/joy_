@@ -128,4 +128,50 @@ QueryPayment Response Sign Verify Fail! 12, 时间匹对异常，请检查客户
 }
 ```
 
-<br>
+
+## 煩死人的 AliPayHK_EftPay 退款
+
+
+51,退款失败：SYSTEM_EXCEPTION
+
+| RefundRequest_TradesOrderGroupCode | SalesOrderSlave_TradesOrderSlaveCode | RefundRequest_StatusDef | SalesOrderSlave_StatusDef | RefundRequest_PayProfileTypeDef | RefundRequest_Amount | RefundRequest_UpdatedUser | RefundRequest_CreatedUser | SalesOrderSlave_DateTime    | RefundRequest_CreatedDateTime | RefundRequest_UpdatedDateTime | RefundRequest_ResponseMsg        | RefundRequest_TransactionId | RefundRequest_CreatedDateTime |
+|------------------------------------|--------------------------------------|-------------------------|---------------------------|---------------------------------|----------------------|---------------------------|---------------------------|-----------------------------|-------------------------------|-------------------------------|----------------------------------|-----------------------------|-------------------------------|
+| TG260222S00010                     | TS260222S000032                      | RefundRequestFail       | Finish                    | AliPayHK_EftPay                 | 251.10               | Unknown                   | mlbavery                  | 2026-02-22 16:05:56.450     | 2026-03-02 14:32:48.617       | 2026-03-02 15:03:17.433       | 51,退款失败：SYSTEM_EXCEPTION    | NULL                        | 2026-03-02 14:32:48.617       |
+| TG260228L00047                     | TS260228L000173                      | RefundRequestFail       | Cancel                    | AliPayHK_EftPay                 | 49.31                | Unknown                   | Unlogin                   | 2026-02-28 10:39:19.950     | 2026-03-02 16:20:13.307       | 2026-03-02 17:05:22.080       | 51,退款失败：SYSTEM_EXCEPTION    | NULL                        | 2026-03-02 16:20:13.307       |
+
+## query
+
+
+```sql
+use ERPDB
+
+select RefundRequest_TradesOrderGroupCode,SalesOrderSlave_TradesOrderSlaveCode,RefundRequest_StatusDef,SalesOrderSlave_StatusDef,RefundRequest_PayProfileTypeDef,RefundRequest_Amount,RefundRequest_UpdatedUser,RefundRequest_CreatedUser,SalesOrderSlave_DateTime,RefundRequest_CreatedDateTime,RefundRequest_UpdatedDateTime,RefundRequest_ResponseMsg,RefundRequest_TransactionId,RefundRequest_CreatedDateTime
+from RefundRequest(nolock)
+INNER JOIN SalesOrderSlave(NOLOCK)
+    ON RefundRequest_TradesOrderSlaveCode = SalesOrderSlave_TradesOrderSlaveCode
+--INNER JOIN SalesOrder(NOLOCK)
+--    ON SalesOrder_Id = SalesOrderSlave_SalesOrderId
+--inner join SalesOrderGroup(NOLOCK)
+--on SalesOrder_TradesOrderGroupId = SalesOrderGroup_TradesOrderGroupId
+where RefundRequest_ValidFlag = 1
+--and RefundRequest_Id in (121537,124652)
+--and RefundRequest_ResponseMsg like '%Business Rules Incorrect!%'
+and RefundRequest_StatusDef in ('RefundRequestFail','RefundRequestGrouping')
+and RefundRequest_UpdatedDateTime > '2026-03-02'
+and RefundRequest_CreatedDateTime > '2026-03-02'
+and RefundRequest_ResponseMsg = N'51,退款失败：SYSTEM_EXCEPTION'
+
+```
+
+## path
+
+
+```bash
+/api/v1.0/Refund/AliPayHK_EftPay/TG260228L00047
+
+{service="prod-payment-middleware"}
+|json
+|= `/api/v1.0/Refund/AliPayHK_EftPay/TG260222S00010`
+|json
+| line_format "{{._msg}}"
+```

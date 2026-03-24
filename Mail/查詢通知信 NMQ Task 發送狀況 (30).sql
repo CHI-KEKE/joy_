@@ -18,7 +18,7 @@ GROUP BY Task_Status
 --FROM dbo.Task WITH (NOLOCK)
 --WHERE Task_ValidFlag = 1
 --AND Task_CreatedDatetime BETWEEN '2025/07/31 00:00:00' AND '2025/07/31 23:59:59'
---AND Task_Data LIKE N'%§é»ù¨é¨ì´Á³qª¾«H%'
+--AND Task_Data LIKE N'%ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½qï¿½ï¿½ï¿½H%'
 --AND Task_JobId = 112
 
 
@@ -29,10 +29,10 @@ GROUP BY Task_Status
 --WHERE Task_ValidFlag = 1
 --AND Task_CreatedDatetime BETWEEN '2025/07/30 00:00:00' AND '2025/07/30 23:59:59'
 --AND Task_JobId = 112
---AND Task_Data LIKE N'%§é»ù¨é¨ì´Á³qª¾«H%'
+--AND Task_Data LIKE N'%ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½qï¿½ï¿½ï¿½H%'
 --ORDER BY Task_Id DESC
 
---{"Sender":null,"Receivers":null,"Subject":"§é»ù¨é¨ì´Á³qª¾«H","Content":null,"TemplateName":"ECouponExpireSoon","TemplateData":"10795,4187435,275349061,"}
+--{"Sender":null,"Receivers":null,"Subject":"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½qï¿½ï¿½ï¿½H","Content":null,"TemplateName":"ECouponExpireSoon","TemplateData":"10795,4187435,275349061,"}
 
 
 SELECT

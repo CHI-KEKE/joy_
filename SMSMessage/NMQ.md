@@ -9,6 +9,7 @@ TaskData
 
 
 MessageHigh
+```json
 {
   "ShopId": 76,
   "SMSType": "會員註冊",
@@ -18,8 +19,10 @@ MessageHigh
   "BookingDateTime": "2025-12-10T16:42:15.1384565+08:00",
   "CountryProfileId": 85
 }
+```
 
 一般
+```json
 {
   "ShopId": 22,
   "LocationId": 1681,
@@ -30,6 +33,7 @@ MessageHigh
   "BookingDateTime": "2025-12-10T16:44:18.3109183+08:00",
   "CountryProfileId": 85
 }
+```
 
 
 string pattern = @"(?<phone>\d+),(?<message>[^,]*)(,(?<countryProfileId>\d+))?";
@@ -46,11 +50,13 @@ currentProfileId : "SystemDefault.Local.CountryProfileId"
 
 
 
+```csharp
 //// 非台灣簡訊,固定Nexmo 
 if (country != CountryProfileEnum.Taiwan)
 {
     return SmsMessageProfileVendorEnum.Nexmo;
 }
+```
 
 
 sms 要加上 CountryProfileEnum
