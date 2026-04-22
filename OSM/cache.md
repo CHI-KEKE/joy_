@@ -18,4 +18,13 @@
 
 
 
+## hkqa
+
+
+<add name="QA.Redis.Cache" connectionString="hk-qa-backend-redis-1.bezo7j.ng.0001.apse1.cache.amazonaws.com:6379,ssl=false,password=,allowAdmin=false,connectTimeout=5000"/>
+	<add name="QA.Redis.Data.Frontend" connectionString="hk-qa-backend-redis-1.bezo7j.ng.0001.apse1.cache.amazonaws.com:6379,ssl=false,password=,allowAdmin=false,connectTimeout=5000" />
+	<add name="QA.Redis.Cache.Frontend" connectionString="hk-qa-backend-redis-1.bezo7j.ng.0001.apse1.cache.amazonaws.com:6379,ssl=false,password=,allowAdmin=false,connectTimeout=5000" />
+	<add name="QA.Redis.ImageQueue" connectionString="hk-qa-backend-redis-1.bezo7j.ng.0001.apse1.cache.amazonaws.com:6379,ssl=false,password=,allowAdmin=false,connectTimeout=5000" />
+	<add name="QA.Redis.Sequence" connectionString="hk-qa-backend-redis-1.bezo7j.ng.0001.apse1.cache.amazonaws.com:6379,ssl=false,password=,allowAdmin=false,connectTimeout=5000"/>
+
  

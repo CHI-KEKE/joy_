@@ -1,45 +1,153 @@
+# AuditPromotionRewardLoyaltyPointsV2Job
+
+> **所屬專案**：nine1.promotion.worker  
+> **Job 名稱常數**：`AuditPromotionRewardLoyaltyPointsV2`  
+> **Job 類別路徑**：`Nine1.Promotion.Console.NMQv3Worker.Jobs.PromotionRewardAudit`  
+> **用途**：線上訂單（ECom）給點紀錄稽核，確認正流程完成後 DynamoDB 中的給點紀錄是否與促銷引擎重算結果一致。
+
+---
+
+## 完整觸發鏈總覽
+
+```
+[外部事件] OrderCreated（線上訂單成立）
+ 維度：單一訂單群組（TradesOrderGroupCode）× 商店（ShopId）
+         ↓
+[Job 1] PromotionRewardLoyaltyPointsDispatcherV2Job
+ 維度：訂單群組 → 展開為活動維度，對每個給點活動建立一個 PromotionRewardLoyaltyPointsV2 Task
+         ↓ （稽核由另一流程觸發）
+[Job 2] AuditPromotionRewardLoyaltyPointsDispatchV2Job（線上分支）
+ 維度：全域（ExecuteTime）→ 查詢待稽核訂單群組，輸出 N 個稽核 Task
+         ↓ 每個訂單群組一個 Task
+[Job 3] AuditPromotionRewardLoyaltyPointsV2Job  ← 本 Job
+ 維度：單一訂單群組（TradesOrderGroupCode）→ 稽核其對應的多筆活動 DDB 紀錄
+```
+
+---
+
+## 各階段詳細說明（含維度）
+
+---
+
+### Stage 1：`PromotionRewardLoyaltyPointsDispatcherV2Job`（上游觸發）
+
+> **🎯 維度：單一訂單群組（TradesOrderGroupCode）× 商店（ShopId）維度**
+
+**觸發源**：EDA 事件 `OrderCreated`。
+
+**執行邏輯**：
+
+1. 解析事件取得 `ShopId + TradesOrderGroupCode`
+2. 查詢訂單成立時在期的給點活動
+3. 對每個活動建立一個 `PromotionRewardLoyaltyPointsV2` Task（實際執行給點）
+
+> 稽核流程由 `AuditPromotionRewardLoyaltyPointsDispatchV2Job` 排程觸發，非此 Job 直接觸發。
+
+---
+
+### Stage 2：`AuditPromotionRewardLoyaltyPointsDispatchV2Job`（線上分支）
+
+> **🎯 維度：全域查詢（ExecuteTime）→ 展開為單一訂單群組（TradesOrderGroupCode）維度**
+
+**執行邏輯**（`ProcessSalesOrderGroupAsync`）：
+
+1. 呼叫 `SalesOrderService.GetWaitToAuditSalesOrderGroupAsync(ExecuteTime)` 查詢當日待稽核線上訂單群組
+2. 確認期間有給點活動後，對每個訂單群組建立稽核 Task：
 
 ```json
-//// tw qa
-{"Data":"{\"Id\":\"ee932cc0-b476-4cc1-96d5-d7fb1900418c\",\"IdempotencyKey\":\"TG250411L00004\",\"EventName\":\"OrderCreated\",\"EventArgs\":{\"Market\":null,\"ShopId\":5},\"Source\":{\"ShopId\":5,\"PayType\":\"CreditCardOnce_Stripe\",\"TSCount\":1,\"MemberId\":32909,\"CellPhone\":\"88888888\",\"OrderCode\":\"TG250411L00004\",\"UserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36\",\"CountryCode\":\"852\",\"HttpReferer\":\"https://cccrrrmmm1.shop.qa1.hk.91dev.tw/V2/ShoppingCart/Index?shopId=5\",\"TotalAmount\":200.0,\"CurrencyCode\":\"HKD\",\"OrderDateTime\":\"2025-04-11T02:20:41.7973958+00:00\"},\"SourceType\":\"Orders\",\"SourceKey\":\"TG250411L00004\",\"CreatedAt\":\"2025-04-11T02:20:42.6189354+00:00\"}"}
-
-//// hk qa
-{"Data":"{\"FirstTriggerTime\":\"2025-04-11T14:06:20.4337541+08:00\",\"Id\":\"3ab621a0-2c4a-47e5-9c0e-0d86086c9b46\",\"SourceType\":\"Orders\",\"EventName\":\"OrderCreated\",\"IdempotencyKey\":\"TG250411Q00001\",\"Version\":null,\"SourceKey\":\"TG250411Q00001\",\"CreatedAt\":\"2025-04-11T06:05:52.9052972+00:00\",\"EventArgs\":{},\"Source\":{\"ShopId\":2,\"MemberId\":33132,\"OrderCode\":\"TG250411Q00001\",\"TotalAmount\":721000.0,\"CurrencyCode\":\"HKD\",\"OrderDateTime\":\"2025-04-11T14:05:51.7550714+08:00\",\"PayType\":\"CreditCardOnce_Stripe\",\"CellPhone\":\"934565786\"}}"}
+{
+  "JobName": "AuditPromotionRewardLoyaltyPointsV2",
+  "Payload": {
+    "ShopId": 2,
+    "TradesOrderGroupCode": "TG250411L00004",
+    "OrderDateTime": "2025-04-11T10:20:41",
+    "OrderTypeDefEnum": "ECom"
+  }
+}
 ```
 
-## 觸發機制
+> **📌 重點總結**：此 Stage 以「訂單群組（TradesOrderGroupCode）」為輸出粒度，且只在有給點活動存在的情況下才建立稽核 Task。
 
-```mermaid
-graph LR
-    A[⏰ Cronjob<br/>每小時 01 分] --> B[AuditPromotionRewardLoyaltyPointsDispatchV2Job]
-    B --> C[AuditPromotionRewardLoyaltyPointsV2Job]
-    C --> D[執行稽核作業]
+---
+
+### Stage 3：`AuditPromotionRewardLoyaltyPointsV2Job`（本 Job）
+
+> **🎯 維度：單一訂單群組（TradesOrderGroupCode）→ 展開為多筆活動（PromotionEngineId）維度逐一稽核**  
+> 一個 Task = 一個訂單群組，內部對其所有活動的 DDB 給點紀錄逐一驗證。
+
+**觸發源**：Stage 2 建立的 `AuditPromotionRewardLoyaltyPointsV2` Task。
+
+---
+
+#### Step 1：組裝稽核資料（`GetAuditDataAsync`）
+
+以 `TradesOrderGroupCode` 為核心：
+
+| 查詢來源 | 查詢鍵值 | 說明 |
+|---------|---------|------|
+| `PromotionService` | `ShopId + OrderDateTime` | 取得訂單成立時在期的點數活動清單 |
+| `SalesOrderService` | `ShopId + TradesOrderGroupCode` | 取得訂單群組的所有子單資料（`OrderSlaves`） |
+| `VipMemberRepository` | `ShopId + MemberId` | 取得會員資訊（MemberId 來自第一筆 OrderSlave） |
+| **DynamoDB** | `ShopId + TradesOrderGroupCode` | 取得**所有活動的給點主紀錄**（`GetLoyaltyPointRewardRecordAsync`） |
+| `PromotionService` | `SetValidSupportedPromotionRuleRecords` | 過濾並設定訂單對應的有效活動規則 |
+
+> ⚠️ **DDB 篩選**：只取 `RewardType == LoyaltyPoints`（或 RewardType 為空的舊資料）的主紀錄與明細。
+
+---
+
+#### Step 2：並行執行稽核器（`Task.WhenAll`）
+
+使用 `IPromotionRewardRecordAuditor` 介面集合（多個稽核器），並行呼叫 `Audit(auditData)`。
+
+> ⚠️ **例外處理**：每個稽核器都包裝在 `Task.Run` 中，若拋出 `AuditPromotionRewardPassException` 則視為通過（不中斷其他稽核器），其他例外會讓整個稽核失敗。
+
+稽核器對 `LoyaltyPromotionRewards`（DDB 給點主紀錄）逐一驗證，每筆 = 一個活動（PromotionEngineId）維度。
+
+---
+
+#### Step 3：處理稽核結果
+
+```
+所有稽核器均 Success == true
+    → Log 正常結束
+
+任何稽核器有 Success == false
+    → SendMessageAsync（Slack 告警）
+       包含：市場環境、TradesOrderGroupCode（TG Code）、失敗訊息明細
 ```
 
-| 階段 | 服務名稱 | 觸發時機 | 說明 |
-|------|----------|----------|------|
-| **1** | `Cronjob` | 每小時 01 分 | 定時排程觸發 |
-| **2** | `AuditPromotionRewardLoyaltyPointsDispatchV2Job` | 被 Cronjob 觸發 | 派發稽核作業 |
-| **3** | `AuditPromotionRewardLoyaltyPointsV2Job` | 被 Dispatch 觸發 | 執行實際稽核 |
+> **📌 重點總結**：此階段以「**訂單群組（TradesOrderGroupCode）**」進入，稽核其 DDB 中所有給點活動紀錄。與線下版（`AuditCrmOthersOrderPromotionRewardLoyaltyPointsV2Job`）最大差異：資料來源是 WebStore 訂單 DB，使用 TG Code（TradesOrderGroupCode）直接作為 DDB 查詢鍵，不需要 CrmSalesOrderCodePrefix 轉換，會員資訊也直接從 OrderSlave 取得。
 
-#### 檢查訂單
+---
 
-| 參數 | 說明 | 資料來源 |
-|------|------|----------|
-| **時間範圍** | 執行時間 -2 hr ~ +1 hr 的訂單 | `salesOrderGroup` |
-| **有效性檢查** | 檢查 `SalesOrderGroup.IsValid` | 資料庫直接查詢 |
-| **訂單時間** | `salesOrderGroup.SalesOrderGroupDateTime` | 訂單群組時間戳記 |
+## 各階段維度對照表
 
+| 階段 | Job 名稱 | 輸入維度 | 輸出維度 | 每次處理數量 |
+|------|---------|---------|---------|-------------|
+| Stage 1 | `PromotionRewardLoyaltyPointsDispatcherV2Job` | 訂單群組（TGCode）× 事件 | 活動（PromotionId）× N 個給點 Task | 1 個事件 → N 個活動 Task |
+| Stage 2 | `AuditPromotionRewardLoyaltyPointsDispatchV2Job` | ExecuteTime（全域） | 訂單群組（TGCode）× N 個稽核 Task | 全域 → N 個 Task |
+| Stage 3 | `AuditPromotionRewardLoyaltyPointsV2Job` | 訂單群組（TGCode）× 1 個 Task | 活動（PromotionEngineId）× 逐一稽核 | 1 個群組 → M 個活動稽核 |
 
-#### PromotionRewardLoyaltyPointsRecordAuditor
+---
 
-`LoyaltyPromotionRewards` 記錄與 `auditData` 現場撈取資料進行交叉驗證
+## 核心資料實體關係
 
-#### ✅ 稽核項目清單
+| 實體 | 說明 |
+|------|------|
+| `PromotionRewardRequestEntity` | NMQ Task Payload，含 ShopId / TradesOrderGroupCode / OrderDateTime / OrderTypeDefEnum |
+| `PromotionRewardRecordAuditDataEntity` | 稽核用主資料，含 OrderSlaves / LoyaltyPromotionRewards / LoyaltyPromotionRewardDetails / MemberInfo |
+| `PromotionRewardLoyaltyPointsEntity` | DDB 給點主紀錄，含 RewardStatus / TotalLoyaltyPoint / Version |
+| `OrderSlaveEntity` | 線上訂單子單資料，含 MemberId / TrackSourceTypeDef 等 |
 
-| 稽核類型 | 檢查內容 | 預期結果 | 異常處理 |
-|----------|----------|----------|----------|
-| **🚫 活動排除檢查** | 不應符合活動條件的訂單 | 未獲得點數獎勵 | 記錄誤發獎勵異常 |
-| **✅ 活動符合檢查** | 應符合活動條件的訂單 | 正確獲得點數獎勵 | 記錄漏發獎勵異常 |
-| **🔢 點數數量檢查** | 應發放點數 vs 實際發放點數 | 數量完全一致 | 記錄點數差異異常 |
-| **📊 攤提結果檢查** | 多檔活動點數攤提計算 | 攤提邏輯正確 | 記錄攤提異常 |
+---
+
+## 與線下版（AuditCrmOthersOrderPromotionRewardLoyaltyPointsV2Job）的差異
+
+| 比較項目 | 線上（本 Job） | 線下（CrmOthers） |
+|---------|------------|----------------|
+| 訂單識別鍵 | `TradesOrderGroupCode`（TG Code） | `CrmSalesOrderId` |
+| DDB Key | `TradesOrderGroupCode`（直接使用） | `CrmSalesOrderCodePrefix + CrmSalesOrderId` |
+| 訂單查詢來源 | `SalesOrderService`（WebStore DB） | `CrmSalesOrderRepository`（CRM DB） |
+| 會員資訊取得 | 直接由 `OrderSlave.MemberId` → `VipMember` | 需先 `CrmMemberId → NineYiMemberId → VipMember` |
+| 跨單退貨處理 | 不需要 | 需查 `RelatedOrderSlaveIdList` |
+| 稽核器例外處理 | 包裝在 `Task.Run`，`PassException` 視為通過 | 直接 `Task.WhenAll`，不包裝 |

@@ -43,3 +43,16 @@ and _hid = 'SG-MY-NMQ1'
 AND json_extract(_props, '$.taskid') = CAST('4b6f5b04-2807-4bd8-9847-970b81756cf9' as JSON)
 limit 10;
 ```
+
+## 特定文字所有 task id
+
+```sql
+    SELECT distinct json_extract(_props, '$.taskid'),* FROM "hk_prod_nmqv3"."view_worker_log" 
+    WHERE date > '2026/03/26'
+    --and _msg like '%cs:line 53%'
+    --and _hid = 'SG-MY-NMQ1'
+    --AND json_extract(_props, '$.jobname') = CAST('CreateTransactionInfo' as JSON)
+    and json_extract(_props, '$.taskid') = CAST('983bb209-d11d-4dc3-98ff-e93bf8f75586' as JSON)
+    and _msg like '%duplicate%'
+    limit 500;
+```

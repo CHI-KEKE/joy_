@@ -51,6 +51,14 @@ RecycleLoyaltyPointsV2
 | _props_TaskId = `bf0f43ae-b413-4340-8585-14c6023799eb`
 |json
 | line_format "{{._msg}}"
+
+
+{service="prod-promotion-service"} 
+|json
+# |= `40013_TG260328U00094`
+| _props_TaskId = `ee13de69-118a-4926-a118-3c924e88069b`
+|json
+| line_format "{{._msg}}"
 ```
 
 ## BY JOB + Key words
@@ -102,3 +110,28 @@ RecycleLoyaltyPointsV2
 != "將會重新產 Task 執行" 
 | json 
 | line_format `{{ regexReplaceAll " Lock 失敗" ._msg "" }}`
+
+
+
+{service="prod-promotion-service"} 
+!= "MetricsLogEntity"
+|json
+|=` Lock 失敗`
+|_props_JobName = `PromotionRewardCoupon`
+|json
+| line_format "{{._msg}}"
+# | line_format "{{._props_TaskId}}"
+# | regexp `\\"HttpReferer\\":\\"?(?P<HttpReferer>[^\\",}]*)`
+# | line_format "HttpReferer: {{.HttpReferer}}"
+
+
+{service="prod-promotion-service"} 
+!= "MetricsLogEntity"
+|json
+|=` Lock 失敗`
+|_props_JobName = `PromotionRewardCoupon`
+|json
+| line_format "{{._msg}}"
+# | line_format "{{._props_TaskId}}"
+# | regexp `\\"HttpReferer\\":\\"?(?P<HttpReferer>[^\\",}]*)`
+# | line_format "HttpReferer: {{.HttpReferer}}"
