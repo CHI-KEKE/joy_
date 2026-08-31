@@ -2,10 +2,18 @@
 ## RequestPath
 
 /api/live/sessions/active
-
 /api/webhooks/facebook
+/api/auth/check
+/api/websocket/frontend-connections
+/api/websocket/connections
 
 
+
+
+## 403
+
+
+Session is no longer valid
 
 
 
@@ -45,6 +53,7 @@
 # |_props_RequestId = `0HNIHFFFJTCCQ:00000012`
 ```
 
+
 ## websocket 關鍵字
 
 ```bash
@@ -70,6 +79,8 @@
 | line_format "{{._msg}}"
 ```
 
+
+
 ## 查 Webapi log
 
 ```bash
@@ -89,6 +100,8 @@
 | line_format "{{._msg}}"
 # |_props_RequestId = `0HNIHFFFJTCCQ:00000012`
 ```
+
+
 
 ## by jobName
 

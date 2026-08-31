@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ExceededTimesLimiter 限流開關 — 四把 Config Key 完整流程</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1220;
+    --panel: #171b30;
+    --panel-2: #1e2340;
+    --accent: #6ea8fe;
+    --accent-2: #7ee7c7;
+    --warn: #ffcc66;
+    --danger: #ff6b6b;
+    --text: #e8ebf6;
+    --text-dim: #a6acc6;
+    --border: #2b3060;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    background: linear-gradient(180deg, #0b0e1a, #10132a 40%, #0b0e1a);
+    color: var(--text);
+    line-height: 1.75;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 40px 24px 100px; }
+  header.hero {
+    text-align: center;
+    padding: 48px 20px 36px;
+  }
+  header.hero .tag {
+    display: inline-block;
+    background: rgba(110,168,254,0.12);
+    border: 1px solid rgba(110,168,254,0.4);
+    color: var(--accent);
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    margin-bottom: 18px;
+  }
+  header.hero h1 {
+    font-size: clamp(24px, 4vw, 38px);
+    margin: 0 0 12px;
+    background: linear-gradient(90deg, #9fc7ff, #7ee7c7);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header.hero p { color: var(--text-dim); font-size: 15px; max-width: 720px; margin: 0 auto; }
+
+  .card {
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 30px;
+    margin: 26px 0;
+    box-shadow: 0 10px 30px -15px rgba(0,0,0,0.6);
+  }
+  .card h2 {
+    font-size: 19px;
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #cfe0ff;
+  }
+  .card h2 .num {
+    background: var(--accent);
+    color: #051025;
+    font-weight: 700;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 14px 0;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: rgba(110,168,254,0.1);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  code, .mono {
+    font-family: "Cascadia Code", "Consolas", monospace;
+    background: rgba(255,255,255,0.06);
+    padding: 2px 7px;
+    border-radius: 6px;
+    color: var(--accent-2);
+    font-size: 13px;
+  }
+  pre {
+    background: #0a0c18;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-size: 13.5px;
+  }
+  pre code { background: none; padding: 0; color: #d7f5e6; }
+  .keys-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 10px;
+  }
+  .key-item {
+    background: rgba(110,168,254,0.06);
+    border: 1px solid rgba(110,168,254,0.3);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .key-item .repo {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-2);
+    margin-bottom: 6px;
+  }
+  .key-item .key {
+    word-break: break-all;
+    font-size: 13px;
+  }
+  .note {
+    border-left: 4px solid var(--warn);
+    background: rgba(255,204,102,0.08);
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .note strong { color: var(--warn); }
+  .danger-note {
+    border-left: 4px solid var(--danger);
+    background: rgba(255,107,107,0.08);
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .danger-note strong { color: var(--danger); }
+  .mermaid-wrap {
+    background: #0a0c18;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    overflow-x: auto;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(126,231,199,0.15);
+    color: var(--accent-2);
+    border: 1px solid rgba(126,231,199,0.4);
+    margin-left: 8px;
+  }
+  .footer-note {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    margin-top: 50px;
+  }
+  ol, ul { padding-left: 22px; }
+  ol li, ul li { margin-bottom: 6px; }
+
+  /* ---- Sidebar Navigation Layout ---- */
+  .layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 28px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  .sidebar {
+    position: sticky;
+    top: 24px;
+    flex: 0 0 250px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px 14px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+  }
+  .sidebar h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin: 6px 10px 14px;
+  }
+  .sidebar nav a {
+    display: block;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    border-radius: 10px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13.5px;
+    line-height: 1.4;
+    border: 1px solid transparent;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .sidebar nav a:hover {
+    background: rgba(110,168,254,0.08);
+    color: var(--text);
+  }
+  .sidebar nav a.active {
+    background: rgba(110,168,254,0.16);
+    border-color: rgba(110,168,254,0.45);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .sidebar nav a .n {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    font-size: 11px;
+    margin-right: 8px;
+  }
+  .sidebar nav a.active .n { background: var(--accent); color: #051025; }
+  .content-area { flex: 1 1 auto; min-width: 0; }
+  .content-area .wrap { padding-top: 0; }
+  .section-panel { display: none; }
+  .section-panel.active { display: block; }
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    .sidebar { position: static; width: 100%; max-height: none; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <h3>章節導覽</h3>
+    <nav id="nav-list">
+      <a href="#" data-target="sec-1"><span class="n">1</span>四把 Key 對照四支 API</a>
+      <a href="#" data-target="sec-2"><span class="n">2</span>Config Key 命名規則</a>
+      <a href="#" data-target="sec-3"><span class="n">3</span>Config Value 格式</a>
+      <a href="#" data-target="sec-4"><span class="n">4</span>完整流程圖</a>
+      <a href="#" data-target="sec-5"><span class="n">5</span>限流機制邏輯比較</a>
+      <a href="#" data-target="sec-6"><span class="n">6</span>資料庫查詢明細</a>
+      <a href="#" data-target="sec-7"><span class="n">7</span>關鍵程式節點對照</a>
+      <a href="#" data-target="sec-8"><span class="n">8</span>判斷細節補充</a>
+      <a href="#" data-target="sec-9"><span class="n">9</span>目前狀態結論</a>
+      <a href="#" data-target="sec-10"><span class="n">10</span>原理</a>
+      <a href="#" data-target="sec-11"><span class="n">11</span>Controller 沿革與重構</a>
+      <a href="#" data-target="sec-12"><span class="n">12</span>HK Prod Config 套用評估</a>
+    </nav>
+  </aside>
+
+  <div class="content-area">
+<div class="wrap">
+
+  <header class="hero">
+    <div class="tag">SCM API — ExceededTimesLimiter</div>
+    <h1>四把 Config Key 限流開關<br/>完整程式流程解析</h1>
+    <p>對象 Key 分類：<b>三階段開關</b>（Config 治理標籤）｜ 涵蓋 <span class="mono">NineYi.Scm.Api</span> 與 <span class="mono">NineYi.Scm.ApiV2</span> 兩個 Repository</p>
+  </header>
+
+  <div id="sec-1" class="section-panel">
+  <section class="card">
+    <h2><span class="num">1</span>四把 Key 對照四支 API</h2>
+    <div class="keys-grid">
+      <div class="key-item">
+        <div class="repo">NineYi.Scm.Api · SalePageLiteController.GetMain</div>
+        <div class="key mono">Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId</div>
+      </div>
+      <div class="key-item">
+        <div class="repo">NineYi.Scm.Api · SalePageLiteController.GetStock</div>
+        <div class="key mono">Prod.ExceededTimesLimiter.SalePageLite.GetStock.SupplierId</div>
+      </div>
+      <div class="key-item">
+        <div class="repo">NineYi.Scm.ApiV2 · SalesOrderGetLiteController.Get</div>
+        <div class="key mono">Prod.ExceededTimesLimiter.SalesOrderGetLite.Get.SupplierId</div>
+      </div>
+      <div class="key-item">
+        <div class="repo">NineYi.Scm.ApiV2 · ShippingOrderController.Get</div>
+        <div class="key mono">Prod.ExceededTimesLimiter.ShippingOrder.Get.SupplierId</div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>API</th><th>所屬 Repo / 實體路徑</th><th>Route</th></tr></thead>
+      <tbody>
+        <tr><td>商品頁內容查詢</td><td><span class="mono">C:\91APP\Api\SCM</span></td><td><span class="mono">SalePage/GetMain</span></td></tr>
+        <tr><td>商品即時庫存查詢</td><td><span class="mono">C:\91APP\Api\SCM</span></td><td><span class="mono">SalePage/GetStock</span></td></tr>
+        <tr><td>訂單查詢</td><td><span class="mono">C:\91APP\SCMAPIV2</span></td><td><span class="mono">SalesOrder/Get</span></td></tr>
+        <tr><td>貨運單查詢</td><td><span class="mono">C:\91APP\SCMAPIV2</span></td><td><span class="mono">ShippingOrder/Get</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+  </div>
+
+  <div id="sec-2" class="section-panel">
+  <section class="card">
+    <h2><span class="num">2</span>Config Key 命名規則</h2>
+    <p>程式內部固定組字規則（<span class="mono">CircuitBreakerManager.cs</span> / <span class="mono">CircuitBreakerService.cs</span>）：</p>
+    <pre><code>ExceededTimesLimiter.{ControllerName}.{ActionName}.{RecognizeType}</code></pre>
+    <p><span class="mono">ControllerName</span>、<span class="mono">ActionName</span> 由 Attribute 執行當下動態取得；<span class="mono">RecognizeType</span> 在 Attribute 內寫死為 <span class="mono">"SupplierId"</span>。</p>
+    <p><span class="mono">GetAppSetting()</span> 讀取設定時，會自動補上目前執行環境前綴：</p>
+    <pre><code>{Execmode}.{Key}
+例：Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId</code></pre>
+    <div class="note">
+      <strong>關於「三階段開關」：</strong>這是 Config 治理表單上對此 Key 的<b>分類標籤</b>（管控上版審核流程，例如 Off → 灰度 → 全開三個佈署階段的變更管理方式）。
+      但<b>程式碼本身只認單純布林 <span class="mono">Enabled</span></b>，沒有內建百分比灰度邏輯 —— Config 治理層面走三階段審核，但程式執行層面一旦設為 <span class="mono">true</span> 即為<b>全量生效</b>（依 SupplierId 個別計次）。
+    </div>
+  </section>
+  </div>
+
+  <div id="sec-3" class="section-panel">
+  <section class="card">
+    <h2><span class="num">3</span>Config Value 格式</h2>
+    <pre><code>Enabled|MaxTimes|CacheSeconds|LockedSeconds</code></pre>
+    <table>
+      <thead><tr><th>欄位</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td>Enabled</td><td>是否啟用限流（true / false）</td></tr>
+        <tr><td>MaxTimes</td><td>CacheSeconds 週期內允許的最大呼叫次數</td></tr>
+        <tr><td>CacheSeconds</td><td>計次時間窗口（秒），亦用於整秒對齊分桶</td></tr>
+        <tr><td>LockedSeconds</td><td>超過次數後鎖定該 SupplierId 的秒數</td></tr>
+      </tbody>
+    </table>
+    <p>找不到設定時，程式使用內建預設值：<span class="mono">"false|3|1|30"</span>（關閉、3次/1秒、鎖30秒）。</p>
+    <p>範例（正式環境開啟限流）：</p>
+    <pre><code>Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId = true|200|60|30</code></pre>
+    <p>意義：每個供應商 60 秒內最多呼叫 200 次，超過即鎖定該供應商 30 秒。</p>
+  </section>
+  </div>
+
+  <div id="sec-4" class="section-panel">
+  <section class="card">
+    <h2><span class="num">4</span>完整流程圖</h2>
+    <div class="mermaid-wrap">
+      <div class="mermaid">
+flowchart TD
+    A[Client 呼叫 API<br/>SalePageLite.GetMain / GetStock<br/>SalesOrderGetLite.Get / ShippingOrder.Get] --> B{Request Header<br/>是否有 N1-TRACE-ID？}
+    B -- 否（非經 API Gateway） --> Z1[略過檢查<br/>直接放行執行 Action]
+    B -- 是 --> C[ExceededTimesLimiterAttribute<br/>OnActionExecuting]
+
+    C --> D[取得 ControllerName / ActionName<br/>取得目前 SupplierId]
+    D --> E[組成 ExceededTimesLimiterRequestEntity<br/>RecognizeType = SupplierId<br/>RecognizeKey = 目前 SupplierId]
+    E --> F[呼叫 Manager/Service<br/>ExamineTryOverTimesLockApi]
+
+    F --> G[CircuitBreakerManager/Service<br/>GetExceededTimesLimiterSettings]
+
+    G --> H{supplierId 是否有值？}
+    H -- 是 --> I[查詢 SupplierStaticSetting DB<br/>GroupName=ExceededTimesLimiter<br/>Key = Controller.Action]
+    I --> J{該供應商<br/>有客製設定？}
+    J -- 有 --> K[使用供應商層級設定<br/>SettingType = Supplier]
+    J -- 沒有 --> L
+    H -- 否 --> L[Fallback: 讀取 AppSetting<br/>Key: Execmode.ExceededTimesLimiter.<br/>Controller.Action.SupplierId<br/>例：Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId]
+    L --> M[Parse 字串<br/>Enabled、MaxTimes、CacheSeconds、LockedSeconds]
+    M --> N[SettingType = All<br/>找不到設定則用預設值 false、3、1、30]
+
+    K --> O{Enabled == true？}
+    N --> O
+
+    O -- false --> P[直接 return<br/>不限流，正常執行 Action]
+    O -- true --> Q[組 CacheKey：<br/>Controller Action 版本 + SupplierId<br/>+ 依 CacheSeconds 做整秒對齊]
+
+    Q --> R{是否已被鎖定<br/>Locked Cache 存在？}
+    R -- 是 --> S[丟出 ExceededTimesLimiterException<br/>HTTP 429<br/>回應 error 訊息]
+    R -- 否 --> T[Redis/Memory 計次 +1<br/>IncrBy TryTimes]
+
+    T --> U{TryTimes > MaxTimes？}
+    U -- 否 --> P
+    U -- 是 --> V[設定 Locked Cache<br/>存活 LockedSeconds 秒]
+    V --> S
+
+    S --> W[Controller Action 不會執行<br/>直接回傳 429 + JSON error]
+    P --> X[正常執行 Controller Action<br/>回傳原本業務結果]
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <div id="sec-5" class="section-panel">
+  <section class="card">
+    <h2><span class="num">5</span>兩個 Repo「ExceededTimesLimiter 限流機制」本身的邏輯/機制比較</h2>
+    <p>聚焦在<b>限流這套機制自己的演算法與行為</b>（非兩邊技術框架的一般性差異），逐檔逐行比對後的結論如下。</p>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">5.1 結論先講：核心演算法「完全一致」</h3>
+    <p><span class="mono">NineYi.Scm.Api</span>（<span class="mono">ExceededTimesLimiterManager.cs</span>）與 <span class="mono">NineYi.Scm.ApiV2</span>（<span class="mono">ExceededTimesLimiterService.cs</span>）這兩支「限流判斷主邏輯」程式碼，逐行比對後除了類別/介面命名（Manager ↔ Service）與 namespace 不同以外，<b>演算法、參數、常數、判斷順序全部一模一樣</b>，屬於「同一套邏輯被複製貼上到兩個 Repo 各自維護」，不是各自獨立設計的兩套機制：</p>
+    <table>
+      <thead><tr><th>判斷步驟</th><th>Api（Manager）</th><th>ApiV2（Service）</th><th>是否一致</th></tr></thead>
+      <tbody>
+        <tr><td>是否為 API Gateway 流量（N1-TRACE-ID）</td><td>有檢查，沒有就直接放行</td><td>有檢查，沒有就直接放行</td><td>✅ 一致</td></tr>
+        <tr><td>Enabled=false 時的行為</td><td>直接 return，不限流</td><td>直接 return，不限流</td><td>✅ 一致</td></tr>
+        <tr><td>CacheKey 組成規則</td><td class="mono">{Controller}:{Action}-2024102801:SupplierId:{值}</td><td class="mono">{Controller}:{Action}-2024102801:SupplierId:{值}</td><td>✅ 一致（連版本戳記數字都相同）</td></tr>
+        <tr><td>計次時間窗口對齊演算法</td><td>GetAdjustDateTimeByIntervalSeconds</td><td>同名同邏輯函式，程式碼逐行相同</td><td>✅ 一致</td></tr>
+        <tr><td>計次方式</td><td>Redis IncrBy + Cache.DefaultExpire（預設10800秒）</td><td>同左</td><td>✅ 一致</td></tr>
+        <tr><td>鎖定判斷/設定鎖定</td><td>IsLocked / SetLocked，MemoryCache(1秒)+Redis(LockedSeconds)雙層</td><td>同左，程式碼逐行相同</td><td>✅ 一致</td></tr>
+        <tr><td>例外拋出</td><td>ExceededTimesLimiterException(..., NoMoreElmah)</td><td>同左</td><td>✅ 一致</td></tr>
+        <tr><td>Redis Timeout 處理</td><td>catch RedisTimeoutException → 降級放行</td><td>同左</td><td>✅ 一致</td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">5.2 真正有差異的地方：設定來源的「取得管道」不同</h3>
+    <p>限流的「行為判斷」一樣，但<b>取得 Enabled/MaxTimes/CacheSeconds/LockedSeconds 設定值的底層管道</b>在兩邊有實質差異：</p>
+    <table>
+      <thead><tr><th>項目</th><th>NineYi.Scm.Api（CircuitBreakerManager.cs）</th><th>NineYi.Scm.ApiV2（CircuitBreakerService.cs）</th></tr></thead>
+      <tbody>
+        <tr><td>查詢 DB 用的連線</td><td><b>讀寫主連線</b>（ERP，未指定 ReadOnly）</td><td><b>明確指定 [WithKey("ReadOnly")]，強制走唯讀複本</b>（ERP.ReadOnly）</td></tr>
+        <tr><td>DB Repository 對 ValidFlag 的篩選寫法</td><td>LINQ where 手動寫 ValidFlag == true</td><td>使用共用擴充方法 .Valids()</td></tr>
+        <tr><td>設定快取 CacheKey 版本戳記</td><td><b>無日期版號</b>，TypeName = "ExceededTimesLimiterSettings"</td><td><b>有日期版號</b>，TypeName = "ExceededTimesLimiterSettings-20200826"</td></tr>
+        <tr><td>GetCacheKey 例外處理細緻度</td><td>找不到對應 type 直接 throw ArgumentException</td><td>多包一層 try/catch，額外攔截 IndexOutOfRangeException</td></tr>
+        <tr><td>Config Key 讀取呼叫</td><td colspan="2" style="text-align:center;">呼叫方式、Key 命名規則、預設值<b>完全相同</b></td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>影響評估：</strong>
+      <ul style="margin:8px 0 0;">
+        <li><b>DB 連線差異（主連線 vs 唯讀複本）是唯一具備實質運維意義的差異</b>：ApiV2 查供應商客製設定固定走唯讀複本，若 DB 有主從複寫延遲，剛異動完的供應商設定在 ApiV2 這邊可能短暫「還沒同步到唯讀庫」；Api 走主連線則異動後立即可見。不過外層還有 5~10 秒的 MemoryCache/RedisCache，實務影響遠小於快取本身造成的延遲。</li>
+        <li>設定快取的版本戳記純粹是各自程式碼上版時用來手動 cache-busting 的工程慣例，不影響限流判斷結果。</li>
+        <li>兩邊的<b>四把 Config Key 皆各自獨立維護</b>在各自服務的 AppSettings*.config 內，<b>互不共用、也不會互相同步</b>——開 <span class="mono">SalePageLite.*</span> 兩把 Key 要改 <span class="mono">NineYi.Scm.Api</span> 的 config，開 <span class="mono">SalesOrderGetLite.Get</span> / <span class="mono">ShippingOrder.Get</span> 則要改 <span class="mono">NineYi.Scm.ApiV2</span> 的 config。</li>
+      </ul>
+    </div>
+    <div class="danger-note"><strong>總結一句話：</strong>兩個 Repo 的限流「機制」是同一套演算法的平行複製（行為 100% 一致），差異只在「設定來源查詢時走的 DB 連線（主 vs 唯讀）」與「快取版本戳記的工程慣例」，並不影響限流本身的邏輯正確性。</div>
+  </section>
+  </div>
+
+  <div id="sec-6" class="section-panel">
+  <section class="card">
+    <h2><span class="num">6</span>資料庫查詢明細（DB / Table / Column）</h2>
+    <table>
+      <thead><tr><th>項目</th><th>內容</th></tr></thead>
+      <tbody>
+        <tr><td>資料庫（邏輯名稱）</td><td><b>ERPDB</b>（Connection String Key：<span class="mono">ERP</span> / <span class="mono">ERP.ReadOnly</span>）</td></tr>
+        <tr><td>Schema 定義來源</td><td>Api：<span class="mono">ERPDBModel.edmx</span>（Model-First）／ApiV2：<span class="mono">ErpDbContext.cs</span>（Code-based）</td></tr>
+        <tr><td>資料表</td><td><b>SupplierStaticSetting</b>（供應商靜態設定表）</td></tr>
+        <tr><td>用途</td><td>以 SupplierId 為單位儲存各種功能開關/客製設定，<span class="mono">ExceededTimesLimiter</span> 只是其中一種 GroupName 分類</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:20px;"><b>SupplierStaticSetting 資料表欄位：</b></p>
+    <table>
+      <thead><tr><th>Column</th><th>型別</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">SupplierStaticSetting_Id</td><td>bigint (PK)</td><td>主鍵</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_SupplierId</td><td>int</td><td>供應商序號</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_GroupName</td><td>varchar(30)</td><td>限流機制固定查 <span class="mono">"ExceededTimesLimiter"</span></td></tr>
+        <tr><td class="mono">SupplierStaticSetting_Key</td><td>varchar(50)</td><td>查 <span class="mono">{Controller}.{Action}</span>（超過50字元截斷）</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_Value</td><td>nvarchar(3000)</td><td>格式 <span class="mono">RecognizeType=Enabled|MaxTimes|CacheSeconds|LockedSeconds</span>，多筆用 <span class="mono">;</span> 分隔</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_Description</td><td>nvarchar(300)</td><td>設定說明</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_CreatedDateTime / CreatedUser</td><td>datetime / varchar(50)</td><td>建立時間/人</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_UpdatedTimes</td><td>tinyint</td><td>更新次數</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_UpdatedDateTime / UpdatedUser</td><td>datetime / varchar(50)</td><td>最後更新時間/人</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_ValidFlag</td><td>bit</td><td>是否有效（查詢只撈 true，即軟刪除機制）</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_Rowversion</td><td>rowversion</td><td>併發控制版本戳記</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:20px;"><b>實際查詢條件（SQL 語意等價）：</b></p>
+    <pre><code>SELECT TOP 1 SupplierStaticSetting_Value
+FROM SupplierStaticSetting
+WHERE SupplierStaticSetting_SupplierId = @supplierId
+  AND SupplierStaticSetting_GroupName  = 'ExceededTimesLimiter'
+  AND SupplierStaticSetting_Key        = @ControllerName + '.' + @ActionName -- 例：'SalePageLite.GetMain'
+  AND SupplierStaticSetting_ValidFlag  = 1;</code></pre>
+    <p>取得 Value 後用 <span class="mono">;</span> 切開多筆設定，找出以 <span class="mono">SupplierId=</span> 開頭的那段，Parse 成 <span class="mono">Enabled|MaxTimes|CacheSeconds|LockedSeconds</span>。</p>
+
+    <div class="danger-note">
+      <strong>與四把 Config Key 的關係：</strong>這張表是<b>供應商層級的個別覆蓋設定</b>，優先序高於全域 <span class="mono">Prod.ExceededTimesLimiter.*.SupplierId</span> Config Key。若某供應商需要不同門檻，會在此表新增一筆設定而不需更動全域 Config；查無資料時才 fallback 回全域 Config 規則。
+    </div>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:26px;">6.5 實際資料範例解析</h3>
+    <p>你提供的實際資料列（<span class="mono">SupplierStaticSetting</span> 表）：</p>
+    <table>
+      <thead><tr><th>Column</th><th>值</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">SupplierStaticSetting_Id</td><td>1201</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_SupplierId</td><td><b>1614</b></td></tr>
+        <tr><td class="mono">SupplierStaticSetting_GroupName</td><td class="mono">ExceededTimesLimiter</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_Key</td><td class="mono">SalesOrderGetLite.Get</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_Value</td><td class="mono">SupplierId=true|200|1|0</td></tr>
+        <tr><td class="mono">SupplierStaticSetting_Description</td><td>OSM API /V2/SalesOrder/Get 限速器</td></tr>
+        <tr><td class="mono">CreatedDateTime / CreatedUser</td><td>2025-09-18 14:57:02.867 / VSTS528216</td></tr>
+        <tr><td class="mono">UpdatedTimes</td><td>1</td></tr>
+        <tr><td class="mono">UpdatedDateTime / UpdatedUser</td><td>2025-10-22 15:44:35.090 / VSTS528216</td></tr>
+        <tr><td class="mono">ValidFlag</td><td>1（有效）</td></tr>
+        <tr><td class="mono">Rowversion</td><td class="mono">0x00000010A9106771</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:16px;"><b>逐步拆解程式怎麼解讀這筆資料：</b></p>
+    <ol>
+      <li>這是針對<b>供應商 SupplierId=1614</b> 的<b>個別覆蓋設定</b>（GroupName='ExceededTimesLimiter' + Key='SalesOrderGetLite.Get'），對應到 <span class="mono">SalesOrderGetLiteController.Get</span> 這支 API。</li>
+      <li>
+        <span class="mono">Value</span> 欄位內容 <span class="mono">SupplierId=true|200|1|0</span>：程式用 <span class="mono">;</span> 切開多筆設定，再找出以 <span class="mono">{RecognizeType}=</span>（此處固定為 <span class="mono">"SupplierId"</span>）開頭的那段，取出後半段 <span class="mono">true|200|1|0</span> 交給 <span class="mono">ExceededTimesLimiterSettingsEntity.Parse()</span>：
+        Parse 後對應 <span class="mono">Enabled=true</span>、<span class="mono">MaxTimes=200</span>、<span class="mono">CacheSeconds=1</span>、<span class="mono">LockedSeconds=0</span>。
+      </li>
+      <li>
+        <b>實際行為意義：</b>
+        <ul>
+          <li><span class="mono">Enabled=true</span> → 此供應商的這支 API <b>有開啟限流</b>。</li>
+          <li><span class="mono">MaxTimes=200</span>、<span class="mono">CacheSeconds=1</span> → 在<b>每 1 秒</b>的時間窗口內，最多允許呼叫 <b>200 次</b>。</li>
+          <li><span class="mono">LockedSeconds=0</span> → 程式判斷 <span class="mono">if (settings.LockedSeconds > 0 && IsLocked(...))</span> 與 <span class="mono">if (settings.LockedSeconds > 0) SetLocked(...)</span>：<b>當 LockedSeconds 為 0 時，鎖定機制完全不會被觸發</b>。超過 200 次/秒時該次請求仍會被擋下回傳 429，但<b>不會額外設定「鎖定」</b>，下一個 1 秒窗口一到計數器立即歸零重算，<b>沒有額外的延長鎖定期</b>。</li>
+          <li>換句話說，這是一個<b>「純粹瞬間流量閥門」</b>設定：只擋單一秒內超過 200 次的部分請求，不會像 LockedSeconds&gt;0 那樣把供應商「多鎖一段時間」。</li>
+        </ul>
+      </li>
+      <li>
+        <b>與全域 Config Key 的關係：</b>因為 SupplierId=1614 在 DB 已有此筆有效資料（ValidFlag=1），<span class="mono">CircuitBreakerService.GetExceededTimesLimiterSettings</span> 會<b>優先採用這筆 DB 設定</b>，完全不會去讀取全域 <span class="mono">Prod.ExceededTimesLimiter.SalesOrderGetLite.Get.SupplierId</span> 這把 Config Key（除非未來此筆資料 ValidFlag 改為 0，才會 fallback 回全域 Key）。
+      </li>
+      <li><span class="mono">UpdatedTimes=1</span> 且 UpdatedDateTime 晚於 CreatedDateTime → 顯示這筆設定建立後曾被異動過一次（例如原本門檻不同，後來調整為目前的 200|1|0）。</li>
+    </ol>
+  </section>
+  </div>
+
+  <div id="sec-7" class="section-panel">
+  <section class="card">
+    <h2><span class="num">7</span>關鍵程式節點對照</h2>
+    <table>
+      <thead>
+        <tr><th>步驟</th><th>NineYi.Scm.Api（SalePageLite）</th><th>NineYi.Scm.ApiV2（SalesOrderGetLite / ShippingOrder）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Attribute 進入點</td><td class="mono">SCM\Api\WebApi\Extentions\ActionFilters\ExceededTimesLimiterAttribute.cs</td><td class="mono">WebSite\WebSite\Extensions\ActionFilters\ExceededTimesLimiterAttribute.cs</td></tr>
+        <tr><td>業務邏輯層</td><td class="mono">IExceededTimesLimiterManager / ExceededTimesLimiterManager.cs</td><td class="mono">IExceededTimesLimiterService / ExceededTimesLimiterService.cs</td></tr>
+        <tr><td>設定來源判斷</td><td class="mono">ICircuitBreakerManager / CircuitBreakerManager.cs</td><td class="mono">ICircuitBreakerService / CircuitBreakerService.cs</td></tr>
+        <tr><td>設定 Entity/Parse</td><td class="mono">SCM\Api\BE\ExceededTimesLimiter\ExceededTimesLimiterSettingsEntity.cs</td><td class="mono">BusinessLogic\BE\ExceededTimesLimiter\ExceededTimesLimiterSettingsEntity.cs</td></tr>
+        <tr><td>Config 讀取</td><td class="mono">GetAppSetting("ExceededTimesLimiter.{Controller}.{Action}.SupplierId","false|3|1|30")</td><td>同左</td></tr>
+        <tr><td>例外/回應</td><td>429 + <span class="mono">{ error: message }</span>（MVC JsonResult）</td><td>429（WebApi CreateErrorResponse）</td></tr>
+        <tr><td>供應商客製設定</td><td class="mono">SupplierStaticSettingManager（DB 表 SupplierStaticSetting）</td><td>同左（ApiV2 版本）</td></tr>
+      </tbody>
+    </table>
+  </section>
+  </div>
+
+  <div id="sec-8" class="section-panel">
+  <section class="card">
+    <h2><span class="num">8</span>判斷細節補充</h2>
+    <ol>
+      <li><b>只認 API Gateway 流量</b>：Header 沒有 <span class="mono">N1-TRACE-ID</span> 直接略過整個限流檢查。</li>
+      <li><b>設定優先序</b>：供應商個別設定（DB）＞ Config Key（AppSetting，即本文四把 Key）＞ 程式碼內建預設值 <span class="mono">false|3|1|30</span>。</li>
+      <li><b>CacheKey 組成</b>：<span class="mono">{Controller}:{Action}-{版本號}:SupplierId:{值}:{整秒對齊時間}</span>，不同供應商 / 時間窗口互不干擾。</li>
+      <li><b>鎖定機制</b>：超過 MaxTimes 後額外設 Locked cache，鎖定 LockedSeconds 秒內不論次數一律擋下。</li>
+      <li><b>快取層</b>：Redis（ICacheProvider）+ In-Process MemoryCache 雙層快取，降低 Redis 壓力。</li>
+      <li><b>降級處理</b>：Redis Timeout 時視為放行（不因快取異常誤擋合法請求）。</li>
+    </ol>
+  </section>
+  </div>
+
+  <div id="sec-9" class="section-panel">
+  <section class="card">
+    <h2><span class="num">9</span>目前狀態結論 <span class="badge">依你提供的四把 Key 開關</span></h2>
+    <div class="note">若這四把 <span class="mono">Prod.ExceededTimesLimiter.*.SupplierId</span> 已在正式環境設定為 <span class="mono">true|MaxTimes|CacheSeconds|LockedSeconds</span>，則四支 API 會依 SupplierId 個別限流生效（正式環境）。</div>
+    <div class="danger-note">
+      <strong>注意：</strong>若供應商在 <span class="mono">SupplierStaticSetting</span> 資料表另有客製設定，會優先蓋過此全域 Config；若 Key 未設定或為 <span class="mono">false</span>，該 API 目前不會限流。
+    </div>
+  </section>
+  </div>
+
+  <div id="sec-10" class="section-panel">
+  <section class="card">
+    <h2><span class="num">10</span>原理：限流是「令牌桶」還是別的機制？</h2>
+    <p>這章節深入拆解 <span class="mono">ExceededTimesLimiterManager.cs</span>（Api）／<span class="mono">ExceededTimesLimiterService.cs</span>（ApiV2）內部真正的計數演算法，回答一個常見疑問：<b>這個限流器是類似「令牌桶（Token Bucket）」的概念嗎？</b></p>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">10.1 結論：不是令牌桶，是「固定時間窗口計數器」＋「鎖定懲罰期」</h3>
+    <p>令牌桶的特色是令牌會<b>持續、平滑地產生／回補</b>，允許一定程度的突發流量被平均攤提。但這裡完全不同，程式碼實際做的事情是：</p>
+    <ol>
+      <li>把「目前時間」對齊（無條件捨去）到 <span class="mono">CacheSeconds</span> 的整數倍，變成一個「時間窗口字串」。</li>
+      <li>用 <span class="mono">{Controller}:{Action}-版本號:{RecognizeType}:{RecognizeKey}:{窗口字串}</span> 當 Cache Key，對這把 Key 做 Redis <span class="mono">IncrBy(1)</span>。</li>
+      <li>若這把 Key 目前累加值 <span class="mono">&gt; MaxTimes</span>，就丟例外擋下（HTTP 429）。</li>
+    </ol>
+    <p>這是標準的 <b>Fixed Window Counter（固定窗口計數器）</b>：每個窗口都是獨立、歸零重算的計數器，並非連續平滑供應的令牌。</p>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">10.2 窗口字串怎麼算出來的？（不是查詢區間，是直接算出 Key 名稱）</h3>
+    <p>很多人會誤以為做法是：先建立一把 Key 存 <span class="mono">{start, end, count}</span>，每次請求進來都要判斷「now 是否落在 start~end 之間」。<b>實際完全不是這樣</b>——真正的做法是反過來：</p>
+    <div class="note">
+      <b>核心觀念：</b>每次請求進來，都直接用「現在時間」<b>重新算一次</b>「我現在應該對應到哪一個窗口字串」，再拿這個字串直接當 Cache Key 名稱去 +1。<br/>
+      同一個窗口內，任何時間點算出來的字串都完全相同 → 天生命中同一把 Key，自然累加成同一顆 counter；<br/>
+      換了窗口，算出來的字串就不同 → 天生是全新一把 Key，counter 從 0 重新開始。<br/>
+      「是否落在同一個區間」這件事，是<b>靠字串是否相同隱含決定</b>的，不需要額外寫一道 if 判斷 start~end。
+    </div>
+    <pre class="mono" style="background:#0d1830;border:1px solid #23375f;border-radius:8px;padding:14px;overflow:auto;font-size:13px;line-height:1.7;">
+GetAdjustDateTimeByIntervalSeconds(now, CacheSeconds)
+例：CacheSeconds = 30
+17:42:52.025  →  "20260814174230"
+17:42:58.999  →  "20260814174230"   ← 同一個 30 秒區間內，任何時間算出來都一樣
+17:43:01.100  →  "20260814174300"   ← 過了 30 秒邊界，變成新字串
+
+完整 Cache Key 範例（對應正式資料 SupplierId=1614, SalesOrderGetLite.Get）：
+SalesOrderGetLite:Get-2024102801:SupplierId:1614:20260814174230
+</pre>
+    <p>另外，程式裡設定的 Cache 過期秒數（<span class="mono">Cache.DefaultExpire</span>，預設 10800 秒 = 3 小時）跟「窗口大小 <span class="mono">CacheSeconds</span>」是<b>完全不同的兩件事</b>：<span class="mono">CacheSeconds</span> 決定窗口字串多久換一次（限流的計算週期），<span class="mono">expiredSeconds</span> 只是這把 Key 在 Redis/Memory 裡多久沒人動就自動被資源回收，不影響限流邏輯本身。</p>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">10.3 疊加的第二層：獨立的「鎖定（Locked）」懲罰機制</h3>
+    <p>這是與單純固定窗口限流最大的不同之處——超過額度時，不是「這次擋下、下個窗口自動恢復」，而是可以額外觸發一段<b>更長的鎖定期</b>，鎖定期間即使窗口已經換了、次數已經歸零，一樣照擋：</p>
+    <pre class="mono" style="background:#0d1830;border:1px solid #23375f;border-radius:8px;padding:14px;overflow:auto;font-size:13px;line-height:1.7;">
+if (settings.LockedSeconds > 0 && IsLocked(cacheEntity))
+    throw ...;                    // 已被鎖定，直接擋，連新窗口都不給機會
+
+if (tryTimes > settings.MaxTimes)
+{
+    if (settings.LockedSeconds > 0)
+        SetLocked(cacheEntity, settings.LockedSeconds);   // 觸發鎖定
+    throw ...;
+}
+</pre>
+    <p><span class="mono">SetLocked</span> 寫入的是另一把獨立 Cache Key（<span class="mono">{Fullkey}:Locked</span>），跟計次用的窗口 Key 完全分開，存活 <span class="mono">LockedSeconds</span> 秒。這其實比較接近「<b>熔斷器（Circuit Breaker）懲罰期</b>」的概念，而非單純限流——超標一次就懲罰性地鎖住一段時間。這也解釋了為什麼正式資料 <span class="mono">SupplierId=true|200|1|0</span>（<span class="mono">LockedSeconds=0</span>）代表<b>完全不啟用鎖定懲罰</b>：單純靠固定窗口本身每秒重置在限速，超過當秒就擋，下一秒立刻恢復，沒有額外連坐處罰。</p>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">10.4 快取層：Memory + Redis 雙層，鎖定旗標查詢有最終一致性延遲</h3>
+    <p><span class="mono">GetMemoryOrRedisCacheData</span> / <span class="mono">SetMemoryOrRedisCacheData</span> 是另一個關鍵細節：寫入時同時寫 Memory（本機行程內，短 TTL）與 Redis（跨主機共享）；讀取「是否已鎖定」時先查 Memory，沒有才查 Redis，查到才回填 Memory（固定 TTL 1 秒）。這代表<b>鎖定狀態的查詢有最多 1 秒的最終一致性延遲</b>，多台主機間鎖定生效可能有些微時間差，是效能與一致性的取捨。但真正用來計數判斷是否超標的 <span class="mono">IncrBy</span>（次數本身）是直接打 Redis，跨主機即時共享、準確累加，不受此 1 秒延遲影響。</p>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">10.5 固定窗口的已知缺陷：邊界瞬間可能出現 2 倍流量</h3>
+    <p>固定窗口計數器有一個業界公認、最經典的缺陷：<b>窗口邊界瞬間可能被打出「雙倍流量」</b>，且不需要多高深的技巧，只要剛好卡在邊界附近呼叫就會發生。</p>
+    <div class="danger-note">
+      <strong>情境舉例</strong>（以正式資料 <span class="mono">SupplierId=true|200|1|0</span>，即每秒最多 200 次為例）：
+      <ul style="margin:8px 0 0;">
+        <li>供應商在 <span class="mono">17:42:52.700 ~ 17:42:52.999</span> 這 300 毫秒內，連續打了 200 次 → 命中同一把窗口 Key，第 201 次被擋下（符合預期）。</li>
+        <li>窗口緊接著跳到 <span class="mono">17:42:53</span>，Cache Key 字串變成全新的一把，counter 從 0 重新開始 → 供應商在 <span class="mono">17:42:53.000 ~ 17:42:53.300</span> 這 300 毫秒內又連續打了 200 次，完全不會被擋。</li>
+        <li>結果：<span class="mono">17:42:52.700 ~ 17:42:53.300</span> 這短短 <b>600 毫秒</b>的真實時間窗口內，實際流量是 <span class="mono">200 + 200 = 400</span> 次，是設定值 <span class="mono">MaxTimes=200</span> 的整整 <b>2 倍</b>。若刻意抓準整秒邊界規律性地打，甚至能長期維持在理論上限的 2 倍，而不觸發任何一次例外。</li>
+      </ul>
+    </div>
+    <p><b>根本原因：</b>固定窗口的判斷邏輯只看「單一窗口內部自己的累加值」，完全不知道、也不管「上一個窗口尾巴」跟「這個窗口開頭」黏在一起看，真實流量密度是多少——窗口與窗口之間是互相獨立、互不參照的兩把不同 Cache Key，沒有任何機制平滑銜接。</p>
+    <p><b>對比其他限流演算法：</b></p>
+    <ul>
+      <li><b>滑動窗口（Sliding Window）</b>：判斷「以現在為結尾往回推 1 秒」的總次數（而非整秒對齊），邊界跨秒也會被抓到，不會有 2 倍漏洞。</li>
+      <li><b>令牌桶（Token Bucket）</b>：令牌連續、平滑地以固定速率回補，不存在「整秒歸零重來」這種懸崖式重置，突發流量最多只能用完當下累積的桶內存量。</li>
+    </ul>
+    <p><b>實務影響評估：</b>影響大小主要看 <span class="mono">CacheSeconds</span> 設多大——像 <span class="mono">SalesOrderGetLite.Get</span> 這種 <span class="mono">CacheSeconds=1</span> 的短窗口，邊界效應相對有限（頂多是 1 秒內的瞬間尖峰，且攻擊者要精準卡秒、長期穩定命中並不容易）；若未來有 API 把 <span class="mono">CacheSeconds</span> 設得很大（例如 30、60 秒），邊界翻倍的絕對量會更可觀，且更容易被刻意規避，屆時需要重新評估是否改用滑動窗口或令牌桶。</p>
+
+    <div class="note">
+      <strong>總結一句話：</strong>這是<b>「固定時間窗口計數器」</b>（非令牌桶、非滑動窗口），窗口用時鐘整除對齊直接算出 Key 名稱；超標時可疊加一段獨立的鎖定懲罰期（類熔斷器概念）；計數用 Redis 共享確保多主機一致，鎖定旗標查詢則走 Memory+Redis 雙層快取以求效能——用極簡單的實作與極低的效能開銷，換取「窗口邊界理論上最多 2 倍瞬時流量」的已知工程取捨，而非程式錯誤。
+    </div>
+  </section>
+  </div>
+
+  <div id="sec-11" class="section-panel">
+  <section class="card">
+    <h2><span class="num">11</span>Controller 沿革與重構：SalesOrder/Get 是怎麼「搬家」的</h2>
+    <p>常見疑問：<b>「以前打 <span class="mono">SalesOrder/Get</span> 是不是打到另外一支獨立的 API？」</b> 答案是否定的——它從頭到尾都是「同一個網址」，只是背後負責處理的 <b>Controller 類別</b>經歷過一次搬遷。以下用 Git 歷史還原完整經過。</p>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">11.1 起源：2016 年就存在的巨型 SalesOrderController</h3>
+    <table>
+      <thead><tr><th>時間</th><th>Commit</th><th>作者</th><th>事件</th></tr></thead>
+      <tbody>
+        <tr><td>2016-04-07</td><td class="mono">c5f618901</td><td>RyderHsu（BTS15491）</td><td><span class="mono">SalesOrderController</span> 最早誕生（訂單清單查詢從 Scm.Api 改寫到 Scm.ApiV2）</td></tr>
+        <tr><td>2016 ~ 2024</td><td>數十個 commit</td><td>多位工程師</td><td><span class="mono">SalesOrderController</span> 長期作為「大雜燴」型 Controller，陸續塞入退貨、取消、配號、發票、康是美客製…等數十支不同的訂單相關 API</td></tr>
+        <tr><td>2024-10-28</td><td class="mono">db6a31fab</td><td>Heng Lu（VSTS436462）</td><td>在<b>當時的</b> <span class="mono">SalesOrderController.Get</span> 上掛上 <span class="mono">[ExceededTimesLimiter]</span>（此時還是舊 Controller，尚未改名）</td></tr>
+      </tbody>
+    </table>
+    <p>實際檢視 rename 前的舊檔案內容，<span class="mono">SalesOrderController</span> 同時掛了 <b>20 幾個 Action</b>，全部共用同一個 <span class="mono">[RoutePrefix("SalesOrder")]</span>，例如：</p>
+    <pre class="mono" style="background:#0d1830;border:1px solid #23375f;border-radius:8px;padding:14px;overflow:auto;font-size:13px;line-height:1.7;">
+[RoutePrefix("SalesOrder")]
+public class SalesOrderController : ApiController
+{
+    [Route("UpdateNote")]      ... UpdateNote(...)
+    [Route("CancelOrder")]     ... CancelOrder(...)
+    [Route("GetList")]         ... GetList(...)
+    [Route("Get")]             ... Get(SalesOrderDataQueryEntity entity)   ← 這就是「以前」SalesOrder/Get 打到的方法
+    {
+        var result = this._salesOrderService.GetData(entity);
+        ...
+    }
+    [Route("GetByCustomerizedFilter")]  ... 
+    [Route("ConfirmSalesOrderSlave")]   ...
+    [Route("UpdateShippingOrderCode")]  ...
+    // ... 還有十幾個其他 Action，族繁不及備載
+}
+</pre>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">11.2 關鍵重構：2025-09-26「SalesOrder/Get 抽 Lite」</h3>
+    <table>
+      <thead><tr><th>Commit</th><th>作者</th><th>訊息</th><th>異動內容</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="mono">a7c256efa</td>
+          <td>chiayunlee</td>
+          <td>VSTS532020 - SalesOrder/Get抽Lite</td>
+          <td>
+            <span class="mono">SalesOrderController.cs</span>：刪除 32 行（移除 Get 方法）<br/>
+            <span class="mono">SalesOrderGetLiteController.cs</span>：新增 58 行（新建檔案）<br/>
+            <span class="mono">SalesOrderGetLiteService.cs</span>：新增 1388 行（新建獨立商業邏輯層）
+          </td>
+        </tr>
+        <tr>
+          <td class="mono">4d0ddc616</td>
+          <td>chiayunlee</td>
+          <td>VSTS532020 - 抽Lite後移除SalesOrderService注入</td>
+          <td>收尾清理，移除舊 <span class="mono">SalesOrderService</span> 在新 Controller 中不再需要的多餘依賴注入</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>具體搬遷動作：</p>
+    <ol>
+      <li>新建一個全新類別 <span class="mono">SalesOrderGetLiteController</span>，同樣標記 <b>一模一樣的</b> <span class="mono">[RoutePrefix("SalesOrder")]</span>。</li>
+      <li>把 <span class="mono">Get</span> 這個 Action（含 <span class="mono">[Route("Get")]</span>）<b>從舊 Controller 剪下、貼到新 Controller</b>。</li>
+      <li>舊 Controller 裡其餘 20 幾個 Action（<span class="mono">GetList</span>、<span class="mono">CancelOrder</span>、<span class="mono">UpdateNote</span>…）<b>原封不動留在原地</b>，沒有被搬動。</li>
+      <li>對應商業邏輯也從舊的 <span class="mono">ISalesOrderService.GetData()</span> 抽出，獨立寫成新的 <span class="mono">ISalesOrderGetLiteService.GetData()</span>（不再共用舊 Service 的其他相依性，呼應專案「Lite = 刻意精簡依賴、避免拖慢查詢效能」的命名慣例，與 <span class="mono">SalePageLiteController</span> 的設計理念一致）。</li>
+    </ol>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">11.3 為什麼網址完全沒變、呼叫端完全無感？</h3>
+    <div class="note">
+      ASP.NET Web API 的 Attribute Routing 在啟動時，會把<b>專案裡所有 Controller</b> 一起掃描一遍，蒐集每一個 <span class="mono">[RoutePrefix]+[Route]</span> 組合，建立成一張全域路由表。<b>路由表只認「最終組出來的網址字串」，完全不在乎這個組合來自哪一個類別</b>。
+    </div>
+    <table>
+      <thead><tr><th>時期</th><th class="mono">SalesOrder/Get</th><th>實際處理的類別</th></tr></thead>
+      <tbody>
+        <tr><td>抽 Lite 前</td><td class="mono">SalesOrder/Get</td><td class="mono">SalesOrderController.Get()</td></tr>
+        <tr><td>抽 Lite 後（現況）</td><td class="mono">SalesOrder/Get</td><td class="mono">SalesOrderGetLiteController.Get()</td></tr>
+      </tbody>
+    </table>
+    <p>只要「同一時間點，兩個 Controller 不會同時對同一個網址各自宣告 <span class="mono">[Route]</span>」（否則會路由衝突報錯），拆分時把舊方法整個刪掉、新方法沿用同樣的路由字串接手，對外部呼叫者而言網址完全沒變、行為完全無感知，這就是「無痛搬家」的原理。</p>
+
+    <div class="danger-note"><strong>總結一句話：</strong>不是「以前打 <span class="mono">SalesOrder/Get</span> 會到另一支完全獨立的 API」，而是「以前 <span class="mono">SalesOrder/Get</span> 打到的是巨型 <span class="mono">SalesOrderController</span> 裡眾多方法之一的 <span class="mono">Get()</span>」；2025-09-26 重構時把這一個方法連同對應商業邏輯，整個搬遷到新建的、專屬精簡的 <span class="mono">SalesOrderGetLiteController</span>，並在新類別上刻意沿用一模一樣的 <span class="mono">[RoutePrefix("SalesOrder")]</span> + <span class="mono">[Route("Get")]</span>，讓路由表指向新類別，達成「網址完全不變、呼叫端無需修改任何程式碼」的無痛搬遷效果。這也解釋了為什麼「Route 用的名稱（SalesOrder）」跟「限流引擎讀取的 ControllerName（SalesOrderGetLite）」會不一致——兩者資料來源本來就不同，Route 是刻意維持歷史相容性，ControllerName 則反映了目前實際的類別名稱。</div>
+  </section>
+  </div>
+
+  <div id="sec-12" class="section-panel">
+  <section class="card">
+    <h2><span class="num">12</span>HK Prod Config 套用評估 <span class="badge">實際 IIS Log 數據驗證</span></h2>
+    <p>目的：在正式對 <b>HK Prod</b> 環境補上與 TW 相同的 4 把 <span class="mono">ExceededTimesLimiter</span> Config 之前，先用 <b>Athena（AWS）查詢近幾個月的實際 IIS Log</b>，評估「如果 HK Prod 也套用跟 TW 一樣的參數（<span class="mono">true|200|1|0</span>，即每秒最多 200 次），會不會真的擋到任何供應商」，避免上線後才發現誤傷正常流量。</p>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">12.1 查詢方法</h3>
+    <p>資料來源：<span class="mono">hk_prod_osm.osm_api_iislog</span>（HK Prod 環境 OSM API 的 IIS Log，透過 Athena SQL 查詢），鎖定 <span class="mono">SalePage/GetMain</span> 這支 API 為例，統計「每一秒、每一個供應商 Token」的呼叫次數，由高到低排序，藉此找出歷史上真正出現過的尖峰流量：</p>
+    <pre class="mono" style="background:#0d1830;border:1px solid #23375f;border-radius:8px;padding:14px;overflow:auto;font-size:13px;line-height:1.7;">
+SELECT
+    date,
+    time,
+    regexp_extract(cs_uri_query, '(^|&amp;)t=([^&amp;]+)', 2) AS token,
+    COUNT(*) AS request_count
+FROM "hk_prod_osm"."osm_api_iislog"
+WHERE cs_uri_stem = '/scm/V1/SalePage/GetMain'
+  AND date &gt; '2026/05/01'
+  AND date &lt; '2026/08/14'
+GROUP BY regexp_extract(cs_uri_query, '(^|&amp;)t=([^&amp;]+)', 2), date, time
+ORDER BY request_count DESC
+LIMIT 10;
+</pre>
+    <p><b>查詢邏輯重點：</b>用 <span class="mono">regexp_extract</span> 從 <span class="mono">cs_uri_query</span> 這個 Log 欄位裡把驗證用的 <span class="mono">t</span>（Token，識別供應商）參數抓出來，依「日期＋<b>秒級時間戳（IIS/W3C Log 的 <span class="mono">time</span> 欄位本身就是精確到秒，格式 <span class="mono">HH:MM:SS</span>）</b>＋Token」分組計數，藉此還原「某個供應商在<b>那一整秒</b>內實際打了幾次」——這與限流器 <span class="mono">CacheSeconds=1</span> 窗口的統計粒度<b>完全對齊（1:1 對應，非估算）</b>，可以直接拿來對照 <span class="mono">MaxTimes=200</span> 這個門檻，評估歷史上是否曾經逼近或超過。</p>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">12.2 查詢結果（近 3.5 個月：2026/05/01 ~ 2026/08/14）</h3>
+    <table>
+      <thead><tr><th>#</th><th>日期</th><th>時間（秒級）</th><th>Token</th><th>當秒請求數</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>2026/06/24</td><td>19:59:36</td><td class="mono">30671037</td><td>277</td></tr>
+        <tr><td>2</td><td>2026/06/24</td><td>19:58:36</td><td class="mono">30671037</td><td>265</td></tr>
+        <tr><td>3</td><td>2026/06/24</td><td>19:56:36</td><td class="mono">30671037</td><td>254</td></tr>
+        <tr><td>4</td><td>2026/06/24</td><td>19:59:37</td><td class="mono">30671037</td><td>241</td></tr>
+        <tr><td>5</td><td>2026/06/24</td><td>20:00:37</td><td class="mono">30671037</td><td>236</td></tr>
+        <tr><td>6</td><td>2026/06/24</td><td>19:57:37</td><td class="mono">30671037</td><td>232</td></tr>
+        <tr><td>7</td><td>2026/06/24</td><td>19:57:36</td><td class="mono">30671037</td><td>212</td></tr>
+        <tr><td>8</td><td>2026/06/24</td><td>19:55:36</td><td class="mono">30671037</td><td>199</td></tr>
+        <tr><td>9</td><td>2026/06/24</td><td>19:54:37</td><td class="mono">30671037</td><td>176</td></tr>
+        <tr><td>10</td><td>2026/07/13</td><td>06:32:48</td><td class="mono">30671037</td><td>173</td></tr>
+      </tbody>
+    </table>
+    <p>Token <span class="mono">30671037</span> 經比對為 <b>「香港莎莎網店」</b>——目前唯一在近 3.5 個月內出現過高頻呼叫的供應商，其餘供應商的呼叫量遠低於此排名前 10。</p>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">12.3 評估分析：若套用 TW 相同設定，實際影響多大？</h3>
+    <div class="note">
+      <b>比對門檻：</b>TW／OR 目前套用的參數為 <span class="mono">true|200|1|0</span>（<span class="mono">MaxTimes=200, CacheSeconds=1</span>，即每 1 秒鐘上限 200 次）。<br/><br/>
+      Query 結果的 <span class="mono">request_count</span> 就是「當下那一整秒」的<b>實際請求數（非估算、非換算）</b>，可以直接跟 <span class="mono">MaxTimes=200</span> 做 1:1 比對：
+    </div>
+    <ul>
+      <li><b>2026/06/24 19:59:36 這一秒，實際發生 277 次請求</b>——若套用 <span class="mono">MaxTimes=200</span>，這一秒內第 201~277 次（共 <b>77 次</b>）會被擋下、收到 429；其餘同一區間內 254、265、241、236、232、212、199、176 次的各秒，也大多會有數十次左右被擋（199 次那一秒剛好卡在門檻下，不會被擋）。</li>
+      <li><b>2026/07/13 06:32:48 這一秒，173 次</b>——低於 200 門檻，不會被擋。</li>
+      <li>其餘排名前 10 以外的所有時間點／供應商，經 <span class="mono">ORDER BY request_count DESC LIMIT 10</span> 篩選後可確認皆低於此列表最低值（173 次），全部不會超過 200 門檻。</li>
+    </ul>
+    <ul>
+      <li><b>會被擋到的供應商：</b>只有 Token <span class="mono">30671037</span>（香港莎莎網店）有可能命中，其餘供應商呼叫量遠低於門檻，完全不受影響。</li>
+      <li><b>發生頻率：</b>近 3.5 個月（2026/05/01 ~ 2026/08/14）僅在 <b>2026/06/24 晚間 19:54~20:00 這一段約 6 分鐘的區間</b>，出現 8 個「秒級」樣本超過或接近 200 門檻，加上 <b>2026/07/13 06:32:48</b> 一筆 173 次（未超標），全部合計不到 10 個秒級樣本會落在門檻附近或超標——屬於<b>極低頻率的偶發尖峰</b>，非常態性流量。</li>
+      <li><b>擋下後的行為：</b>依第 4 章流程圖，超過門檻時 <span class="mono">ExceededTimesLimiterException</span> 會被拋出，最終呼叫端會收到 <b>HTTP 429</b> 回應（Too Many Requests），而非伺服器錯誤，是限流器設計上預期的正常拒絕行為。</li>
+    </ul>
+
+    <h3 style="color:#9fc7ff;font-size:16px;margin-top:22px;">12.4 對照組：目前 TW／ApiV2 已套用的實際設定值</h3>
+    <table>
+      <thead><tr><th>Repo</th><th>Config Key</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">NineYi.Scm.Api</td><td class="mono">Prod.ExceededTimesLimiter.SalePageLite.GetStock.SupplierId</td><td class="mono">true|200|1|0</td></tr>
+        <tr><td class="mono">NineYi.Scm.Api</td><td class="mono">Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId</td><td class="mono">true|200|1|0</td></tr>
+        <tr><td class="mono">NineYi.Scm.ApiV2</td><td class="mono">Prod.ExceededTimesLimiter.SalesOrderGetLite.Get.SupplierId</td><td class="mono">true|200|1|0</td></tr>
+        <tr><td class="mono">NineYi.Scm.ApiV2</td><td class="mono">Prod.ExceededTimesLimiter.ShippingOrder.Get.SupplierId</td><td class="mono">true|200|1|0</td></tr>
+      </tbody>
+    </table>
+
+    <div class="danger-note">
+      <strong>結論：</strong>若 HK Prod 套用與 TW 完全相同的參數（<span class="mono">true|200|1|0</span>），依近 3.5 個月的實際秒級流量觀察，<b>僅「香港莎莎網店」（Token 30671037）這一個供應商在極少數尖峰秒數（近 3.5 個月內約 8 個秒級樣本超過 200 門檻，集中在 2026/06/24 晚間 19:54~20:00 這 6 分鐘內）會被限流、收到 429</b>，其餘供應商完全不受影響。屬於低風險、可控的套用範圍，若要上線，建議：
+      <ul style="margin:8px 0 0;">
+        <li>套用前先與「香港莎莎網店」窗口確認其呼叫端是否有針對 429 做重試（retry）機制，避免真的觸發時業務中斷。</li>
+        <li>也可考慮利用第 7 章提到的 DB <span class="mono">SupplierStaticSetting</span> 個別覆寫機制，僅針對此供應商設定較寬鬆的 <span class="mono">MaxTimes</span>（如 300~500），其餘供應商沿用全域 Config 的 200，兼顧防護與相容性。</li>
+        <li>套用後建議持續觀察 HK Prod 的 Elmah/監控紀錄，確認是否有 429 被觸發，作為後續調整依據。</li>
+      </ul>
+    </div>
+  </section>
+  </div>
+
+  <p class="footer-note">產出範圍：C:\91APP\Api（NineYi.Scm.Api）與 C:\91APP\SCMAPIV2\nineyi.scm.apiv2（NineYi.Scm.ApiV2）程式碼解析　|　僅供內部工程參考</p>
+</div>
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
+
+  (function () {
+    var links = document.querySelectorAll('#nav-list a');
+    var panels = document.querySelectorAll('.section-panel');
+    var mermaidRendered = false;
+
+    function activate(targetId, updateHash) {
+      panels.forEach(function (p) {
+        p.classList.toggle('active', p.id === targetId);
+      });
+      links.forEach(function (a) {
+        a.classList.toggle('active', a.getAttribute('data-target') === targetId);
+      });
+      if (updateHash !== false) {
+        history.replaceState(null, '', '#' + targetId);
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+
+      //// 流程圖章節 (sec-4) 第一次顯示時才渲染 Mermaid，避免隱藏狀態下量測不到尺寸而渲染失敗
+      if (targetId === 'sec-4' && !mermaidRendered) {
+        mermaidRendered = true;
+        mermaid.run({ querySelector: '#sec-4 .mermaid' });
+      }
+    }
+
+    links.forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        activate(a.getAttribute('data-target'));
+      });
+    });
+
+    var initial = (location.hash || '').replace('#', '');
+    var validIds = Array.prototype.map.call(panels, function (p) { return p.id; });
+    if (!initial || validIds.indexOf(initial) === -1) {
+      initial = 'sec-1';
+    }
+    activate(initial, false);
+  })();
+</script>
+</body>
+</html>
+

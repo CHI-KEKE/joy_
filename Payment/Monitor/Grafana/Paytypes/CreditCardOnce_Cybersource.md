@@ -1,0 +1,1 @@
+`/api/v1.0/QueryPayment/CreditCardOnce_Cybersource`

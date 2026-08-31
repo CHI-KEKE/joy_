@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>定期購方案 查詢明細 API Spec — Api/RegularProduct/GetDetail</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif; background: #f0f2f5; color: #1a1a2e; font-size: 14px; }
+
+  .sidebar { position: fixed; top: 0; left: 0; width: 220px; height: 100vh; background: #1a1a2e; color: #cdd6f4; overflow-y: auto; padding: 20px 0; z-index: 100; }
+  .sidebar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6272a4; padding: 8px 20px 4px; margin-top: 12px; }
+  .sidebar a { display: block; padding: 7px 20px; color: #cdd6f4; text-decoration: none; font-size: 13px; border-left: 3px solid transparent; transition: all .15s; }
+  .sidebar a:hover, .sidebar a.active { background: rgba(255,255,255,.06); border-left-color: #bd93f9; color: #fff; }
+  .sidebar .logo { padding: 16px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .sidebar .logo .title { font-size: 14px; font-weight: 700; color: #f8f8f2; line-height: 1.4; }
+  .sidebar .logo .sub { font-size: 11px; color: #6272a4; margin-top: 4px; }
+
+  .main { margin-left: 220px; padding: 32px; max-width: 1100px; }
+  section { margin-bottom: 40px; }
+  h1 { font-size: 28px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+  h2 { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+  h3 { font-size: 15px; font-weight: 700; color: #44475a; margin-bottom: 10px; }
+  p { color: #4a5568; line-height: 1.7; margin-bottom: 10px; }
+
+  .card { background: #fff; border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 4px solid transparent; }
+  .card.blue  { border-left-color: #4dabf7; }
+  .card.green { border-left-color: #51cf66; }
+  .card.orange{ border-left-color: #ff922b; }
+  .card.purple{ border-left-color: #bd93f9; }
+  .card.red   { border-left-color: #ff5555; }
+  .card.gray  { border-left-color: #868e96; }
+  .card.teal  { border-left-color: #20c997; }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 2px 8px; margin: 2px; }
+  .badge-blue   { background: #e7f5ff; color: #1971c2; }
+  .badge-green  { background: #ebfbee; color: #2f9e44; }
+  .badge-orange { background: #fff4e6; color: #d9480f; }
+  .badge-purple { background: #f3f0ff; color: #7048e8; }
+  .badge-red    { background: #fff5f5; color: #c92a2a; }
+  .badge-gray   { background: #f1f3f5; color: #495057; }
+  .badge-teal   { background: #e6fcf5; color: #0f9177; }
+  .method-get { display:inline-block; background:#4dabf7; color:#fff; font-weight:700; font-size:12px; padding:3px 10px; border-radius:4px; margin-right:8px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f1f3f5; text-align: left; padding: 8px 12px; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6; }
+  td { padding: 7px 12px; border-bottom: 1px solid #f1f3f5; vertical-align: top; }
+  tr:hover td { background: #fafbfc; }
+  code { font-family: 'Fira Code', 'Consolas', monospace; background: #f1f3f5; padding: 1px 5px; border-radius: 3px; font-size: 12px; color: #d63384; }
+  .code-block { font-family: 'Fira Code', 'Consolas', monospace; background: #1e1e2e; color: #cdd6f4; padding: 14px 18px; border-radius: 8px; font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre; margin: 10px 0; }
+  .code-block .cm { color: #6272a4; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  .note { background: #fff9db; border-left: 4px solid #ffd43b; padding: 12px 16px; border-radius: 6px; margin: 10px 0; font-size: 13px; color: #664d03; }
+  .warn { background: #fff5f5; border-left: 4px solid #ff5555; padding: 12px 16px; border-radius: 6px; margin: 10px 0; font-size: 13px; color: #c92a2a; }
+  ul { padding-left: 20px; line-height: 1.9; color:#4a5568;}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">
+    <div class="title">定期購方案<br>查詢明細 API Spec</div>
+    <div class="sub">Api/RegularProduct/GetDetail</div>
+  </div>
+  <h2>Navigation</h2>
+  <a href="#s1">1. API 基本資訊</a>
+  <a href="#s2">2. Request</a>
+  <a href="#s3">3. Response Body</a>
+  <a href="#s3-2">3.2 ShippingCountMode</a>
+  <a href="#s3-3">3.3 RegularProductPromotionRule</a>
+  <a href="#s4">4. 失敗</a>
+  <a href="#s4-1">4.1 錯誤案例</a>
+  <a href="#s5">5. 補充說明</a>
+</div>
+
+<div class="main">
+  <section>
+    <h1>定期購方案 查詢明細 API Spec</h1>
+    <p><span class="method-get">GET</span><code>/Api/RegularProduct/GetDetail?planId={planId}</code>　對應下游 <code>GET /api/regular/products/plan/{planId}?shopId={shopId}</code></p>
+  </section>
+
+  <section id="s1">
+    <h2>1. API 基本資訊</h2>
+    <div class="card blue">
+      <table>
+        <tr><td style="width:180px"><strong>用途</strong></td><td>依「定期購方案序號」查詢單筆定期購方案明細（含基本設定與贈品活動設定），供編輯畫面回填使用</td></tr>
+        <tr><td><strong>HTTP Method</strong></td><td><span class="badge badge-blue">GET</span></td></tr>
+        <tr><td><strong>OSM 前端路徑</strong></td><td><code>/Api/RegularProduct/GetDetail?planId={planId}</code></td></tr>
+        <tr><td><strong>對應下游</strong></td><td><code>GET /api/regular/products/plan/{planId}?shopId={shopId}</code>（nine1.regularpurchase.v2）</td></tr>
+        <tr><td><strong>Content-Type</strong></td><td>無 Request Body</td></tr>
+        <tr><td><strong>呼叫時機</strong></td><td>使用者進入「定期購方案編輯」畫面時，依網址列或列表帶入的方案序號查詢明細以回填表單</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="s2">
+    <h2>2. Request</h2>
+    <h3>2.1 Query String 參數</h3>
+    <div class="card">
+      <table>
+        <tr><th>欄位</th><th>型別</th><th>必填</th><th>說明</th></tr>
+        <tr><td><code>planId</code></td><td>long</td><td>是</td><td>定期購方案序號（對應下游 <code>rpd_pk</code>）；需為大於 0 的正整數</td></tr>
+      </table>
+      <div class="note"><strong>ShopId 不需前端傳入</strong>：由 OSM 後端從登入 Session 取得，比照既有 <code>Api/RegularProduct/*</code> 系列 API 的慣例。</div>
+    </div>
+
+    <h3>2.2 Request Sample</h3>
+    <div class="code-block">GET /Api/RegularProduct/GetDetail?planId=12345</div>
+    <p>（無 Request Body）</p>
+  </section>
+
+  <section id="s3">
+    <h2>3. Response Body</h2>
+    <div class="warn"><strong>重要：本節已依 NineYi.Sms 既有 API 包裝機制修正。</strong> 所有 <code>/Api/*</code> 端點的 HTTP Response 都會被 <code>UnifiedResultHandler</code>（<code>WebSite/WebSite/Extensions/DelegatingHandlers/UnifiedResultHandler.cs</code>）統一包裝成 <code>ApiResultEntity</code> 外層結構，Controller Action 本身回傳的內容只會被放進 <code>Data</code> 欄位；<strong>不會有</strong> <code>IsSuccess</code>／<code>ErrorCode</code> 這種自訂欄位直接出現在頂層。</div>
+
+    <h3>3.0 SMS 統一外層包裝結構 <code>ApiResultEntity</code></h3>
+    <div class="card gray">
+      <table>
+        <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+        <tr><td><code>Status</code></td><td>string</td><td><code>"Success"</code>／<code>"Failure"</code>，由 <code>UnifiedResultHandler</code> 依 HTTP 狀態碼自動判斷（<code>IsSuccessStatusCode</code> 為 <code>true</code> 則 <code>Success</code>）</td></tr>
+        <tr><td><code>Data</code></td><td>object</td><td>成功時為 Controller Action 實際回傳的物件（見 3.1 節）；失敗時通常為 <code>null</code></td></tr>
+        <tr><td><code>ErrorMessage</code></td><td>string</td><td>失敗時的錯誤訊息文案；成功時為 <code>null</code></td></tr>
+        <tr><td><code>TimeStamp</code></td><td>datetime</td><td>伺服器回應時間，由 <code>UnifiedResultHandler</code> 自動填入</td></tr>
+      </table>
+      <p>此結構為 SMS 全站共用（<code>NineYi.Sms.BL.BE.Apis.ApiResultEntity</code>），<strong>GetDetail API 本身不需要、也不應該自訂 <code>IsSuccess</code>／<code>ErrorCode</code> 欄位</strong>，前端應統一以外層 <code>Status</code>／<code>ErrorMessage</code> 判斷成功或失敗；業務邏輯失敗案例改以 HTTP 4xx（<code>ApplicationException</code>）搭配 <code>ErrorMessage</code> 文案表達，見 4 節錯誤案例。</p>
+    </div>
+
+    <h3>3.1 成功</h3>
+    <div class="card green">
+      <p>Controller Action 實際回傳、會被放進外層 <code>Data</code> 欄位的內容：</p>
+      <div class="note"><strong>命名說明</strong>：本節欄位命名與型別刻意比照 <code>Api/RegularProduct/Create</code> 的 Request 欄位（OSM 端慣用詞彙），<strong>不會</strong>直接透傳下游 v2 API 的原始欄位名稱／型別（例如下游 <code>Title</code> 其實是「商品標題」，與 OSM 慣用的 <code>Title</code>=「方案名稱」語意相反，故本 API 另外拆出 <code>salePage_Title</code> 欄位承接，避免前端誤用）。</div>
+      <table>
+        <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+        <tr><td><code>SalepageId</code></td><td>long</td><td>商品頁序號；語意對應 <code>Create</code> Request 的 <code>SalepageId</code></td></tr>
+        <tr><td><code>Title</code></td><td>string</td><td>方案名稱，可能為 <code>null</code>；語意對應 <code>Create</code> Request 的 <code>Title</code></td></tr>
+        <tr><td><code>salePage_Title</code></td><td>string</td><td>商品標題（即該商品頁本身的標題，非方案名稱）</td></tr>
+        <tr><td><code>Price</code></td><td>string</td><td>商品售價（含幣值符號的格式化字串，如 <code>$1,000</code>）</td></tr>
+        <tr><td><code>PicUrl</code></td><td>string</td><td>商品圖片 URL</td></tr>
+        <tr><td><code>ShipPeriodList</code></td><td>int[]</td><td>配送週期（天），複選；語意與型別對應 <code>Create</code> Request 的 <code>ShipPeriodList</code></td></tr>
+        <tr><td><code>ShippingCountMode</code></td><td>enum（string）</td><td>配送次數設定模式；語意與型別對應 <code>Create</code> Request 的 <code>ShippingCountMode</code>，值域見 3.2 節</td></tr>
+        <tr><td><code>ShipLimitCount</code></td><td>int</td><td>配送次數上限；<code>ShippingCountMode=Unlimited</code> 時為 <code>-1</code>；語意對應 <code>Create</code> Request 的 <code>ShipLimitCount</code></td></tr>
+        <tr><td><code>AllowOneTimePurchase</code></td><td>bool</td><td>是否允許消費者選擇「單次購買（不訂閱定期購）」；語意對應 <code>Create</code> Request 的 <code>AllowOneTimePurchase</code></td></tr>
+        <tr><td><code>IsGiftEnabled</code></td><td>bool</td><td>贈品設定開關；由 <code>RegularProductPromotionRules</code> 是否有內容推導而來（有規則=<code>true</code>），語意對應 <code>Create</code> Request 的 <code>IsGiftEnabled</code>，供編輯畫面回填「贈品設定開關」UI 狀態使用</td></tr>
+        <tr><td><code>ShippingList</code></td><td>string[]</td><td>配送方式說明清單</td></tr>
+        <tr><td><code>PayList</code></td><td>string[]</td><td>付款方式說明清單</td></tr>
+        <tr><td><code>PlanDateBegin</code></td><td>datetime?</td><td>方案生效開始時間；<code>null</code>=無下限</td></tr>
+        <tr><td><code>PlanDateEnd</code></td><td>datetime?</td><td>方案生效結束時間；<code>null</code>=永久有效</td></tr>
+        <tr><td><code>RegularProductPromotionRules</code></td><td><code>List&lt;RegularProductPromotionRule&gt;</code></td><td>贈品活動規則清單；查無規則時為空陣列 <code>[]</code>，結構見 3.3 節</td></tr>
+      </table>
+    </div>
+
+    <h3 id="s3-2">3.2 <code>ShippingCountMode</code> enum 值定義</h3>
+    <div class="card orange">
+      <table>
+        <tr><th>值</th><th>意義</th><th>搭配 ShipLimitCount</th></tr>
+        <tr><td><code>Unlimited</code></td><td>無上限，持續配送到消費者自行取消訂閱為止</td><td>固定為 <code>-1</code></td></tr>
+        <tr><td><code>CustomerChoice</code></td><td>有上限，但配送次數由消費者自己選擇</td><td>配送次數上限</td></tr>
+        <tr><td><code>Fixed</code></td><td>固定次數，配滿即自動終止，消費者不能自選</td><td>固定配送次數</td></tr>
+      </table>
+    </div>
+
+    <h3 id="s3-3">3.3 <code>RegularProductPromotionRule</code>（<code>RegularProductPromotionRules</code> 陣列元素）</h3>
+    <div class="card purple">
+      <table>
+        <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+        <tr><td><code>Type</code></td><td>enum（string）</td><td>活動類型；本次僅會回傳 <code>"Gift"</code></td></tr>
+        <tr><td><code>TriggerMode</code></td><td>enum（string）</td><td>觸發模式；本次僅會回傳 <code>"Interval"</code></td></tr>
+        <tr><td><code>Interval</code></td><td>int</td><td>每 N 期觸發一次（配送每滿 X 次送贈品的 X）</td></tr>
+        <tr><td><code>OutOfStockAction</code></td><td>enum（string）</td><td>贈品缺貨處理：<code>"Proceed"</code>（照常建單）／<code>"SkipPeriod"</code>（該期不建立訂單）</td></tr>
+        <tr><td><code>RegularProductPromotionGiftItemList</code></td><td><code>List&lt;RegularProductPromotionGiftItem&gt;</code></td><td>本次觸發要送出的贈品清單，結構見下方</td></tr>
+      </table>
+    </div>
+
+    <h3><code>RegularProductPromotionGiftItem</code>（<code>RegularProductPromotionGiftItemList</code> 陣列元素）</h3>
+    <div class="card teal">
+      <table>
+        <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+        <tr><td><code>GiftTypeId</code></td><td>long</td><td>贈品序號，即該贈品自己的 <code>SalePageId</code></td></tr>
+        <tr><td><code>Qty</code></td><td>int</td><td>本次送出數量</td></tr>
+      </table>
+      <div class="note"><strong>範圍限定</strong>：本 API 僅回傳 v2 原始欄位（<code>GiftTypeId</code>／<code>Qty</code>），<strong>不會</strong>額外查詢 SCM 補上贈品的 SKU 名稱／圖片；若畫面需要顯示贈品名稱或圖片，前端需自行以 <code>GiftTypeId</code> 再呼叫既有商品查詢機制取得。</div>
+    </div>
+
+    <h3>3.4 成功範例</h3>
+    <p><strong>情境一：有贈品規則</strong></p>
+    <div class="code-block">{
+  "status": "Success",
+  "data": {
+    "salepageId": 20001,
+    "title": "夏季保養品訂閱方案",
+    "salePage_Title": "夏季保養精華組",
+    "price": "$1,000",
+    "picUrl": "https://cdn.example.com/product.jpg",
+    "shipPeriodList": [30, 60, 90],
+    "shippingCountMode": "CustomerChoice",
+    "shipLimitCount": 5,
+    "allowOneTimePurchase": true,
+    "isGiftEnabled": true,
+    "shippingList": ["宅配", "超商取貨"],
+    "payList": ["信用卡", "ATM"],
+    "planDateBegin": "2026-08-01T00:00:00",
+    "planDateEnd": "2026-12-31T23:59:59",
+    "regularProductPromotionRules": [
+      {
+        "type": "Gift",
+        "triggerMode": "Interval",
+        "interval": 3,
+        "outOfStockAction": "Proceed",
+        "regularProductPromotionGiftItemList": [
+          { "giftTypeId": 50001, "qty": 2 },
+          { "giftTypeId": 50002, "qty": 1 }
+        ]
+      }
+    ]
+  },
+  "errorMessage": null,
+  "timeStamp": "2026-08-03T17:30:00"
+}</div>
+
+    <p><strong>情境二：無贈品規則（<code>RegularProductPromotionRules</code> 為空陣列）、配送次數無上限</strong></p>
+    <div class="code-block">{
+  "status": "Success",
+  "data": {
+    "salepageId": 20002,
+    "title": null,
+    "salePage_Title": "冬季保暖商品",
+    "price": "$800",
+    "picUrl": "https://cdn.example.com/product2.jpg",
+    "shipPeriodList": [30],
+    "shippingCountMode": "Unlimited",
+    "shipLimitCount": -1,
+    "allowOneTimePurchase": false,
+    "isGiftEnabled": false,
+    "shippingList": ["宅配"],
+    "payList": ["信用卡"],
+    "planDateBegin": "2026-10-01T00:00:00",
+    "planDateEnd": null,
+    "regularProductPromotionRules": []
+  },
+  "errorMessage": null,
+  "timeStamp": "2026-08-03T17:30:00"
+}</div>
+  </section>
+
+  <section id="s4">
+    <h2>4. 失敗</h2>
+    <div class="card red">
+      <p>失敗時 HTTP 狀態碼會依情境不同而異，並由 <code>GlobalExceptionHandler</code> 統一組出以下結構：</p>
+      <table>
+        <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+        <tr><td><code>Status</code></td><td>string</td><td>固定為 <code>"Failure"</code></td></tr>
+        <tr><td><code>Data</code></td><td>object</td><td>一般業務錯誤時為 <code>null</code></td></tr>
+        <tr><td><code>ErrorMessage</code></td><td>string</td><td>錯誤訊息文案，<strong>可直接顯示給使用者</strong></td></tr>
+        <tr><td><code>TimeStamp</code></td><td>datetime</td><td>伺服器回應時間</td></tr>
+      </table>
+      <div class="code-block">{
+  "status": "Failure",
+  "data": null,
+  "errorMessage": "查無此定期購方案",
+  "timeStamp": "2026-08-03T17:30:00"
+}</div>
+    </div>
+
+    <h3 id="s4-1">4.1 常見錯誤情境對照（ErrorMessage 內容參考，非結構化代碼）</h3>
+    <div class="card">
+      <table>
+        <tr><th>觸發情境</th><th>HTTP 狀態碼</th><th>ErrorMessage（參考文案，實際文案以後端為準）</th><th>前端建議處理</th></tr>
+        <tr><td><code>planId</code> 未帶或 <code>&lt;= 0</code></td><td><code>400 Bad Request</code></td><td>「shopId 或 planId 無效」</td><td>提示參數錯誤，通常代表前端網址組錯，不應開放使用者手動輸入此值</td></tr>
+        <tr><td>登入 Session 逾時／未登入</td><td><code>401 Unauthorized</code></td><td>「帳號驗證失敗」（依系統既有文案）</td><td>導回登入頁</td></tr>
+        <tr><td>查無此方案序號（下游回傳查無資料）</td><td><code>400 Bad Request</code></td><td>「查無此定期購方案」</td><td>提示「查無此定期購方案」，可導回列表頁</td></tr>
+        <tr><td>下游服務逾時／連線失敗</td><td><code>400 Bad Request</code>（由 <code>RegularProductHttpClient</code> 轉譯）</td><td>依下游實際錯誤訊息或預設文案</td><td>提示稍後再試</td></tr>
+      </table>
+      <p style="margin-top:12px; font-size:12px; color:#868e96;">以上文案為依現有實作推導的參考值，實際 ErrorMessage 文案需與 OSM 後端 Service 層核對後定案；前端不應寫死比對整段文案字串。</p>
+    </div>
+  </section>
+
+  <section id="s5">
+    <h2>5. 補充說明</h2>
+    <div class="card gray">
+      <ul>
+        <li>本 API 為 <strong>BFF（Backend for Frontend）代理層</strong>：<code>RegularProductController.GetDetail</code> → <code>RegularProductService.GetDetail</code> → <code>RegularProductHttpClient.GetDetail</code> → 下游 v2 API <code>GET /api/regular/products/plan/{planId}</code>。</li>
+        <li>下游 v2 API 已改用標準 HTTP 狀態碼（<code>400</code>／<code>404</code>）表達業務失敗，SMS 端 <code>RegularProductHttpClient</code> 會攔截 Flurl 拋出的 <code>FlurlHttpException</code>，統一轉換為 SMS 慣用的 <code>ApplicationException</code> + <code>ErrorMessage</code> 文案，前端不需要、也不會感知下游細節。</li>
+        <li><code>RegularProductPromotionRules</code> 為<strong>唯讀查詢結果</strong>：此 API 僅供編輯畫面回填顯示，若要修改贈品活動規則，仍須透過既有 <code>Api/RegularProduct/Create</code>（或未來的 Update API）送出完整規則。</li>
+      </ul>
+    </div>
+  </section>
+</div>
+</body>
+</html>

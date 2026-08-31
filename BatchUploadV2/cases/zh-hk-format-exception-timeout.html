@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>案例：zh-HK 語系錯誤訊息缺參數，導致批次卡在 InProcess 逾時告警</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1c202b;
+    --border: #2a2f3a;
+    --text: #e6e8ee;
+    --muted: #9aa3b2;
+    --accent: #5b8cff;
+    --accent-2: #7ee787;
+    --danger: #ff6b6b;
+    --warn: #ffb454;
+    --code-bg: #10131a;
+    --shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: radial-gradient(1200px 600px at 10% -10%, #1a2036 0%, var(--bg) 60%);
+    color: var(--text);
+    line-height: 1.75;
+  }
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+  header.hero {
+    background: linear-gradient(135deg, #1b2740 0%, #171b28 60%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px 40px;
+    box-shadow: var(--shadow);
+    margin-bottom: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  header.hero::before {
+    content: "";
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(91,140,255,0.25), transparent 70%);
+    pointer-events: none;
+  }
+  .badge-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+  .badge {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:5px 12px; border-radius:999px;
+    font-size:12.5px; font-weight:600; letter-spacing:.3px;
+    border:1px solid var(--border);
+  }
+  .badge.hk { background:rgba(255,107,107,0.12); color:var(--danger); border-color:rgba(255,107,107,0.35); }
+  .badge.prod { background:rgba(255,180,84,0.12); color:var(--warn); border-color:rgba(255,180,84,0.35); }
+  .badge.type { background:rgba(91,140,255,0.12); color:var(--accent); border-color:rgba(91,140,255,0.35); }
+  .badge.resolved { background:rgba(126,231,135,0.12); color:var(--accent-2); border-color:rgba(126,231,135,0.35); }
+
+  h1 { font-size: 26px; margin: 0 0 10px; color:#fff; letter-spacing:.2px; }
+  .subtitle { color: var(--muted); font-size: 15px; margin:0; }
+
+  h2 {
+    font-size: 20px; color:#fff; margin: 48px 0 18px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--border);
+    display:flex; align-items:center; gap:10px;
+  }
+  h2 .num {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:28px; height:28px; border-radius:8px;
+    background: linear-gradient(135deg, var(--accent), #3a63c9);
+    color:#fff; font-size:14px; font-weight:700; flex-shrink:0;
+  }
+  h3 { font-size:16px; color:#dfe3ec; margin: 26px 0 12px; }
+
+  section { margin-bottom: 8px; }
+
+  table {
+    width:100%; border-collapse: collapse;
+    background: var(--panel); border-radius:12px; overflow:hidden;
+    border:1px solid var(--border); margin: 14px 0 22px;
+    font-size: 14.5px;
+  }
+  th, td { padding: 11px 16px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { background: var(--panel-2); color: var(--muted); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.4px; }
+  tr:last-child td { border-bottom:none; }
+  td code, th code { font-size: 13px; }
+
+  code {
+    background: var(--code-bg); color:#c9d1e0;
+    padding: 2px 7px; border-radius: 6px; font-size: 13.5px;
+    font-family: "Cascadia Code", Consolas, monospace;
+    border:1px solid var(--border);
+  }
+  pre {
+    background: var(--code-bg); border:1px solid var(--border);
+    border-radius: 12px; padding: 20px 22px; overflow-x:auto;
+    margin: 14px 0 22px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+  }
+  pre code {
+    background: none; border:none; padding:0; color:#d7dbe6;
+    font-size: 13.5px; line-height:1.7;
+  }
+  .comment { color:#6b7280; }
+  blockquote {
+    margin: 16px 0; padding: 14px 20px;
+    background: rgba(91,140,255,0.07);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    color:#c7cdd8; font-size: 14.5px;
+  }
+  .callout {
+    border-radius: 12px; padding: 18px 22px; margin: 18px 0;
+    border:1px solid var(--border); background: var(--panel);
+  }
+  .callout.root { border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.06); }
+  .callout.root .callout-title { color: var(--danger); }
+  .callout.fix { border-color: rgba(126,231,135,0.4); background: rgba(126,231,135,0.06); }
+  .callout.fix .callout-title { color: var(--accent-2); }
+  .callout.info { border-color: rgba(91,140,255,0.4); background: rgba(91,140,255,0.06); }
+  .callout.info .callout-title { color: var(--accent); }
+  .callout-title { font-weight:700; font-size:14.5px; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+
+  .timeline {
+    position: relative; margin: 24px 0; padding-left: 28px;
+    border-left: 2px solid var(--border);
+  }
+  .t-item { position: relative; padding-bottom: 26px; }
+  .t-item:last-child { padding-bottom: 0; }
+  .t-item::before {
+    content: ""; position:absolute; left:-34px; top:4px;
+    width:12px; height:12px; border-radius:50%;
+    background: var(--accent); border: 3px solid #0f1115;
+    box-shadow: 0 0 0 2px var(--border);
+  }
+  .t-item.fail::before { background: var(--danger); }
+  .t-item.ok::before { background: var(--accent-2); }
+  .t-item.warn::before { background: var(--warn); }
+  .t-time {
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 13px; color: var(--muted); margin-bottom:4px;
+  }
+  .t-title { font-weight:600; color:#fff; font-size:14.5px; margin-bottom:4px; }
+  .t-desc { color:#b5bac6; font-size:13.8px; }
+  .tag {
+    display:inline-block; font-size:11.5px; font-weight:700;
+    padding:2px 8px; border-radius:6px; margin-left:6px;
+    vertical-align:middle;
+  }
+  .tag.fail { background:rgba(255,107,107,0.15); color:var(--danger); }
+  .tag.ok { background:rgba(126,231,135,0.15); color:var(--accent-2); }
+  .tag.warn { background:rgba(255,180,84,0.15); color:var(--warn); }
+
+  .flow {
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+    margin: 20px 0; font-size: 13.5px;
+  }
+  .flow .node {
+    background: var(--panel-2); border:1px solid var(--border);
+    border-radius:10px; padding:10px 16px; color:#e6e8ee;
+    font-weight:600;
+  }
+  .flow .arrow { color: var(--muted); font-size: 18px; }
+
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 6px; color:#d7dbe6; }
+
+  footer {
+    margin-top: 60px; padding-top: 20px; border-top:1px solid var(--border);
+    color: var(--muted); font-size: 12.5px; text-align:center;
+  }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="badge-row">
+      <span class="badge hk">HK 市場</span>
+      <span class="badge prod">Prod 環境</span>
+      <span class="badge type">BatchModifyPromotionSalePage</span>
+      <span class="badge resolved">已釐清根因</span>
+    </div>
+    <h1>zh-HK 語系錯誤訊息缺參數，導致批次卡在 InProcess 逾時告警</h1>
+    <p class="subtitle">BatchUploadId 327407 ・ 商店序號 15 ・ 客戶序號 12 ・ 2026-08-14</p>
+  </header>
+
+  <section>
+    <h2><span class="num">1</span>案例資訊</h2>
+    <table>
+      <tr><th>項目</th><th>值</th></tr>
+      <tr><td>批次序號 (BatchUploadId)</td><td><code>327407</code></td></tr>
+      <tr><td>TypeDef</td><td><code>BatchModifyPromotionSalePage</code></td></tr>
+      <tr><td>客戶序號 (SupplierId)</td><td><code>12</code></td></tr>
+      <tr><td>商店序號 (ShopId)</td><td><code>15</code>（HK 市場商店）</td></tr>
+      <tr><td>發生時間</td><td>2026-08-14 11:39</td></tr>
+      <tr><td>執行環境</td><td><code>commercenmq</code> 專案 <code>NMQv3Worker.Jobs.BatchUpload.BatchUploadProcessJob</code></td></tr>
+    </table>
+
+    <blockquote>
+      [HK][Prod] 批次作業逾時警告，建立超過 30 分鐘未執行完畢，請 @oversea_brd 協助確認批次作業異常筆數: 1<br>
+      • 批次作業序號: 327407　類型: BatchModifyPromotionSalePage　狀態: InProcess　客戶序號: 12　商店序號: 15
+    </blockquote>
+  </section>
+
+  <section>
+    <h2><span class="num">2</span>症狀</h2>
+    <p>批次上傳主檔（<code>BatchUpload_Id = 327407</code>）狀態卡在 <code>InProcess</code> 超過 30 分鐘未變化，觸發監控告警。</p>
+  </section>
+
+  <section>
+    <h2><span class="num">3</span>根本原因</h2>
+    <div class="callout root">
+      <div class="callout-title">⛔ Root Cause</div>
+      翻譯資源字串的<b>語系版本參數數量不一致</b>，導致 <code>string.Format</code> 在補記錯誤訊息時拋出未攔截的例外，使整個 NMQ Task 直接失敗（<code>^500 FAILED</code>），批次狀態來不及更新為終態，因而卡在 <code>InProcess</code>。
+    </div>
+
+    <h3>觸發點：翻譯資源不同語系佔位符數量不同</h3>
+    <p><code>Core\NineYi.NMQV2.Translation\AutoGenerated\Scm.Service.BatchModifyPromotionSalePage.cs</code></p>
+    <table>
+      <tr><th>語系</th><th>內容</th><th>所需參數數</th></tr>
+      <tr><td>en-US</td><td><code>Promotion ID: {0}</code></td><td>1</td></tr>
+      <tr><td>zh-TW</td><td><code>活動序號：{0}</code></td><td>1</td></tr>
+      <tr style="background:rgba(255,107,107,0.08);"><td><b>zh-HK</b></td><td><code>活動序號：{0}；異動狀態：{1}</code></td><td><b>2</b></td></tr>
+      <tr><td>zh-CN</td><td><code>活動序號：{0}；異動狀態：{1}</code></td><td>2</td></tr>
+      <tr><td>ms-MY</td><td><code>Promotion ID: {0} ; Update: {1}</code></td><td>2</td></tr>
+    </table>
+
+    <p>而呼叫端只傳入 1 個參數（<code>SCM\Frontend\BLV2\BatchUpload\BatchModifyPromotionSalePageService.cs</code>）：</p>
+    <pre><code><span class="comment">// 只傳入 promotionId 一個參數</span>
+private string GetBatchUploadMessageTitle(int promotionId) =>
+    string.Format(
+        NineYi.NMQV2.Translation.Scm.Service.BatchModifyPromotionSalePage.BatchUploadMessageTitle,
+        promotionId   <span class="comment">// zh-HK/zh-CN/ms-MY 需要 2 個參數！</span>
+    );</code></pre>
+
+    <p>商店序號 15 屬於 <b>HK 市場</b>，該 Task 執行緒語系解析為 <code>zh-HK</code>，組錯誤訊息標題時因缺少 <code>{1}</code> 對應參數而拋出：</p>
+    <pre><code>FormatException: Index (zero based) must be greater than or equal to zero
+and less than the size of the argument list.</code></pre>
+
+    <p>此例外發生在 <code>catch (ApplicationException ex) { ... }</code> 區塊<b>內部</b>，屬於二次例外，未被任何外層 try-catch 攔截，整個 NMQ Task 直接失敗結束。</p>
+  </section>
+
+  <section>
+    <h2><span class="num">4</span>完整時間線</h2>
+    <div class="timeline">
+
+      <div class="t-item">
+        <div class="t-time">11:39:20</div>
+        <div class="t-title">Worker process 啟動 <span class="tag ok">Pod ...rhcbk</span></div>
+        <div class="t-desc">註冊並啟動 <code>BatchUploadProcessJob</code></div>
+      </div>
+
+      <div class="t-item">
+        <div class="t-time">11:39:25</div>
+        <div class="t-title">呼叫 <code>POST /scm/v2/BatchUpload/Start</code></div>
+        <div class="t-desc"><code>{BatchUploadId:327407, ProcessCount:500}</code>，回應 <code>202 Accepted</code>（僅為觸發通知，非同步處理完成）</div>
+      </div>
+
+      <div class="t-item">
+        <div class="t-time">11:39:26</div>
+        <div class="t-title">抓取待處理資料</div>
+        <div class="t-desc">處理筆數：1，原始資料筆數：2；開始處理 <code>BatchUploadData_Id: 35522</code>（ShopId 15、PromotionId 48778、ModifyType Remove）</div>
+      </div>
+
+      <div class="t-item fail">
+        <div class="t-time">11:39:28.043</div>
+        <div class="t-title">Promotion API 呼叫失敗 <span class="tag warn">Warning</span></div>
+        <div class="t-desc">記錄 <code>API Error - RequestBody: {...}</code>，進入 catch 準備寫入錯誤訊息</div>
+      </div>
+
+      <div class="t-item fail">
+        <div class="t-time">11:39:28.052</div>
+        <div class="t-title">FormatException 拋出 <span class="tag fail">未攔截</span></div>
+        <div class="t-desc">zh-HK 語系缺 <code>{1}</code> 參數，<code>string.Format</code> 拋出例外</div>
+      </div>
+
+      <div class="t-item fail">
+        <div class="t-time">11:39:28.053</div>
+        <div class="t-title">Task 失敗 <span class="tag fail">^500 FAILED</span></div>
+        <div class="t-desc">taskId <code>28a28bdc-...</code> 回報 <code>/tasks/{taskId}:fail</code>，<code>Router Monitor: TaskFailed</code></div>
+      </div>
+
+      <div class="t-item">
+        <div class="t-time">11:40:28</div>
+        <div class="t-title">Worker process 關閉</div>
+        <div class="t-desc">Pod <code>...rhcbk</code> 執行完畢生命週期結束</div>
+      </div>
+
+      <div class="t-item warn">
+        <div class="t-time">11:40 ~ 12:08</div>
+        <div class="t-title">批次卡在 InProcess <span class="tag warn">觸發告警</span></div>
+        <div class="t-desc">監控偵測狀態超過 30 分鐘未變化，發出本次收到的逾時告警</div>
+      </div>
+
+      <div class="t-item ok">
+        <div class="t-time">11:40 ~ 12:08 之間（推論）</div>
+        <div class="t-title">另一個獨立 Task 完成收尾 <span class="tag ok">自動</span></div>
+        <div class="t-desc">由 <code>BatchUploadCounterService</code> 派發的另一個 Task（非 <code>28a28bdc</code>）處理完剩餘資料，<code>GetReadyToProcessDataList</code> 回傳空清單後呼叫 <code>UpdateBatchUploadStatus(Finish)</code>；因已存在的錯誤明細 / FailCount，內建邏輯自動降級為 <code>FinishWithError</code></div>
+      </div>
+
+      <div class="t-item">
+        <div class="t-time">12:08:13</div>
+        <div class="t-title">新 Worker process 啟動 <span class="tag ok">Pod ...42wtdg</span></div>
+      </div>
+
+      <div class="t-item">
+        <div class="t-time">12:08:16</div>
+        <div class="t-title">同一個失敗 taskId 被重新派送</div>
+        <div class="t-desc">Router 把 <code>28a28bdc-...</code> 重新派給新 worker（NMQ 自動重試機制，距上次失敗約 29 分鐘，吻合 30 分鐘告警門檻）</div>
+      </div>
+
+      <div class="t-item ok">
+        <div class="t-time">12:08:18</div>
+        <div class="t-title">確認狀態已是終態，跳過處理 <span class="tag ok">TaskCompleted</span></div>
+        <div class="t-desc">查詢狀態已是 <code>FinishWithError</code>，印出「批次作業狀態: FinishWithError 不可執行處理」，回報 <code>/tasks/{taskId}:finish</code>，<code>^200 OK</code></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">5</span>誰把狀態改成 FinishWithError？</h2>
+    <div class="callout info">
+      <div class="callout-title">💡 不是人工操作</div>
+      是系統既有的<b>自動收尾邏輯</b>判定的，位置在 <code>BatchUploadRepositoryService.UpdateBatchUploadStatus()</code>。
+    </div>
+
+    <pre><code>case BatchUploadStatusEnum.Finish:
+case BatchUploadStatusEnum.FinishWithError:
+    ...
+    <span class="comment">// BatchModifyPromotionSalePage 屬於通用分支（else）
+    // 依 BatchUploadData 狀態統計失敗/成功筆數</span>
+    batchUploadEntity.BatchUpload_FailCount = ...ValidateFailed + ProcessFailed 筆數...;
+    int detailMessageCount = this.BatchUploadRepository.GetBatchUploadMessageCount(...);
+    batchUploadEntity.BatchUpload_HasDetail = (detailMessageCount &gt; 0);
+
+    <span class="comment">// 如有錯誤, 更改狀態成 (已完成 / 發現錯誤)</span>
+    if ((batchUploadEntity.BatchUpload_FailCount &gt; 0 || detailMessageCount &gt; 0) ...)
+    {
+        batchUploadEntity.BatchUpload_StatusDef = BatchUploadStatusEnum.FinishWithError.ToString();
+    }</code></pre>
+
+    <h3>觸發呼叫端</h3>
+    <pre><code>var dataList = this.GetReadyToProcessDataList(nmqDataEntity);
+if (dataList.Count &gt; 0) { <span class="comment">/* 還有資料要處理，繼續跑 */</span> }
+else
+{
+    if (ProcessType == ByProcessCount)
+    {
+        <span class="comment">// 所有資料都處理完了（沒有 ReadyToProcess 的了），準備收尾</span>
+        this.BatchUploadRepositoryService.UpdateBatchUploadStatus(batchUploadService, this.BatchUploadEntity, BatchUploadStatusEnum.Finish);
+        <span class="comment">// ↑ 傳入 Finish，但方法內部會檢查 FailCount/錯誤明細，發現有錯誤就自動改成 FinishWithError</span>
+    }
+}</code></pre>
+
+    <h3>推論鏈</h3>
+    <div class="flow">
+      <div class="node">35522 崩潰未存檔</div>
+      <span class="arrow">→</span>
+      <div class="node">錯誤訊息已寫入 BatchUploadMessage</div>
+      <span class="arrow">→</span>
+      <div class="node">另一 Task 處理完剩餘資料</div>
+      <span class="arrow">→</span>
+      <div class="node">呼叫 UpdateBatchUploadStatus(Finish)</div>
+      <span class="arrow">→</span>
+      <div class="node">偵測 FailCount&gt;0</div>
+      <span class="arrow">→</span>
+      <div class="node" style="border-color:var(--accent-2); color:var(--accent-2);">自動降級 FinishWithError</div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">6</span>排查步驟</h2>
+
+    <h3>Step 1．確認批次主檔目前狀態與統計筆數</h3>
+    <pre><code>USE WebStoreDB
+
+SELECT BatchUpload_Id,
+       BatchUpload_StatusDef,
+       BatchUpload_TotalCount,
+       BatchUpload_SuccessCount,
+       BatchUpload_FailCount,
+       BatchUpload_StartDateTime,
+       BatchUpload_FinishDateTime,
+       BatchUpload_UpdatedDateTime,
+       BatchUpload_UpdatedUser
+FROM BatchUpload (NOLOCK)
+WHERE BatchUpload_Id = 327407</code></pre>
+
+    <h3>Step 2．確認失敗明細</h3>
+    <pre><code>USE WebStoreDB
+
+SELECT *
+FROM BatchUploadData (NOLOCK)
+WHERE BatchUploadData_ValidFlag = 1
+  AND BatchUploadData_BatchUploadId = 327407
+  AND BatchUploadData_StatusDef IN ('ProcessFailed', 'ReadyToProcess')</code></pre>
+
+    <h3>Step 3．確認錯誤訊息明細</h3>
+    <pre><code>USE WebStoreDB
+
+SELECT BatchUploadMessage_StatusDef,
+       BatchUploadMessage_Note
+FROM BatchUploadMessage (NOLOCK)
+WHERE BatchUploadMessage_ValidFlag = 1
+  AND BatchUploadMessage_BatchUploadId = 327407</code></pre>
+
+    <h3>Step 4．確認 NMQ Task 執行歷程（是否有多個 Task 對應同一批次）</h3>
+    <pre><code>USE NMQV2DB
+
+SELECT *
+FROM Task (NOLOCK)
+WHERE Task_ValidFlag = 1
+  AND Task_Data LIKE '%"BatchUploadId":327407%'
+ORDER BY Task_CreatedDatetime DESC</code></pre>
+  </section>
+
+  <section>
+    <h2><span class="num">7</span>解法</h2>
+
+    <div class="callout fix">
+      <div class="callout-title">✅ 立即處置</div>
+      <ul>
+        <li>確認 <code>BatchUploadMessage</code> 內容，即是 <code>PromotionId: 48778, ShopId: 15</code> 這筆 Promotion API 呼叫失敗的原始錯誤（非 zh-HK bug 本身導致的資料錯誤，是記錄錯誤訊息時才二次炸開）</li>
+        <li>若該筆 Promotion 更新確實需要補做，需重新提交批次或手動呼叫 API 補處理</li>
+      </ul>
+    </div>
+
+    <div class="callout fix">
+      <div class="callout-title">✅ 根本修正（程式碼）</div>
+      <p>修正 <code>GetBatchUploadMessageTitle</code>，同時傳入 <code>PromotionId</code> 與 <code>ModifyStatus</code> 兩個參數：</p>
+      <pre><code>private string GetBatchUploadMessageTitle(int promotionId, string modifyStatus) =>
+    string.Format(
+        NineYi.NMQV2.Translation.Scm.Service.BatchModifyPromotionSalePage.BatchUploadMessageTitle,
+        promotionId,
+        modifyStatus
+    );</code></pre>
+      <blockquote>多傳的參數對只有 <code>{0}</code> 的語系（en-US/zh-TW）不會有影響（<code>string.Format</code> 允許提供比佔位符更多的參數），可安全修正所有語系。</blockquote>
+      <ul>
+        <li><b>commercenmq</b> 專案內同名的 <code>BatchModifyPromotionSalePageService</code>（<code>Nine1.Commerce.Console.BL.Services.BatchUpload</code> 命名空間）需要同步修正，因為那份才是本案例實際觸發崩潰的執行環境</li>
+        <li>檢查同一個 Service 內其他呼叫 <code>GetBatchUploadMessageTitle</code> 的地方（<code>DoValidate()</code> 內的驗證失敗訊息也共用同一組翻譯字串，可能有相同風險）</li>
+        <li>全面搜尋 Translation 資源，找出其他「不同語系佔位符數量不一致」的字串，避免同類問題在其他批次類型再次發生</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">8</span>相關錯誤判斷位置</h2>
+    <pre><code><span class="comment">// SCM\Frontend\NMQV2\BatchUpload\BatchUploadTaskProcess.cs
+// 可處理狀態限定：</span>
+private static readonly IEnumerable&lt;BatchUploadStatusEnum&gt; ProcessableStatuses = new BatchUploadStatusEnum[]
+{
+    BatchUploadStatusEnum.WaitingToProcess,
+    BatchUploadStatusEnum.InProcess
+};
+<span class="comment">// 若查到狀態已是 FinishWithError 等終態，直接 return，不做任何處理</span></code></pre>
+
+    <pre><code><span class="comment">// SCM\Frontend\BLV2\BatchUpload\BatchModifyPromotionSalePageService.cs
+// 崩潰發生點：catch 區塊內二次呼叫 GetBatchUploadMessageTitle 拋出 FormatException</span>
+catch (ApplicationException ex)
+{
+    BatchUploadMessageEntity batchUploadMessageItem = this.CreateBatchUploadMessage(
+        batchUploadData.BatchUploadData_Id,
+        this.GetBatchUploadMessageTitle(entity.PromotionId),   <span class="comment">// 只傳 1 個參數，zh-HK 需要 2 個</span>
+        ex.Message,
+        this.GetBatchUploadMessageGroupKey(entity.PromotionId)
+    );
+    this.UploadFailedMessageList.Add(batchUploadMessageItem);
+    batchUploadData.BatchUploadData_StatusDef = nameof(BatchUploadDataStatusEnum.ProcessFailed);
+}</code></pre>
+  </section>
+
+  <footer>
+    案例編號：zh-hk-format-exception-timeout ・ BatchUploadV2 / cases
+  </footer>
+
+</div>
+</body>
+</html>

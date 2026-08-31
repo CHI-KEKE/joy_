@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>Config 監控計畫：跨市場設定值一致性檢查</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style class="doc-shell-style">
+:root{
+  --doc-accent:#3fb99a; --doc-accent2:#e8b563; --doc-ink:#26333a; --doc-sub:#6b7b80;
+  --doc-card:#ffffff; --doc-line:#e3ede9; --doc-bg:#f6faf8; --doc-shadow:0 8px 20px -8px rgba(60,120,100,.22);
+}
+html,body{margin:0;padding:0;}
+.doc-shell{
+  display:flex;
+  min-height:100vh;
+  background:var(--doc-bg);
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei',sans-serif;
+  color:var(--doc-ink);
+}
+.doc-sidebar{
+  flex:0 0 268px;
+  max-width:268px;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  padding:28px 16px;
+  border-right:1px solid var(--doc-line);
+  background:var(--doc-card);
+}
+.doc-sidebar-title{
+  font-size:.72rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--doc-sub);
+  font-weight:700;
+  padding:0 10px;
+  margin-bottom:14px;
+}
+.doc-nav-item{
+  display:block;
+  padding:10px 12px;
+  margin-bottom:4px;
+  border-radius:10px;
+  font-size:.88rem;
+  font-weight:600;
+  color:var(--doc-sub);
+  text-decoration:none;
+  cursor:pointer;
+  border:1px solid transparent;
+  transition:background .15s ease,color .15s ease;
+}
+.doc-nav-item:hover{background:var(--doc-line);}
+.doc-nav-item.active{
+  background:var(--doc-accent);
+  color:#fff;
+  box-shadow:var(--doc-shadow);
+}
+.doc-content{
+  flex:1;
+  height:100vh;
+  overflow-y:auto;
+  padding:40px 5vw 60px;
+}
+.doc-section{display:none;}
+.doc-section.active{display:block;}
+@media (max-width:860px){
+  .doc-shell{flex-direction:column;}
+  .doc-sidebar{position:relative;height:auto;max-width:none;flex:none;display:flex;overflow-x:auto;gap:6px;border-right:none;border-bottom:1px solid var(--doc-line);}
+  .doc-nav-item{white-space:nowrap;margin-bottom:0;}
+  .doc-content{height:auto;}
+}
+
+.mint-hero{position:relative;overflow:hidden;border-radius:22px;padding:36px 40px;margin:0 0 30px;background:linear-gradient(160deg,#eefaf6 0%,#f6faf8 60%,#fdf6ea 100%);border:1px solid #e3ede9;}
+.mint-hero .mh-tag{display:inline-block;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;background:#3fb99a;color:#fff;padding:5px 16px;border-radius:999px;margin-bottom:14px;font-weight:700;}
+.mint-hero .mh-title{margin:0 0 10px;font-size:1.4rem;font-weight:800;color:#26333a;}
+.mint-hero .mh-desc{max-width:82%;font-size:.92rem;line-height:1.85;color:#5a6b70;}
+.mint-hero .mh-desc code{background:#e9f7f2;padding:1px 6px;border-radius:5px;color:#1f7a63;}
+.mint-hero .mh-badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+.mint-hero .mh-badge{background:#ffffff;border:1px solid #e3ede9;padding:6px 14px;border-radius:999px;font-size:.78rem;color:#5a6b70;box-shadow:0 6px 14px -8px rgba(60,120,100,.25);}
+
+.mint-token-row{display:flex;flex-wrap:wrap;gap:20px;margin:18px 0 28px;padding:22px 24px;background:#ffffff;border:1px solid #e3ede9;border-radius:20px;box-shadow:0 8px 20px -8px rgba(60,120,100,.14);}
+.mint-token-row .mt-item{display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 auto;min-width:90px;}
+.mint-token-row .mt-swatch{width:52px;height:52px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05);}
+.mint-token-row .mt-swatch.mint{background:#a7e8d6;}
+.mint-token-row .mt-swatch.amber{background:#f3d9a8;}
+.mint-token-row .mt-swatch.blue{background:#bcd7f2;}
+.mint-token-row .mt-label{font-size:.8rem;font-weight:700;color:#26333a;}
+.mint-token-row .mt-code{font-family:Consolas,'SFMono-Regular',Menlo,monospace;font-size:.68rem;color:#8a9aa0;}
+
+.mint-card-grid{display:flex;flex-wrap:wrap;gap:16px;margin:16px 0 26px;}
+.mint-card-grid .mc-card{flex:1 1 220px;background:#ffffff;border:1px solid #e3ede9;border-radius:20px;padding:20px 20px 22px;box-shadow:0 8px 20px -8px rgba(60,120,100,.18);}
+.mint-card-grid .mc-badge{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#eafaf4;color:#1f7a63;font-weight:800;font-size:.85rem;margin-bottom:10px;}
+.mint-card-grid .mc-card.amber .mc-badge{background:#fdf3e2;color:#a06a1f;}
+.mint-card-grid .mc-card.blue .mc-badge{background:#e9f2fc;color:#2b6099;}
+.mint-card-grid .mc-title{font-weight:800;font-size:.96rem;color:#26333a;margin-bottom:6px;}
+.mint-card-grid .mc-desc{font-size:.85rem;line-height:1.75;color:#5a6b70;}
+.mint-card-grid .mc-desc code{background:#eef4f2;padding:1px 6px;border-radius:5px;color:#1f7a63;font-size:.85em;}
+
+.mint-pill-flow{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:20px 0 26px;}
+.mint-pill-flow .mp-step{background:#ffffff;border:1.5px solid #3fb99a;color:#1f7a63;border-radius:999px;padding:10px 20px;font-size:.85rem;font-weight:700;box-shadow:0 6px 14px -8px rgba(60,120,100,.25);}
+.mint-pill-flow .mp-step.amber{border-color:#e8b563;color:#a06a1f;}
+.mint-pill-flow .mp-step.blue{border-color:#7fb0e0;color:#2b6099;}
+.mint-pill-flow .mp-step.muted{border-color:#cbd6d2;color:#7c8a86;background:#f4f7f6;}
+.mint-pill-flow .mp-arrow{color:#9db3ae;font-size:1.15rem;font-weight:900;}
+
+.mint-callout{border-radius:16px;padding:16px 20px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;border:1px solid transparent;}
+.mint-callout .mc-icon{font-size:1.2rem;flex:none;}
+.mint-callout p{margin:0;font-size:.9rem;color:#3c4a48;line-height:1.7;}
+.mint-callout p strong{color:#26333a;}
+.mint-callout.success{background:#eafaf1;border-color:#bdeed7;}
+.mint-callout.warn{background:#fdf6e6;border-color:#f3dfa7;}
+.mint-callout.danger{background:#fdeeed;border-color:#f3c5c1;}
+.mint-callout.info{background:#eaf3fc;border-color:#c3dcf3;}
+
+.mint-checklist{list-style:none;padding:0;margin:16px 0;}
+.mint-checklist li{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed #e3ede9;color:#5a6b70;font-size:.88rem;}
+.mint-checklist li:last-child{border-bottom:none;}
+.mint-checklist li::before{content:"✓";flex:none;width:22px;height:22px;border-radius:50%;background:#dcf5eb;color:#1f7a63;font-size:.72rem;display:flex;align-items:center;justify-content:center;margin-top:1px;font-weight:900;}
+
+.mint-h2{font-size:1.2rem;font-weight:800;color:#26333a;margin:0 0 16px;}
+.mint-p{font-size:.9rem;line-height:1.85;color:#5a6b70;margin:0 0 14px;}
+.mint-p code, .mint-h2 code, li code{background:#eef4f2;padding:1px 6px;border-radius:5px;color:#1f7a63;font-size:.88em;}
+.mint-table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid #e3ede9;border-radius:16px;overflow:hidden;margin:14px 0 24px;font-size:.86rem;box-shadow:0 8px 20px -10px rgba(60,120,100,.15);}
+.mint-table thead th{background:#f2f9f6;color:#26333a;text-align:left;padding:12px 16px;font-weight:800;border-bottom:1px solid #e3ede9;}
+.mint-table tbody td{padding:12px 16px;border-bottom:1px solid #e3ede9;color:#3c4a48;vertical-align:top;}
+.mint-table tbody tr:last-child td{border-bottom:none;}
+.mint-table tbody td code{background:#eef4f2;padding:1px 6px;border-radius:5px;color:#1f7a63;}
+.mint-pre{background:#1c2a28;border-radius:16px;padding:18px 20px;overflow-x:auto;margin:14px 0;color:#e6f2ee;font-size:.82rem;line-height:1.7;font-family:Consolas,'SFMono-Regular',Menlo,monospace;white-space:pre;box-shadow:0 8px 20px -10px rgba(60,120,100,.25);}
+</style>
+</head>
+<body>
+
+<div class="doc-shell">
+<nav class="doc-sidebar">
+<div class="doc-sidebar-title">章節目錄</div>
+<a class="doc-nav-item active" data-target="sec-01">01 情境背景與目的</a>
+<a class="doc-nav-item" data-target="sec-02">02 現況能力與限制</a>
+<a class="doc-nav-item" data-target="sec-03">03 輪詢與事件觸發比較</a>
+<a class="doc-nav-item" data-target="sec-04">04 推薦架構：Webhook 精準比對</a>
+<a class="doc-nav-item" data-target="sec-05">05 保底機制：定期全量掃描</a>
+<a class="doc-nav-item" data-target="sec-06">06 異動作者標註設計</a>
+<a class="doc-nav-item" data-target="sec-07">07 基礎設施與待釐清事項</a>
+<a class="doc-nav-item" data-target="sec-08">08 後續行動</a>
+</nav>
+<main class="doc-content">
+
+<section id="sec-01" class="doc-section active">
+<div class="mint-hero">
+<div class="mh-tag">背景</div>
+<div class="mh-title">為什麼需要這個 Config 監控計畫</div>
+<div class="mh-desc">公司內部共用的設定檔專案 <code>nineyi.configuration</code> 裡，每個服務底下都有分市場（TW、HK、MY 等）各自獨立的設定檔。實務上常發生的情況是：某個工程師在 TW 的設定檔加了一個新的 Key（例如某個功能開關），但忘了同步加到 HK 或 MY 的對應檔案，導致其他市場上線後功能行為不一致，甚至直接壞掉。這份文件記錄目前討論出來的監控計畫做法，目的是希望有一個能自動、即時發現「某個市場漏加設定值」的機制。</div>
+<div class="mh-badges">
+<span class="mh-badge">目標倉庫：nineyi.configuration</span>
+<span class="mh-badge">監控市場：TW / HK / MY</span>
+</div>
+</div>
+
+<div class="mint-card-grid">
+<div class="mc-card">
+<div class="mc-badge">1</div>
+<div class="mc-title">問題本質</div>
+<div class="mc-desc">同一個服務下，不同市場的設定檔（例如 <code>AppSettings.Prod.TW.config</code> 與 <code>AppSettings.Prod.HK.config</code>）理論上結構應該一致，實際上會因為人為疏忽而出現 Key 缺漏或不一致。</div>
+</div>
+<div class="mc-card amber">
+<div class="mc-badge">2</div>
+<div class="mc-title">部署前提</div>
+<div class="mc-desc">監控機制打算做成一支獨立的 Worker，跑在遠端機器上，定期或即時運作，不依賴任何人手動觸發檢查。</div>
+</div>
+<div class="mc-card blue">
+<div class="mc-badge">3</div>
+<div class="mc-title">關鍵限制</div>
+<div class="mc-desc">這個 Worker 不會有本機的 <code>nineyi.configuration</code> clone，也不會知道什麼時候會有人 push 新的設定值，因此設計上必須直接透過 Bitbucket API 取得倉庫內容，而不是仰賴本機 git 操作。</div>
+</div>
+</div>
+
+<div class="mint-callout info">
+<span class="mc-icon">💡</span>
+<p><strong>名詞對照：</strong>文件中提到的「市場」對應到設定檔命名裡的市場代碼，例如 <code>AppSettings.Prod.TW.config</code>（台灣）、<code>AppSettings.Prod.HK.config</code>（香港）、<code>AppSettings.Prod.MY.config</code>（馬來西亞），部分服務也可能有 <code>OR</code>、<code>PX</code> 等其他市場代碼。</p>
+</div>
+</section>
+
+<section id="sec-02" class="doc-section">
+<div class="mint-h2">現況能力與限制</div>
+<p class="mint-p">目前 <code>nineyi.ai.code.review.v2</code> 專案裡的 <code>BitbucketClient</code> 已經有兩支可以重用的 API 呼叫邏輯，分別是列出目錄內容的 <code>GetRepoSrcTreeAsync</code>，以及讀取單一檔案內容的 <code>GetFileRawContentAsync</code>。這兩支 API 原本是給外部的 Linter 工具透過 <code>BitbucketController</code> 呼叫使用的，並不是這次要設計的監控 Worker 的一部分，但它們的呼叫方式與踩過的坑可以直接參考。</p>
+
+<table class="mint-table">
+<thead><tr><th>限制項目</th><th>具體內容</th><th>對監控計畫的影響</th></tr></thead>
+<tbody>
+<tr><td>目錄深度</td><td>目前程式碼呼叫時固定帶 <code>max_depth=1</code>，只能列出單層目錄，不支援遞迴列出所有子目錄</td><td>要掃描全部服務資料夾，需要對每個服務目錄各打一次 API，無法一次列出整個倉庫的所有檔案</td></tr>
+<tr><td>分頁</td><td>目前的 <code>GetRawJsonAsync</code> 沒有處理分頁，只會取回第一頁結果</td><td>若某個服務底下的檔案數超過單頁上限，會有資料遺漏風險，正式設計時需要補上分頁處理</td></tr>
+<tr><td>速率限制</td><td>已經實際觀察到 <code>nineyi.configuration</code> 這個共用倉庫在短時間內被大量呼叫時，會收到 Bitbucket 回傳的 <code>429 Too Many Requests</code></td><td>若監控 Worker 用高頻率輪詢的方式對整個倉庫掃描，會提高 429 發生的機率，需要在架構設計時特別避開</td></tr>
+<tr><td>URL 尾端斜線</td><td>Bitbucket 的 <code>/src/{revision}</code> 端點在路徑為空時，如果沒有補上結尾斜線會被誤判成檔案下載而非目錄列表，回傳 404</td><td>提醒之後若重用類似邏輯組 URL，一律要留意結尾斜線的處理，避免重蹈覆轍</td></tr>
+</tbody>
+</table>
+
+<div class="mint-callout warn">
+<span class="mc-icon">⚠️</span>
+<p><strong>結論：</strong>如果監控 Worker 採用「定期打 API 全量掃描整個倉庫」的方式，會同時遇到「呼叫次數多、容易 429」與「需要一個個資料夾手動列舉」兩個問題，設計上需要盡量降低不必要的呼叫次數。</p>
+</div>
+</section>
+
+<section id="sec-03" class="doc-section">
+<div class="mint-h2">兩種觸發方式的比較：輪詢 vs 事件觸發</div>
+<p class="mint-p">監控 Worker 要「怎麼知道該去檢查」有兩種基本做法，差異在於是「Worker 自己定時去問」，還是「有變動時對方主動通知 Worker」。</p>
+
+<table class="mint-table">
+<thead><tr><th></th><th>定期輪詢 API</th><th>Bitbucket Webhook 事件觸發</th></tr></thead>
+<tbody>
+<tr><td>觸發時機</td><td>固定排程，例如每小時跑一次</td><td>有人 push 設定值變更的當下就立即觸發</td></tr>
+<tr><td>API 呼叫量</td><td>每次排程都要打，不管有沒有變動</td><td>只有真的有 push 才會呼叫，次數大幅減少</td></tr>
+<tr><td>速率限制風險</td><td>較高，固定頻率打同一批倉庫容易累積成高頻呼叫</td><td>較低，只在真正有異動時才呼叫</td></tr>
+<tr><td>即時性</td><td>有延遲，取決於排程間隔</td><td>幾乎即時</td></tr>
+<tr><td>實作複雜度</td><td>較簡單，只需要排程加上 API 呼叫</td><td>需要有一個對外可達的服務端點，讓 Bitbucket 能夠打進來</td></tr>
+</tbody>
+</table>
+
+<div class="mint-callout success">
+<span class="mc-icon">✅</span>
+<p><strong>建議：</strong>採用「Webhook 事件觸發為主、定期輪詢為輔」的組合。這個做法跟現有 <code>nineyi.ai.code.review.v2</code> 專案本身處理 <code>pullrequest:created</code> 之類 Webhook 事件的邏輯性質相同，只是這次改為訂閱 <code>repo:push</code> 事件。</p>
+</div>
+</section>
+
+<section id="sec-04" class="doc-section">
+<div class="mint-h2">推薦架構：Webhook 觸發加精準比對</div>
+<p class="mint-p">核心概念是讓 Bitbucket 在有人 push 到 <code>nineyi.configuration</code> 倉庫時，主動通知監控 Worker，Worker 再針對「這次真正被改動的檔案」去做比對，而不是每次都掃描整個倉庫。</p>
+
+<div class="mint-pill-flow">
+<div class="mp-step">① 有人 push 設定值</div>
+<div class="mp-arrow">→</div>
+<div class="mp-step amber">② Bitbucket 觸發 Webhook</div>
+<div class="mp-arrow">→</div>
+<div class="mp-step blue">③ Worker 取得異動檔案清單</div>
+<div class="mp-arrow">→</div>
+<div class="mp-step">④ 抓取對照市場內容比對</div>
+<div class="mp-arrow">→</div>
+<div class="mp-step amber">⑤ 發現差異就發通知</div>
+</div>
+
+<div class="mint-token-row">
+<div class="mt-item"><div class="mt-swatch mint"></div><div class="mt-label">步驟①②</div><div class="mt-code">webhook 註冊</div></div>
+<div class="mt-item"><div class="mt-swatch amber"></div><div class="mt-label">步驟③</div><div class="mt-code">diffstat</div></div>
+<div class="mt-item"><div class="mt-swatch blue"></div><div class="mt-label">步驟④⑤</div><div class="mt-code">key 比對</div></div>
+</div>
+
+<p class="mint-p"><strong>步驟一：在 <code>nineyi.configuration</code> 倉庫上註冊 Bitbucket Webhook</strong><br>指向監控 Worker 對外的服務端點，訂閱 <code>repo:push</code> 事件。這跟現有 AI Code Review 服務接收 <code>pullrequest:created / updated</code> 事件是同一套 Bitbucket Webhook 機制，只是改成監聽 push 而非 PR。</p>
+
+<p class="mint-p"><strong>步驟二：用 push 事件帶來的 commit hash 查出這次實際改了哪些檔案</strong><br>呼叫 Bitbucket 的 diffstat 端點取得本次 push 前後的差異清單：</p>
+<pre class="mint-pre">GET /2.0/repositories/{workspace}/{repo}/diffstat/{new}..{old}</pre>
+<p class="mint-p">回傳結果會列出這次 push 真正異動的檔案路徑，例如 <code>ApplicationConfig/NineYi.Scm.NMQV2/AppSettings.Prod.TW.config</code>。</p>
+
+<p class="mint-p"><strong>步驟三：過濾出真正相關的異動</strong><br>只挑出符合 <code>AppSettings.Prod.{市場}.config</code> 這個命名規則的檔案，忽略其他無關異動。</p>
+
+<p class="mint-p"><strong>步驟四：只針對這個服務資料夾，補抓其他市場的對照檔案內容</strong><br>不需要掃描全部服務，只需要針對「這次被改動的服務」，額外呼叫幾次讀檔 API 取得其他市場現有內容，例如異動的是 TW，就再抓一次 HK 與 MY：</p>
+<pre class="mint-pre">GET /2.0/repositories/nineyi/nineyi.configuration/src/{new_commit}/ApplicationConfig/NineYi.Scm.NMQV2/AppSettings.Prod.HK.config
+GET /2.0/repositories/nineyi/nineyi.configuration/src/{new_commit}/ApplicationConfig/NineYi.Scm.NMQV2/AppSettings.Prod.MY.config</pre>
+
+<p class="mint-p"><strong>步驟五：解析 XML，比對各市場的 Key 集合差異</strong><br>設定檔都是標準 .NET 格式（<code>&lt;appSettings&gt;&lt;add key="..." value="..."/&gt;&lt;/appSettings&gt;</code>），把每個市場的 Key 取出來做集合比對，若某個市場缺少其他市場都有的 Key，就視為一筆待通知的差異。</p>
+
+<div class="mint-callout success">
+<span class="mc-icon">✅</span>
+<p><strong>這樣設計的好處：</strong>每次 push 只需要個位數的 API 呼叫（一次 diffstat 加上兩三次讀檔），完全不會累積成高頻呼叫、避開 429 風險；也完全不需要事先知道誰、什麼時候會 push，因為 Webhook 本來就是為了解決「不知道對方何時會有動作」而存在的機制；而且是準即時反應，設定值改完幾秒內就能發現遺漏。</p>
+</div>
+</section>
+
+<section id="sec-05" class="doc-section">
+<div class="mint-h2">保底機制：定期全量掃描</div>
+<p class="mint-p">Webhook 有一個已知的風險，就是「Bitbucket 端送出通知失敗」或者「Worker 剛好在重啟、沒有成功接收」時，這次異動就會被漏掉，完全沒有補償機制。這跟先前調查 GitLab MR #240 卡住事件時得到的教訓是同一個道理：只靠一次性的觸發、沒有任何補償或重試設計，一旦中途出狀況就會整個流程默默失敗且沒有人發現。</p>
+
+<div class="mint-callout warn">
+<span class="mc-icon">⚠️</span>
+<p><strong>因此建議：</strong>Webhook 作為主要觸發機制，額外保留一個排程機制作為安全網，避免真的漏接時完全沒有補救。</p>
+</div>
+
+<div class="mint-card-grid">
+<div class="mc-card">
+<div class="mc-badge">1</div>
+<div class="mc-title">主要機制</div>
+<div class="mc-desc">Webhook 即時觸發，針對單次 push 的異動檔案做精準比對，反應快、呼叫量低。</div>
+</div>
+<div class="mc-card amber">
+<div class="mc-badge">2</div>
+<div class="mc-title">保底機制</div>
+<div class="mc-desc">每天或每週跑一次全量掃描，用列目錄 API 列出所有服務資料夾，抓齊 TW/HK/MY 全部內容做一次完整比對，確保就算漏接 Webhook，最多隔一天也能被抓到。</div>
+</div>
+</div>
+
+<p class="mint-p">保底機制因為呼叫頻率低（一天一次而非每次 push），即使需要對每個服務資料夾各打一輪 API，總呼叫量仍在可接受範圍內，不需要跟 Webhook 觸發時一樣講求精簡。</p>
+</section>
+
+<section id="sec-06" class="doc-section">
+<div class="mint-h2">異動作者標註設計</div>
+<p class="mint-p">除了發現「哪個市場漏加了設定值」之外，還希望能標出「是誰加的」，方便通知的人知道要找誰確認、原始目的是什麼。這個資訊其實不需要額外查詢，Webhook 觸發時本身就會帶著這項資料。</p>
+
+<p class="mint-p"><strong>方式一：直接從 push Webhook payload 取得（建議做法）</strong><br>Bitbucket 的 <code>repo:push</code> Webhook payload 裡的 <code>push.changes[].commits[]</code>，每個 commit 都包含作者資訊：</p>
+<pre class="mint-pre">{
+  "hash": "abc1234...",
+  "author": {
+    "raw": "Allen Lin &lt;allen.lin@91app.com&gt;",
+    "user": { "display_name": "Allen Lin", "nickname": "allen.lin" }
+  },
+  "message": "新增 TW 設定值 XXX",
+  "date": "2026-08-18T05:30:00+00:00"
+}</pre>
+<p class="mint-p">也就是說，觸發 Webhook 的當下就已經知道是誰 push 的，完全不需要額外呼叫任何 API。</p>
+
+<p class="mint-p"><strong>方式二：查詢特定檔案的 commit 歷史（更精準但較少用到）</strong><br>如果一次 push 包含多個 commit、多個檔案異動，想確認具體是哪一次 commit 加了某個特定 Key，可以查詢該檔案的 commit 歷史來輔助判斷，但日常使用建議以方式一為主，已經足夠涵蓋多數情境。</p>
+
+<div class="mint-callout info">
+<span class="mc-icon">💡</span>
+<p><strong>通知範例格式：</strong></p>
+</div>
+<pre class="mint-pre">⚠️ 設定值不一致提醒
+專案：NineYi.Scm.NMQV2
+異動者：Allen Lin (allen.lin@91app.com)
+異動時間：2026-08-18 05:30
+新增於：AppSettings.Prod.TW.config
+缺少於：AppSettings.Prod.HK.config, AppSettings.Prod.MY.config
+Key：SomeFeatureFlag = true</pre>
+<p class="mint-p">保底機制（每日全量掃描）因為不是由某一次 push 觸發，沒有對應的單一 commit 作者可標註，這種情況下可以改標「最後一次修改該檔案的作者」，作為次要資訊參考。</p>
+</section>
+
+<section id="sec-07" class="doc-section">
+<div class="mint-h2">基礎設施與待釐清事項</div>
+<p class="mint-p">這個計畫目前是規劃階段，實際落地前還有幾件事需要確認。</p>
+
+<ul class="mint-checklist">
+<li>監控 Worker 需要一個對外可達的 HTTPS 端點，讓 Bitbucket 能夠把 Webhook 事件送進來，需要走公司對外的 Ingress 或負載平衡器設定，跟現有 AI Code Review 服務的 Webhook 入口是類似的需求。</li>
+<li>監控 Worker 需要 Bitbucket 的存取憑證，例如 App Password 或類似機制，可以參考 <code>BitbucketClient</code> 現有使用的 Basic Auth 驗證方式。</li>
+<li>需要決定監控 Worker 要獨立建置成一個新的服務／腳本，還是併入現有 <code>nineyi.ai.code.review.v2</code> 專案內共用同一套 <code>BitbucketClient</code> 邏輯。</li>
+<li>需要決定發現差異之後要用什麼管道通知，例如 Slack、Teams、Email 或建立追蹤單。</li>
+<li>需要決定保底掃描的排程機制要用什麼工具，例如 Kubernetes CronJob、Jenkins 排程任務，或其他排程服務。</li>
+<li>目前重用的 <code>GetRepoSrcTreeAsync</code>／<code>GetFileRawContentAsync</code> 邏輯沒有處理分頁，若正式導入保底全量掃描，需要補上分頁處理避免資料遺漏。</li>
+</ul>
+</section>
+
+<section id="sec-08" class="doc-section">
+<div class="mint-h2">後續行動</div>
+<p class="mint-p">這份文件目前是釐清與規劃階段的紀錄，尚未進入實作。下一步建議依序確認以下事項，再決定是否正式排入開發工作。</p>
+
+<div class="mint-pill-flow">
+<div class="mp-step">確認 Webhook 註冊方式</div>
+<div class="mp-arrow">→</div>
+<div class="mp-step amber">確認技術棧與部署位置</div>
+<div class="mp-arrow">→</div>
+<div class="mp-step blue">確認通知管道</div>
+<div class="mp-arrow">→</div>
+<div class="mp-step muted">排入開發時程</div>
+</div>
+
+<div class="mint-callout success">
+<span class="mc-icon">✅</span>
+<p><strong>本次釐清結論：</strong>確認採用「Bitbucket Webhook 事件觸發為主、定期全量掃描為輔」的架構最能滿足「遠端 Worker、無法本機 clone、不知道誰何時會 push」這個限制條件，且能同時解決「標出異動作者」的附加需求，不需要額外的 API 呼叫即可從 Webhook payload 取得作者資訊。</p>
+</div>
+</section>
+
+</main>
+</div>
+
+<script class="doc-shell-script">
+(function(){
+  var navItems = document.querySelectorAll('.doc-nav-item');
+  var sections = document.querySelectorAll('.doc-section');
+  navItems.forEach(function(item){
+    item.addEventListener('click', function(e){
+      e.preventDefault();
+      navItems.forEach(function(i){ i.classList.remove('active'); });
+      sections.forEach(function(s){ s.classList.remove('active'); });
+      item.classList.add('active');
+      var target = document.getElementById(item.getAttribute('data-target'));
+      if(target){ target.classList.add('active'); }
+      var content = document.querySelector('.doc-content');
+      if(content){ content.scrollTop = 0; }
+    });
+  });
+})();
+</script>
+</body>
+</html>

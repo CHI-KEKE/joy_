@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>Search.ServiceV2.Cache.Enabled 完整分析</title>
+<style class="doc-shell-style">
+:root{
+  --doc-accent:#e8875a; --doc-accent2:#f3b28c; --doc-ink:#22394f; --doc-sub:#5a7089;
+  --doc-card:#ffffff; --doc-line:#dbe6f0; --doc-bg:#eef5fb; --doc-shadow:0 10px 30px -12px rgba(20,45,70,.18);
+}
+html,body{margin:0;padding:0;}
+.doc-shell{
+  display:flex;
+  min-height:100vh;
+  background:var(--doc-bg);
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei',sans-serif;
+  color:var(--doc-ink);
+}
+.doc-sidebar{
+  flex:0 0 268px;
+  max-width:268px;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  padding:28px 16px;
+  border-right:1px solid var(--doc-line);
+  background:var(--doc-card);
+}
+.doc-sidebar-title{
+  font-size:.72rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--doc-sub);
+  font-weight:700;
+  padding:0 10px;
+  margin-bottom:14px;
+}
+.doc-nav-item{
+  display:block;
+  padding:10px 12px;
+  margin-bottom:4px;
+  border-radius:10px;
+  font-size:.88rem;
+  font-weight:600;
+  color:var(--doc-sub);
+  text-decoration:none;
+  cursor:pointer;
+  border:1px solid transparent;
+  transition:background .15s ease,color .15s ease;
+}
+.doc-nav-item:hover{background:var(--doc-line);}
+.doc-nav-item.active{
+  background:var(--doc-accent);
+  color:#fff;
+  box-shadow:var(--doc-shadow);
+}
+.doc-content{
+  flex:1;
+  height:100vh;
+  overflow-y:auto;
+  padding:40px 5vw 60px;
+}
+.doc-section{display:none;}
+.doc-section.active{display:block;}
+@media (max-width:860px){
+  .doc-shell{flex-direction:column;}
+  .doc-sidebar{position:relative;height:auto;max-width:none;flex:none;display:flex;overflow-x:auto;gap:6px;border-right:none;border-bottom:1px solid var(--doc-line);}
+  .doc-nav-item{white-space:nowrap;margin-bottom:0;}
+  .doc-content{height:auto;}
+}
+</style>
+<style>
+.gho{
+  display:block;
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei',sans-serif;
+  background:
+    radial-gradient(700px 400px at 92% -5%, rgba(232,135,94,.14), transparent 60%),
+    radial-gradient(900px 500px at -8% 108%, rgba(111,163,216,.16), transparent 55%),
+    #eef5fb;
+  color:#22394f!important;
+  line-height:1.75;
+  border-radius:20px;
+  padding:1px 0 28px;
+  margin:0 0 20px;
+  overflow:hidden;
+  --ink:#22394f; --sub:#5a7089; --card:#ffffff; --line:#dbe6f0;
+  --sky:#6fa3d8; --sky2:#a9cbe8; --coral:#e8875a; --coral2:#f3b28c; --teal:#0f9488; --violet:#7c6cf7; --danger:#e5484d;
+  --shadow:0 10px 30px -12px rgba(20,45,70,.18);
+}
+.gho *{box-sizing:border-box;}
+.gho a{color:var(--coral)!important;text-decoration:none;}
+.gho a:hover{text-decoration:underline;}
+.gho .gho-hero{padding:48px 6vw 34px;text-align:center;position:relative;overflow:hidden;background:linear-gradient(165deg,#89b3de,#6fa3d8 55%,#5a90c8);}
+.gho .gho-hero::before{content:"👻 · · · 👻 · · · 👻 · · · 👻";position:absolute;top:14px;left:0;right:0;text-align:center;font-size:.9rem;opacity:.28;letter-spacing:.3em;color:#fff!important;pointer-events:none;}
+.gho .gho-eyebrow{display:inline-block;font-size:.78rem;letter-spacing:.16em;color:#fff!important;text-transform:uppercase;font-weight:700;margin-bottom:12px;background:rgba(232,135,94,.4);padding:6px 14px;border-radius:999px;}
+.gho .gho-hero h1{font-size:1.7rem;margin:0 0 12px;color:#fff!important;font-weight:800;}
+.gho .gho-hero p{color:#e4f0fa!important;max-width:700px;margin:0 auto;font-size:1rem;}
+.gho .gho-badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px;}
+.gho .gho-badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);padding:6px 14px;border-radius:999px;font-size:.8rem;color:#f3f8fc!important;}
+.gho .gho-container{padding:0 5vw;}
+.gho section{margin-bottom:44px;}
+.gho .gho-section-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+.gho .gho-section-head .gho-chip{flex:none;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:800;background:linear-gradient(135deg,#4c7fb0,var(--sky));color:#fff!important;font-size:1rem;box-shadow:var(--shadow);}
+.gho .gho-section-head.accent .gho-chip{background:linear-gradient(135deg,#c2683f,var(--coral2));}
+.gho .gho-section-head.teal .gho-chip{background:linear-gradient(135deg,#0d7a70,#5fd4c4);}
+.gho .gho-section-head.violet .gho-chip{background:linear-gradient(135deg,#7c6cf7,#a78bfa);}
+.gho .gho-section-head h2{margin:0;font-size:1.3rem;font-weight:800;color:var(--ink)!important;}
+.gho h3{font-size:1.08rem;margin:26px 0 10px;color:var(--ink)!important;border-left:4px solid var(--sky);padding-left:10px;}
+.gho p{color:var(--sub)!important;}
+.gho .gho-card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px 22px;margin:14px 0;}
+.gho table{width:100%;border-collapse:separate;border-spacing:0;background:var(--card)!important;border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:14px 0 22px;font-size:.88rem;box-shadow:var(--shadow);}
+.gho thead th{background:#e6f0f9!important;color:var(--ink)!important;text-align:left;padding:13px 16px;font-weight:800;border-bottom:1px solid var(--line);}
+.gho tbody td{padding:13px 16px;border-bottom:1px solid var(--line);color:#324a5f!important;vertical-align:top;background:var(--card)!important;}
+.gho tbody tr:last-child td{border-bottom:none;}
+.gho tbody tr:hover td{background:#f5faff!important;}
+.gho tbody td strong{color:var(--ink)!important;}
+.gho tbody td code{color:#b5502b!important;}
+.gho code{font-family:Consolas,'SFMono-Regular','Liberation Mono',Menlo,monospace;background:#e7f0f8!important;color:#b5502b!important;padding:2px 7px;border-radius:6px;font-size:.88em;border:1px solid #d5e3ee;}
+.gho pre.gho-pre{background:#16283a!important;border:none;border-radius:16px;padding:20px 22px;overflow-x:auto;margin:16px 0;position:relative;color:#e8f1fa!important;font-size:.85rem!important;line-height:1.7!important;font-family:Consolas,'SFMono-Regular','Liberation Mono',Menlo,monospace!important;white-space:pre!important;box-shadow:var(--shadow);}
+.gho pre.gho-pre::before{content:attr(data-lang);position:absolute;top:12px;right:16px;font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;color:#7fa0ba!important;font-family:'Segoe UI',sans-serif;}
+.gho .kw{color:#ffb08a!important;} .gho .str{color:#c3e88d!important;} .gho .cm{color:#6b869c!important;font-style:italic;} .gho .fn{color:#7fd0ff!important;} .gho .type{color:#f3b28c!important;} .gho .num{color:#c3e88d!important;} .gho .op{color:#ff6b9d!important;}
+.gho .gho-callout{border-radius:16px;padding:18px 22px;margin:18px 0;border:1px solid transparent;display:flex;gap:14px;}
+.gho .gho-callout .gho-icon{font-size:1.3rem;flex:none;}
+.gho .gho-callout.info{background:#eff6ff;border-color:#bfdbfe;}
+.gho .gho-callout.warn{background:#fffbeb;border-color:#fde68a;}
+.gho .gho-callout.danger{background:#fef2f2;border-color:#fecaca;}
+.gho .gho-callout.ok{background:#ecfdf5;border-color:#a7f3d0;}
+.gho .gho-callout p{margin:0;font-size:.92rem;color:#324a5f!important;}
+.gho .gho-callout strong{color:var(--ink)!important;}
+.gho .gho-tag{display:inline-block;font-size:.72rem;font-weight:800;padding:3px 11px;border-radius:999px;letter-spacing:.02em;}
+.gho .gho-tag.danger{background:#fee2e2!important;color:#b91c1c!important;}
+.gho .gho-tag.ok{background:#dcfce7!important;color:#15803d!important;}
+.gho .gho-tag.warn{background:#fef3c7!important;color:#b45309!important;}
+.gho .gho-tag.info{background:#e0f2fe!important;color:#0369a1!important;}
+.gho .gho-tag.sky{background:#dceaf6!important;color:#2a5b85!important;}
+.gho .gho-tag.coral{background:#fbe4d6!important;color:#a04a22!important;}
+.gho .gho-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0;}
+.gho .gho-summary-grid .gho-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow);border-top:4px solid var(--sky);position:relative;overflow:hidden;}
+.gho .gho-summary-grid .gho-box.sky{border-top-color:var(--sky);}
+.gho .gho-summary-grid .gho-box.coral{border-top-color:var(--coral);}
+.gho .gho-summary-grid .gho-box.teal{border-top-color:var(--teal);}
+.gho .gho-summary-grid .gho-box h4{margin:0 0 8px;color:var(--ink)!important;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;}
+.gho .gho-summary-grid .gho-box p{margin:0;font-size:.87rem;color:var(--sub)!important;}
+@media (max-width:780px){.gho .gho-summary-grid{grid-template-columns:1fr;}}
+.gho .gho-flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:20px 0;}
+.gho .gho-flow .gho-step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-size:.85rem;font-weight:700;color:var(--ink)!important;box-shadow:var(--shadow);}
+.gho .gho-flow .gho-step.cond{background:#fffbeb;border-color:#fde68a;color:#b45309!important;}
+.gho .gho-flow .gho-arrow{color:var(--coral)!important;font-size:1.2rem;font-weight:900;}
+.gho .gho-steps{display:flex;flex-direction:column;gap:14px;margin:16px 0 22px;}
+.gho .gho-stepcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px;position:relative;padding-left:60px;box-shadow:var(--shadow);}
+.gho .gho-stepcard .gho-stepnum{position:absolute;left:16px;top:16px;width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#4c7fb0,var(--sky));color:#fff!important;font-weight:800;font-size:.9rem;display:flex;align-items:center;justify-content:center;}
+.gho .gho-stepcard.cond .gho-stepnum{background:linear-gradient(135deg,#c2683f,var(--coral2));}
+.gho .gho-stepcard .gho-step-title{font-weight:700;color:var(--ink)!important;font-size:1rem;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.gho .gho-stepcard p{margin:6px 0;font-size:.9rem;color:var(--sub)!important;}
+.gho .gho-checklist{list-style:none;padding:0;margin:16px 0;}
+.gho .gho-checklist li{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line);color:var(--sub)!important;}
+.gho .gho-checklist li:last-child{border-bottom:none;}
+.gho .gho-checklist li::before{content:"✓";flex:none;width:22px;height:22px;border-radius:7px;background:#dceaf6;color:#2a5b85!important;font-size:.75rem;display:flex;align-items:center;justify-content:center;margin-top:2px;font-weight:900;}
+.gho .gho-evidence{border:1px solid var(--line);background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:18px 20px;margin:16px 0 22px;}
+.gho .gho-evidence .gho-evidence-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.gho .gho-evidence .gho-evidence-head .gho-tag{background:var(--ink)!important;color:#fff!important;}
+.gho .gho-crossing{height:34px;border-radius:8px;margin:36px 0;position:relative;background:repeating-linear-gradient(90deg,var(--sky) 0 26px,#eef5fb 26px 46px);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:var(--shadow);}
+.gho .gho-crossing span{position:relative;z-index:1;font-size:1.15rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));}
+.gho footer{text-align:center;padding:30px 5vw 6px;color:var(--sub)!important;font-size:.82rem;border-top:1px solid var(--line);margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="doc-shell">
+<nav class="doc-sidebar">
+<div class="doc-sidebar-title">章節目錄</div>
+<a class="doc-nav-item active" data-target="sec-01">01 情境概述</a>
+<a class="doc-nav-item" data-target="sec-02">02 快取機制原理</a>
+<a class="doc-nav-item" data-target="sec-03">03 為何選用 Elasticsearch</a>
+<a class="doc-nav-item" data-target="sec-04">04 Tag 篩選條件的意義</a>
+<a class="doc-nav-item" data-target="sec-05">05 多專案部署與 Config 分散</a>
+<a class="doc-nav-item" data-target="sec-06">06 HK 市場設定異常發現</a>
+<a class="doc-nav-item" data-target="sec-07">07 實際觸發路徑分析</a>
+</nav>
+<main class="doc-content">
+
+<div class="gho">
+
+<section id="sec-01" class="doc-section active">
+<div class="gho-hero">
+<span class="gho-eyebrow">Config 對齊分析 · Search V2 Cache</span>
+<h1>👻 Search.ServiceV2.Cache.Enabled 完整分析</h1>
+<p>這份文件整理一個開關設定從程式碼原理到正式環境實際狀態的完整追查過程，包含意外發現的市場設定落差。</p>
+<div class="gho-badges">
+<span class="gho-badge">nineyi.webstore.mobilewebmall</span>
+<span class="gho-badge">nineyi.configuration</span>
+</div>
+</div>
+<div class="gho-container">
+
+<div class="gho-section-head">
+<div class="gho-chip">01</div>
+<h2>情境概述</h2>
+</div>
+
+<p>消費者在前台網站瀏覽某個商品分類時，會看到一份商品清單，可以捲動、換頁、依照標籤或價格篩選。這份清單的資料來自一套獨立的搜尋服務，程式裡有一個開關叫做 <code>Search.ServiceV2.Cache.Enabled</code>，決定這份清單資料要不要先暫存一份副本，還是每次都重新去搜尋服務要一次。</p>
+
+<div class="gho-card">
+<p>這份文件會依序說明這個開關實際控制了什麼行為、背後搜尋服務為什麼採用 Elasticsearch、篩選條件裡的標籤代表什麼意思，最後追查到這個開關在不同市場、不同應用程式之間的真實設定值，並發現香港市場出現一個跟其他市場不一致的特例。</p>
+</div>
+
+<div class="gho-summary-grid">
+<div class="gho-box sky">
+<h4>涉及專案</h4>
+<p>nineyi.webstore.mobilewebmall（程式碼與預設 config）、nineyi.configuration（正式環境各市場實際部署 config）。</p>
+</div>
+<div class="gho-box coral">
+<h4>核心發現</h4>
+<p>香港市場在 WebAPI 這個獨立應用程式裡，這個快取開關被關閉，跟其他市場的設定不一致。</p>
+</div>
+<div class="gho-box teal">
+<h4>延伸問題</h4>
+<p>消費者實際瀏覽分類頁時，資料到底是走哪個應用程式的設定，需要追到前端呼叫路徑才能確認。</p>
+</div>
+</div>
+
+</div>
+</section>
+
+<section id="sec-02" class="doc-section">
+<div class="gho-section-head">
+<div class="gho-chip">02</div>
+<h2>快取機制原理</h2>
+</div>
+
+<p>這個開關讀取的位置在共用類別庫的 <code>SearchService</code> 裡，建構子執行時會把設定值存到一個內部欄位。</p>
+
+<pre class="gho-pre" data-lang="csharp"><span class="cm">// SearchService.cs 建構子內</span>
+<span class="kw">this</span>.<span class="fn">_enableCache</span> = <span class="kw">this</span>._configService.GetAppSetting(<span class="str">"Search.ServiceV2.Cache.Enabled"</span>).ToBoolean();</pre>
+
+<p>這個欄位只在一個方法裡真正被使用，也就是取得商店分類商品頁清單的方法。這個方法會把搜尋條件組成一把快取鍵值，交給快取服務去判斷要不要真的呼叫搜尋服務。</p>
+
+<div class="gho-card">
+<p>快取服務內部的判斷邏輯是一個非常單純的分支，決定了整個機制的行為：</p>
+</div>
+
+<div class="gho-flow">
+<div class="gho-step">收到查詢請求</div>
+<div class="gho-arrow">→</div>
+<div class="gho-step cond">快取開關是否為關閉</div>
+<div class="gho-arrow">→</div>
+<div class="gho-step">直接呼叫搜尋服務，不查快取</div>
+</div>
+
+<p>如果快取開關不是關閉，流程會先去暫存區找有沒有符合這把鍵值的資料，找不到才會去呼叫搜尋服務，並把結果暫存一分鐘，下一次同樣條件的查詢就能直接使用暫存內容，不用再呼叫一次搜尋服務。</p>
+
+<div class="gho-callout info">
+<span class="gho-icon">💡</span>
+<p><strong>白話理解：</strong>開關打開，代表短時間內同樣的分類、同樣的篩選條件，只會真正去問一次搜尋服務，其餘請求都直接用暫存結果回應。開關關閉，代表每一次瀏覽都會直接去問搜尋服務，沒有任何暫存。</p>
+</div>
+
+<div class="gho-callout warn">
+<span class="gho-icon">⚠️</span>
+<p><strong>取捨：</strong>暫存機制能大幅降低搜尋服務的查詢壓力，但代價是商品資料變動後，最多要等一分鐘才會反映在分類頁上；關閉暫存則資料即時，但流量高的時候會讓搜尋服務承受更大的壓力。</p>
+</div>
+
+<h3>快取 Key 怎麼組成</h3>
+
+<p>前面提到「把搜尋條件組成一把快取鍵值」，實際上這把鍵值不是一個字串，而是由三段資訊組成一個結構，最後才拼接成真正存進 Redis 的完整 Key。</p>
+
+<div class="gho-flow">
+<div class="gho-step">ServiceName（固定 "Search"）</div>
+<div class="gho-arrow">→</div>
+<div class="gho-step">TypeName（方法名稱＋版本編號）</div>
+<div class="gho-arrow">→</div>
+<div class="gho-step">Key（查詢條件依序組合）</div>
+</div>
+
+<p>以分類頁清單這個方法為例，程式會先把會影響查詢結果的條件，依照固定順序放進一個字串陣列，再用這個陣列組出 <code>CacheKeyEntity</code>：</p>
+
+<pre class="gho-pre" data-lang="csharp"><span class="cm">// SearchService.cs：組合快取鍵值用的參數</span>
+<span class="kw">var</span> cacheKeyParams = <span class="kw">new</span> <span class="type">List</span>&lt;<span class="type">string</span>&gt;
+{
+    requestEntity.ShopId.<span class="fn">ToString</span>(),
+    requestEntity.ShopCategoryId.<span class="fn">ToString</span>(),
+    requestEntity.OrderEnum.<span class="fn">ToString</span>(),
+    requestEntity.StartIndex.<span class="fn">ToString</span>(),
+    requestEntity.MaxCount.<span class="fn">ToString</span>(),
+    includeSalePageGroup.<span class="fn">ToString</span>(),
+    includeInvisibleSalePage.<span class="fn">ToString</span>()
+};
+<span class="cm">// 之後依條件是否有值，陸續加入 LocationId、ShippingType、ApplyType、
+// Tags、ShowMoreTags、MinPrice、MaxPrice、PayType、品牌頁排序標籤 等參數</span></pre>
+
+<div class="gho-card">
+<p>換句話說，只要商店、分類、排序方式、頁碼、頁數、標籤、價格區間、付款方式、運送方式其中任何一項不同，組出來的 Key 就不同，等於是不同的快取內容；只有這些條件完全相同的兩次查詢，才會共用同一份暫存資料。</p>
+</div>
+
+<p>接著這批參數會交給 <code>GetCacheKey</code> 方法，組成完整的 <code>CacheKeyEntity</code>：</p>
+
+<pre class="gho-pre" data-lang="csharp"><span class="cm">// SearchService.cs：依方法名稱決定 TypeName 版本編號</span>
+<span class="type">CacheKeyEntity</span> cacheKey = <span class="kw">new</span> <span class="type">CacheKeyEntity</span>(<span class="str">"Search"</span>, keys);
+
+<span class="kw">switch</span> (type)
+{
+    <span class="kw">case</span> <span class="str">"GetShopCategorySalePageList"</span>:
+        cacheKey.TypeName = <span class="fn">string.Format</span>(<span class="str">"{0}-{1}"</span>, type, <span class="str">"2020121416"</span>);
+        <span class="kw">break</span>;
+    <span class="cm">// GetShopPayTypeAndShippingType、GetSalePageByIds 等其他查詢，
+    // 也各自對應一組「方法名稱-版本編號」</span>
+}</pre>
+
+<p>其中 <code>CacheKeyEntity</code> 內部會把陣列裡的每個參數用 <code>-</code> 串起來當作 <code>Key</code>，最終真正存進 Redis 的完整鍵值，是三段資訊用 <code>:</code> 串接的結果：</p>
+
+<div class="gho-card">
+<p><strong>完整 Key 格式：</strong> <code>ServiceName:TypeName:Key</code></p>
+<p>以分類頁清單為例，實際組出來的樣子接近：<code>Search:GetShopCategorySalePageList-2020121416:{ShopId}-{ShopCategoryId}-{OrderEnum}-{StartIndex}-{MaxCount}-{是否含商品群組}-{是否含隱藏商品}-...（其餘有值的條件）</code></p>
+</div>
+
+<div class="gho-callout info">
+<span class="gho-icon">💡</span>
+<p><strong>版本編號的用途：</strong>TypeName 後面那串數字（例如 <code>2020121416</code>）是修改當次查詢邏輯或回傳結構時人工遞增的版本號。一旦查詢邏輯改變導致舊快取內容不再適用，只要把版本號改掉，等同讓所有舊的 Key 全部失效，不需要額外清除快取，新舊版本的快取也不會互相污染。</p>
+</div>
+
+<div class="gho-callout warn">
+<span class="gho-icon">⚠️</span>
+<p><strong>語系也會影響 Key：</strong>實際寫入 Redis 前，快取服務還會依站台是否啟用多語系，把目前的語系代碼再接到 Key 後面（例如 <code>-zh-TW</code>）。也就是說同樣的查詢條件，不同語系會各自擁有獨立的一份快取，不會互相共用。</p>
+</div>
+
+</section>
+
+<section id="sec-03" class="doc-section">
+<div class="gho-section-head accent">
+<div class="gho-chip">03</div>
+<h2>為何選用 Elasticsearch</h2>
+</div>
+
+<p>分類頁背後真正提供資料的搜尋服務，底層是 Elasticsearch，這個判斷來自幾個直接證據，而不是憑空猜測。</p>
+
+<div class="gho-evidence">
+<div class="gho-evidence-head">
+<span class="gho-tag">證據一</span>
+<strong>Config 檔案分類註解</strong>
+</div>
+<p>正式環境 config 裡，這個開關被歸類在一段標註著「Elasticsearch」的區塊底下，跟搜尋服務網址、版本號放在一起。</p>
+</div>
+
+<div class="gho-evidence">
+<div class="gho-evidence-head">
+<span class="gho-tag">證據二</span>
+<strong>服務網址命名</strong>
+</div>
+<p>搜尋服務的主機名稱本身就包含 <code>search-es</code> 這個字樣，其中 <code>es</code> 就是 Elasticsearch 的縮寫。</p>
+</div>
+
+<div class="gho-evidence">
+<div class="gho-evidence-head">
+<span class="gho-tag">證據三</span>
+<strong>程式碼裡的列舉值</strong>
+</div>
+<p>搜尋結果物件的資料來源欄位，被明確標記成代表 Elasticsearch 的列舉值，程式註解也直接稱呼這個資料來源為 ES。</p>
+</div>
+
+<p>確認底層技術之後，接著要理解為什麼分類頁要特地用 Elasticsearch 而不是直接查詢主要交易資料庫，理由可以分成三個層面。</p>
+
+<div class="gho-summary-grid">
+<div class="gho-box sky">
+<h4>多條件過濾與排序</h4>
+<p>分類頁同時要處理分類、標籤、價格區間、付款方式、運送方式等條件，還要支援相關度、銷售排行、瀏覽人氣等多種排序方式。這類「多條件過濾加多種排序」的組合，關聯式資料庫需要靠大量索引與多表關聯才能勉強應付，搜尋引擎的反向索引架構天生就是為這種查詢設計。</p>
+</div>
+<div class="gho-box coral">
+<h4>標籤分面統計</h4>
+<p>分類頁篩選介面需要同時顯示「目前有哪些標籤可以選、每個標籤底下有幾件商品」，這種一次查詢同時拿到清單與統計數字的能力，是搜尋引擎的分面統計功能，關聯式資料庫沒有對應的原生機制。</p>
+</div>
+<div class="gho-box teal">
+<h4>流量分流</h4>
+<p>商品瀏覽是全站流量最大的功能之一，行銷用的商品動態廣告資料來源也是同一套搜尋服務。把高頻讀取的商品查詢獨立到搜尋服務，可以避免主要交易資料庫被大量讀取請求拖慢寫入效能，也讓查詢層可以獨立水平擴充。</p>
+</div>
+</div>
+
+<div class="gho-crossing"><span>👻</span></div>
+
+<h3>運作原理簡述</h3>
+<p>商品資料會先透過另一支同步程序，從交易資料庫轉換成文件格式寫進 Elasticsearch，建立反向索引，這個過程是離線進行的，因此商品異動到搜尋服務查得到中間會有延遲。查詢時，Elasticsearch 會先用反向索引快速篩出符合條件的商品集合，這一步不計算分數、只做集合交集，速度很快；如果排序方式是相關度，才會再用評分演算法排序，如果是銷售排行等其他排序方式，則直接依欄位數值排序。</p>
+
+</section>
+
+<section id="sec-04" class="doc-section">
+<div class="gho-section-head teal">
+<div class="gho-chip">04</div>
+<h2>Tag 篩選條件的意義</h2>
+</div>
+
+<p>分類頁請求裡有一個叫做 <code>Tags</code> 的篩選欄位，代表消費者在畫面上勾選的商品標籤篩選條件，會被組進呼叫搜尋服務的網址參數，讓搜尋服務只回傳帶有指定標籤的商品，同時這個條件也會被加進暫存鍵值裡，不同標籤組合會對應到不同的暫存內容。</p>
+
+<table>
+<thead><tr><th>標籤群組</th><th>用途</th><th>是否為消費者可篩選項目</th></tr></thead>
+<tbody>
+<tr><td><code>N1-S-ProductBadge</code></td><td>顯示在商品圖片上的角標圖示，例如新品、限量等視覺標記，依角標開始時間排序顯示</td><td>否，純顯示用途</td></tr>
+<tr><td><code>N1-S-Brand</code></td><td>品牌頁排序邏輯使用，搭配「館長推薦」排序方式時用來對應品牌</td><td>間接影響排序，非直接勾選篩選</td></tr>
+<tr><td>其他自訂標籤群組</td><td>由各商店在後台自行建立的標籤分類，例如材質、風格、適用對象等</td><td>是，消費者可直接勾選篩選</td></tr>
+</tbody>
+</table>
+
+<div class="gho-callout warn">
+<span class="gho-icon">⚠️</span>
+<p><strong>常見誤解澄清：</strong>「新品」比較接近角標顯示用途，「館長推薦」比較接近一種排序方式，兩者都不是消費者直接勾選的標籤篩選項目。真正開放給消費者勾選篩選的標籤群組內容，是由各商店在後台自訂的，並非寫死在程式碼裡的固定清單。</p>
+</div>
+
+</section>
+
+<section id="sec-05" class="doc-section">
+<div class="gho-section-head">
+<div class="gho-chip">05</div>
+<h2>多專案部署與 Config 分散</h2>
+</div>
+
+<p>提供分類頁功能的程式碼分佈在三個獨立部署的應用程式：一個是純後端的 <code>WebAPI</code>，另外兩個是消費者實際瀏覽的前台網站，分別是舊版的 <code>MobileWebMall</code> 與新版的 <code>MobileWebMallV2</code>。三者各自有自己的設定檔，但共用同一份寫在共用類別庫裡的 <code>SearchService</code> 程式碼。</p>
+
+<div class="gho-callout info">
+<span class="gho-icon">💡</span>
+<p><strong>重要釐清：</strong>設定檔有三份，不代表程式碼裡真的寫了三套獨立的判斷邏輯。實際讀取這個開關的程式碼只有一行，寫在共用類別庫裡，被三個應用程式各自載入、各自吃自己的設定值。</p>
+</div>
+
+<h3>兩層 Config 來源</h3>
+<p>一開始只查了程式碼所在專案（<code>nineyi.webstore.mobilewebmall</code>）內附的設定檔，這份設定檔比較像是預設值或範本，並沒有針對每個市場分開設定。真正決定正式環境實際行為的，是另一個獨立維護的設定專案（<code>nineyi.configuration</code>），裡面針對每個市場都有各自的疊加設定檔，用來覆蓋預設值。</p>
+
+<div class="gho-summary-grid">
+<div class="gho-box sky">
+<h4>webstore 程式碼專案</h4>
+<p>內附的設定檔只有單一份 Prod 設定，沒有市場別差異，比較像是基準版本。</p>
+</div>
+<div class="gho-box coral">
+<h4>configuration 設定專案</h4>
+<p>針對每個市場（台灣、香港、馬來西亞、菲律賓、其他）都有獨立的疊加設定檔，才是實際部署到正式環境的真實內容。</p>
+</div>
+<div class="gho-box teal">
+<h4>追查教訓</h4>
+<p>只查程式碼所在的 repo 容易漏掉正式環境的真實設定，需要同時查證兩個來源才能下結論。</p>
+</div>
+</div>
+
+</section>
+
+<section id="sec-06" class="doc-section">
+<div class="gho-section-head accent">
+<div class="gho-chip">06</div>
+<h2>HK 市場設定異常發現</h2>
+</div>
+
+<p>實際查詢 <code>nineyi.configuration</code> 內每個市場的正式環境設定檔後，發現一個跟預期不同的結果。</p>
+
+<table>
+<thead><tr><th>應用程式</th><th>台灣</th><th>香港</th><th>馬來西亞</th><th>菲律賓</th><th>其他市場</th></tr></thead>
+<tbody>
+<tr><td><code>WebAPI</code></td><td>啟用</td><td><span class="gho-tag danger">關閉</span></td><td>啟用</td><td>啟用</td><td>啟用</td></tr>
+<tr><td><code>MobileWebMall</code></td><td>啟用</td><td>啟用</td><td>啟用</td><td>啟用</td><td>啟用</td></tr>
+<tr><td><code>MobileWebMallV2</code></td><td>啟用</td><td>啟用</td><td>啟用</td><td>啟用</td><td>啟用</td></tr>
+</tbody>
+</table>
+
+<div class="gho-callout danger">
+<span class="gho-icon">🔎</span>
+<p><strong>唯一特例：</strong>只有 <code>WebAPI</code> 這個應用程式在香港市場把快取關閉，其餘所有應用程式、所有市場都是啟用狀態。這代表香港市場的設定並非全面關閉，而是三個應用程式當中只有一個關閉，形成一個跨應用程式不一致的組合。</p>
+</div>
+
+<p>這個發現帶出下一個必須追查的問題：三個應用程式各自的設定不一致，消費者實際瀏覽分類頁時，體驗到的到底是哪一種行為，需要找出真正承載這個功能的呼叫路徑。</p>
+
+</section>
+
+<section id="sec-07" class="doc-section">
+<div class="gho-section-head teal">
+<div class="gho-chip">07</div>
+<h2>實際觸發路徑分析</h2>
+</div>
+
+<p>要回答香港市場最終是啟用還是關閉，不能只看單一應用程式的設定值，必須追查消費者瀏覽器實際發出的請求，究竟打到哪一個應用程式。</p>
+
+<div class="gho-steps">
+<div class="gho-stepcard">
+<div class="gho-stepnum">1</div>
+<div class="gho-step-title">前端網頁載入分類頁</div>
+<p>不論消費者使用舊版或新版前台網站，畫面上顯示的分類頁外殼都是各自網站自己產生的。</p>
+</div>
+<div class="gho-stepcard">
+<div class="gho-stepnum">2</div>
+<div class="gho-step-title">瀏覽器發出資料查詢請求</div>
+<p>消費者捲動、換頁、勾選篩選標籤時，瀏覽器端的程式會發出一個網路請求去要商品清單資料，這個請求的目標網址是由一個共用的網址工廠決定的，指向獨立部署的 <code>WebAPI</code> 應用程式，而不是前台網站自己的伺服器端程式。</p>
+</div>
+<div class="gho-stepcard">
+<div class="gho-stepnum">3</div>
+<div class="gho-step-title">WebAPI 處理請求並讀取自己的設定</div>
+<p><code>WebAPI</code> 收到請求後，用自己載入的 <code>SearchService</code> 實例處理，讀取的是 <code>WebAPI</code> 自己的設定值，也就是香港市場關閉快取的那一份。</p>
+</div>
+</div>
+
+<div class="gho-callout ok">
+<span class="gho-icon">✅</span>
+<p><strong>結論：</strong>消費者真正瀏覽、捲動、篩選商品清單這個高流量互動，不論走舊版或新版前台網站，最終都是由 <code>WebAPI</code> 承載，因此香港市場目前的真實行為是快取關閉，每次瀏覽都直接呼叫搜尋服務，並非快取啟用。</p>
+</div>
+
+<h3>新版前台自己讀取設定的例外情況</h3>
+<p>新版前台網站的伺服器端程式裡，確實有一處直接使用自己載入的 <code>SearchService</code>，讀取的是新版前台自己的設定值，也就是啟用快取的那一份。但這一處只用在網頁初次載入時，產生搜尋引擎優化用的預覽圖片，只抓取前五筆商品資料，並不是消費者實際捲動、換頁、篩選時使用的清單資料來源，影響範圍非常有限。</p>
+
+<div class="gho-callout warn">
+<span class="gho-icon">⚠️</span>
+<p><strong>追查方法提醒：</strong>設定檔有三份不代表要分別下三個結論，必須找出實際承載主要功能的呼叫路徑，再判斷該路徑讀取的是哪一份設定，才能得到正確答案。</p>
+</div>
+
+</section>
+
+</div>
+</div>
+
+</main>
+</div>
+
+<script class="doc-shell-script">
+(function(){
+  var navItems = document.querySelectorAll('.doc-nav-item');
+  var sections = document.querySelectorAll('.doc-section');
+  navItems.forEach(function(item){
+    item.addEventListener('click', function(e){
+      e.preventDefault();
+      navItems.forEach(function(i){ i.classList.remove('active'); });
+      sections.forEach(function(s){ s.classList.remove('active'); });
+      item.classList.add('active');
+      var target = document.getElementById(item.getAttribute('data-target'));
+      if(target){ target.classList.add('active'); }
+      var content = document.querySelector('.doc-content');
+      if(content){ content.scrollTop = 0; }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

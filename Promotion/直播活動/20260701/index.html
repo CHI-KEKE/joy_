@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Livebuy 直播購物 — 情境總覽</title>
+<style>
+  :root {
+    --ink: #1a1d29;
+    --paper: #f7f5f0;
+    --accent: #d94f3d;
+    --accent2: #2f6f5e;
+    --line: #dcd7cc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Noto Sans TC", sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  header {
+    padding: 56px 8vw 32px;
+    border-bottom: 1px solid var(--line);
+  }
+  header h1 {
+    font-size: 34px;
+    margin: 0 0 8px;
+    letter-spacing: 0.5px;
+  }
+  header p {
+    margin: 0;
+    color: #5a5c66;
+    font-size: 15px;
+    max-width: 720px;
+    line-height: 1.7;
+  }
+  main {
+    padding: 40px 8vw 80px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  a.card {
+    display: block;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 28px 26px;
+    text-decoration: none;
+    color: var(--ink);
+    position: relative;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  a.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+  }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(217,79,61,0.1);
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .tag.vod {
+    background: rgba(47,111,94,0.12);
+    color: var(--accent2);
+  }
+  a.card h2 {
+    font-size: 20px;
+    margin: 0 0 10px;
+  }
+  a.card p {
+    font-size: 14px;
+    color: #6a6c75;
+    line-height: 1.7;
+    margin: 0 0 16px;
+  }
+  .steps {
+    font-size: 12px;
+    color: #9a9ba3;
+    border-top: 1px dashed var(--line);
+    padding-top: 12px;
+  }
+  footer {
+    padding: 24px 8vw 60px;
+    font-size: 12px;
+    color: #9a9ba3;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Livebuy 直播購物 — End to End 情境圖解</h1>
+  <p>依目前 Web API 實作（LiveSessions / LiveComments / LiveCart / Salepage / FacebookOAuth 等 Controller），整理出「邊看邊買」與「影音回放購物」的三個典型消費者旅程，供內部溝通與規劃參考。點擊卡片查看完整流程圖與畫面示意。</p>
+</header>
+<main>
+  <a class="card" href="./scenario-1-keyword-cart.html">
+    <span class="tag">邊看邊買</span>
+    <h2>情境一・留言關鍵字加車</h2>
+    <p>觀眾在直播留言區輸入指定關鍵字（如「+1」），系統自動辨識並加入購物車，並於留言區回覆加車成功通知。</p>
+    <div class="steps">登入 → 觀看直播 → 留言關鍵字 → 自動加車 → 留言通知 → 結帳</div>
+  </a>
+  <a class="card" href="./scenario-2-click-cart.html">
+    <span class="tag">邊看邊買</span>
+    <h2>情境二・商品卡點選加車 / 客服協助加車</h2>
+    <p>觀眾直接在直播畫面商品清單點選加入購物車；或客服／小編後台針對留言觀眾批次代為加車。</p>
+    <div class="steps">觀看直播 → 商品清單互動 → 點選 / 客服代加 → 購物車確認 → 結帳</div>
+  </a>
+  <a class="card" href="./scenario-3-vod-playback.html">
+    <span class="tag vod">影音回放</span>
+    <h2>情境三・直播結束後 VOD 回放購物</h2>
+    <p>直播結束後系統背景轉檔產出回放影片，觀眾可於任意時間點回放並持續加入購物車下單。</p>
+    <div class="steps">直播結束 → 背景轉檔 → 取得回放網址 → 觀看回放 → 加車 → 結帳</div>
+  </a>
+</main>
+<footer>Livebuy Web API — 內部技術情境示意（非正式產品畫面），2026/07/01 整理</footer>
+</body>
+</html>

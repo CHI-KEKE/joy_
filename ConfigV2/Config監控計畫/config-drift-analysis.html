@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Config Drift 比對邏輯完整解析</title>
+<style class="doc-shell-style">
+:root{
+  --doc-accent:#0e3746; --doc-accent2:#be2623; --doc-ink:#182228; --doc-sub:#48585d;
+  --doc-card:#f4f2ec; --doc-line:#d7cfba; --doc-bg:#eae8dc; --doc-shadow:0 10px 28px -12px rgba(14,55,70,.28);
+}
+html,body{margin:0;padding:0;}
+.doc-shell{
+  display:flex;
+  min-height:100vh;
+  background:var(--doc-bg);
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei',sans-serif;
+  color:var(--doc-ink);
+}
+.doc-sidebar{
+  flex:0 0 268px;
+  max-width:268px;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  padding:28px 16px;
+  border-right:1px solid var(--doc-line);
+  background:var(--doc-card);
+}
+.doc-sidebar-title{
+  font-size:.72rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--doc-sub);
+  font-weight:700;
+  padding:0 10px;
+  margin-bottom:14px;
+}
+.doc-nav-item{
+  display:block;
+  padding:10px 12px;
+  margin-bottom:4px;
+  border-radius:10px;
+  font-size:.88rem;
+  font-weight:600;
+  color:var(--doc-sub);
+  text-decoration:none;
+  cursor:pointer;
+  border:1px solid transparent;
+  transition:background .15s ease,color .15s ease;
+}
+.doc-nav-item:hover{background:var(--doc-line);}
+.doc-nav-item.active{
+  background:var(--doc-accent);
+  color:#fff;
+  box-shadow:var(--doc-shadow);
+}
+.doc-content{
+  flex:1;
+  height:100vh;
+  overflow-y:auto;
+  padding:40px 5vw 60px;
+}
+.doc-section{display:none;}
+.doc-section.active{display:block;}
+@media (max-width:860px){
+  .doc-shell{flex-direction:column;}
+  .doc-sidebar{position:relative;height:auto;max-width:none;flex:none;display:flex;overflow-x:auto;gap:6px;border-right:none;border-bottom:1px solid var(--doc-line);}
+  .doc-nav-item{white-space:nowrap;margin-bottom:0;}
+  .doc-content{height:auto;}
+}
+
+.hl-hero{position:relative;overflow:hidden;border-radius:18px;padding:36px 40px;margin:0 0 30px;background:linear-gradient(160deg,#f4f2ec 0%,#eae8dc 65%,#e3dfcd 100%);border:1.5px solid #d7cfba;}
+.hl-hero::after{content:"";position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#c9403c,#8f1c1a);opacity:.16;}
+.hl-hero .hh-tag{display:inline-block;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;background:#0e3746;color:#f4f2ec;padding:5px 16px;border-radius:3px;margin-bottom:14px;font-weight:700;}
+.hl-hero .hh-title{margin:0 0 10px;font-size:1.4rem;font-weight:800;color:#182228;}
+.hl-hero .hh-desc{max-width:82%;font-size:.92rem;line-height:1.85;color:#3d4d52;position:relative;}
+.hl-hero .hh-desc code{background:#e3ddc9;padding:1px 6px;border-radius:4px;color:#0e3746;font-weight:700;}
+.hl-hero .hh-badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+.hl-hero .hh-badge{background:#f4f2ec;border:1.5px solid #b9c3c6;padding:6px 14px;border-radius:3px;font-size:.78rem;font-weight:600;color:#233238;box-shadow:0 6px 14px -8px rgba(14,55,70,.3);}
+
+.hl-token-row{display:flex;flex-wrap:wrap;gap:20px;margin:18px 0 28px;padding:22px 24px;background:#f4f2ec;border:1.5px solid #d7cfba;border-radius:14px;box-shadow:0 8px 20px -8px rgba(14,55,70,.2);}
+.hl-token-row .ht-item{display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 auto;min-width:90px;}
+.hl-token-row .ht-swatch{width:48px;height:48px;border-radius:6px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1);}
+.hl-token-row .ht-swatch.navy{background:#0e3746;}
+.hl-token-row .ht-swatch.red{background:#be2623;}
+.hl-token-row .ht-swatch.tan{background:#c9bc98;}
+.hl-token-row .ht-label{font-size:.8rem;font-weight:700;color:#182228;}
+.hl-token-row .ht-code{font-family:Consolas,'SFMono-Regular',Menlo,monospace;font-size:.68rem;color:#5a6a6f;}
+
+.hl-card-grid{display:flex;flex-wrap:wrap;gap:16px;margin:16px 0 26px;}
+.hl-card-grid .hc-card{flex:1 1 220px;background:#f4f2ec;border:1.5px solid #d7cfba;border-radius:14px;padding:20px 20px 22px;box-shadow:0 8px 20px -8px rgba(14,55,70,.22);border-top:4px solid #0e3746;}
+.hl-card-grid .hc-badge{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;background:#0e3746;color:#f4f2ec;font-weight:800;font-size:.85rem;margin-bottom:10px;}
+.hl-card-grid .hc-card.red{border-top-color:#be2623;}
+.hl-card-grid .hc-card.red .hc-badge{background:#be2623;color:#fff;}
+.hl-card-grid .hc-card.tan{border-top-color:#a9946a;}
+.hl-card-grid .hc-card.tan .hc-badge{background:#a9946a;color:#fff;}
+.hl-card-grid .hc-title{font-weight:800;font-size:.96rem;color:#182228;margin-bottom:6px;}
+.hl-card-grid .hc-desc{font-size:.85rem;line-height:1.75;color:#3d4d52;}
+.hl-card-grid .hc-desc code{background:#e3ddc9;padding:1px 6px;border-radius:4px;color:#0e3746;font-size:.85em;font-weight:600;}
+
+.hl-pill-flow{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:20px 0 26px;}
+.hl-pill-flow .hp-step{background:#f4f2ec;border:2px solid #0e3746;color:#0e3746;border-radius:4px;padding:10px 20px;font-size:.85rem;font-weight:700;box-shadow:0 6px 14px -8px rgba(14,55,70,.3);}
+.hl-pill-flow .hp-step.red{border-color:#be2623;color:#8f1c1a;}
+.hl-pill-flow .hp-step.tan{border-color:#a9946a;color:#6b5a37;}
+.hl-pill-flow .hp-step.muted{border-color:#b9c3c6;color:#48585d;background:#eceae1;}
+.hl-pill-flow .hp-arrow{color:#0e3746;font-size:1.15rem;font-weight:900;}
+
+.hl-callout{border-radius:8px;padding:16px 20px;margin:16px 0;display:flex;gap:12px;align-items:flex-start;border:1.5px solid transparent;border-left-width:5px;}
+.hl-callout .hc-icon{font-size:1.2rem;flex:none;}
+.hl-callout p{margin:0;font-size:.9rem;color:#233238;line-height:1.7;}
+.hl-callout p strong{color:#182228;}
+.hl-callout.success{background:#e3edea;border-color:#9db8b0;border-left-color:#0e3746;}
+.hl-callout.warn{background:#f3ecd8;border-color:#d9c48f;border-left-color:#a9946a;}
+.hl-callout.danger{background:#f8e2e0;border-color:#e29c98;border-left-color:#be2623;}
+.hl-callout.info{background:#e6edef;border-color:#a9bcc2;border-left-color:#37606b;}
+
+.hl-checklist{list-style:none;padding:0;margin:16px 0;}
+.hl-checklist li{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed #d7cfba;color:#3d4d52;font-size:.88rem;}
+.hl-checklist li:last-child{border-bottom:none;}
+.hl-checklist li::before{content:"✓";flex:none;width:20px;height:20px;border-radius:4px;background:#0e3746;color:#f4f2ec;font-size:.7rem;display:flex;align-items:center;justify-content:center;margin-top:1px;font-weight:900;}
+
+.hl-swimlane{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:20px 0 30px;border:1.5px solid #d7cfba;border-radius:14px;overflow:hidden;box-shadow:0 10px 28px -12px rgba(14,55,70,.28);}
+.hl-swimlane .sl-head{background:#0e3746;color:#f4f2ec;text-align:center;font-weight:800;font-size:.82rem;padding:12px 8px;letter-spacing:.03em;}
+.hl-swimlane .sl-head.red{background:#be2623;}
+.hl-swimlane .sl-head.tan{background:#a9946a;}
+.hl-swimlane .sl-lane{border-right:1px dashed #d7cfba;padding:18px 12px;background:#f4f2ec;display:flex;flex-direction:column;align-items:center;gap:26px;position:relative;}
+.hl-swimlane .sl-lane:last-child{border-right:none;}
+.hl-swimlane .sl-lane::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:2px;background:#d7cfba;z-index:0;}
+.hl-swimlane .sl-node{position:relative;z-index:1;background:#fff;border:2px solid #0e3746;color:#0e3746;border-radius:6px;padding:8px 10px;font-size:.74rem;font-weight:700;text-align:center;box-shadow:0 4px 10px -6px rgba(14,55,70,.4);width:100%;}
+.hl-swimlane .sl-node.dim{opacity:.32;border-style:dashed;box-shadow:none;}
+.hl-swimlane .sl-step{position:relative;z-index:1;font-size:.68rem;color:#8a7a52;font-weight:700;background:#f3ecd8;border:1px solid #d9c48f;border-radius:20px;padding:3px 10px;}
+
+.hl-tabs{margin:18px 0 26px;}
+.hl-tabs .ht-bar{display:flex;gap:6px;border-bottom:2px solid #d7cfba;margin-bottom:0;}
+.hl-tabs .ht-btn{appearance:none;border:none;background:transparent;cursor:pointer;font-family:inherit;font-weight:700;font-size:.86rem;color:#48585d;padding:11px 20px;border-radius:8px 8px 0 0;position:relative;top:2px;}
+.hl-tabs .ht-btn.on{color:#0e3746;background:#f4f2ec;border:1.5px solid #d7cfba;border-bottom:2px solid #f4f2ec;}
+.hl-tabs .ht-panel{display:none;background:#f4f2ec;border:1.5px solid #d7cfba;border-top:none;border-radius:0 0 14px 14px;padding:20px 24px;box-shadow:0 10px 28px -12px rgba(14,55,70,.28);}
+.hl-tabs .ht-panel.on{display:block;}
+.hl-tabs .ht-panel ul{margin:0;padding-left:1.2em;}
+.hl-tabs .ht-panel li{font-size:.87rem;line-height:1.85;color:#3d4d52;}
+.hl-tabs .ht-panel code{background:#e3ddc9;padding:1px 6px;border-radius:4px;color:#0e3746;font-weight:600;}
+
+details.ml-detail{margin-top:8px;}
+details.ml-detail summary{cursor:pointer;font-size:.78rem;font-weight:700;color:#37606b;list-style:none;user-select:none;}
+details.ml-detail summary::before{content:"▸ ";}
+details.ml-detail[open] summary::before{content:"▾ ";}
+details.ml-detail summary::-webkit-details-marker{display:none;}
+.ml-io-badge{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:8px;vertical-align:middle;}
+.ml-io-badge.io{background:#f8e2e0;color:#8f1c1a;}
+.ml-io-badge.cpu{background:#e6edef;color:#274952;}
+
+.hl-decision{display:flex;flex-direction:column;gap:0;margin:20px 0 26px;}
+.hl-decision .dc-gate{display:flex;align-items:stretch;gap:14px;margin-bottom:16px;}
+.hl-decision .dc-diamond{flex:none;width:132px;display:flex;align-items:center;justify-content:center;text-align:center;background:#0e3746;color:#f4f2ec;font-weight:800;font-size:.78rem;padding:14px 10px;border-radius:10px;position:relative;box-shadow:0 8px 18px -10px rgba(14,55,70,.4);}
+.hl-decision .dc-branches{flex:1;display:flex;flex-direction:column;gap:8px;}
+.hl-decision .dc-branch{display:flex;gap:10px;align-items:flex-start;background:#f4f2ec;border:1.5px solid #d7cfba;border-left:4px solid #a9946a;border-radius:8px;padding:10px 16px;}
+.hl-decision .dc-branch.yes{border-left-color:#be2623;background:#f8e2e0;}
+.hl-decision .dc-branch.no{border-left-color:#b9c3c6;background:#eceae1;opacity:.85;}
+.hl-decision .dc-tag{flex:none;font-size:.7rem;font-weight:800;padding:3px 10px;border-radius:20px;background:#0e3746;color:#f4f2ec;margin-top:1px;}
+.hl-decision .dc-branch.no .dc-tag{background:#8a949a;}
+.hl-decision .dc-text{font-size:.85rem;line-height:1.7;color:#3d4d52;}
+.hl-decision .dc-text code{background:#e3ddc9;padding:1px 6px;border-radius:4px;color:#0e3746;font-weight:600;}
+
+.hl-table{width:100%;border-collapse:collapse;margin:16px 0 26px;font-size:.86rem;}
+.hl-table th,.hl-table td{border:1px solid #d7cfba;padding:10px 14px;text-align:left;color:#3d4d52;}
+.hl-table th{background:#0e3746;color:#f4f2ec;font-weight:700;}
+.hl-table td code{background:#e3ddc9;padding:1px 6px;border-radius:4px;color:#0e3746;font-weight:600;}
+.hl-table tr:nth-child(even) td{background:#eeece2;}
+</style>
+</head>
+<body>
+<div class="doc-shell">
+<nav class="doc-sidebar">
+<div class="doc-sidebar-title">章節目錄</div>
+<a class="doc-nav-item active" data-target="sec-01">01 這份文件在談什麼</a>
+<a class="doc-nav-item" data-target="sec-02">02 整體巡檢流程</a>
+<a class="doc-nav-item" data-target="sec-03">03 攤平：把巢狀設定變成一維字典</a>
+<a class="doc-nav-item" data-target="sec-04">04 跨環境缺漏比對</a>
+<a class="doc-nav-item" data-target="sec-05">05 今日新增／刪除比對</a>
+<a class="doc-nav-item" data-target="sec-06">06 白名單排除機制</a>
+<a class="doc-nav-item" data-target="sec-07">07 兩種比對邏輯的本質差異</a>
+<a class="doc-nav-item" data-target="sec-08">08 通知呈現：以 Repo 為主軸</a>
+</nav>
+<main class="doc-content">
+
+<section id="sec-01" class="doc-section active">
+<div class="hl-hero">
+<div class="hh-tag">情境概述</div>
+<div class="hh-title">Config Monitor Worker 在解決什麼問題</div>
+<div class="hh-desc">
+公司內部多個服務（例如 <code>Shopping-Service</code>、<code>Cart-Service</code>）在 TW、HK、MY 三個市場各自維護一份設定檔，
+放在 GitLab repo 裡。這些設定檔理論上除了少數市場專屬欄位以外，其餘的 key 應該要三邊都存在，
+只是允許數值不同（例如 TW 用一組網域、HK 用另一組網域）。
+但實際維運中常常發生某個工程師只改了 TW 的設定檔，卻忘記同步到 HK 或 MY，導致某個功能在其他市場悄悄壞掉卻沒人發現。
+<code>Config Monitor Worker</code> 就是為了解決這個問題而建立的每日排程程式：
+每天自動去 GitLab 抓三個市場的設定檔，做兩種比對，再把結果整理成一則 Slack 通知送到頻道。
+</div>
+<div class="hh-badges">
+<span class="hh-badge">.NET 10 Worker Service</span>
+<span class="hh-badge">GitLab API</span>
+<span class="hh-badge">Slack Block Kit 通知</span>
+<span class="hh-badge">每日排程巡檢</span>
+</div>
+</div>
+
+<div class="hl-callout info">
+<span class="hc-icon">ℹ️</span>
+<p><strong>白話版本：</strong>可以把這支程式想成一個每天固定時間巡邏的稽核員。它不管設定檔的值是什麼意思，只在乎兩件事：
+「今天跟昨天比，有沒有東西被偷偷加上去或拿掉」，以及「今天這一刻，三個市場彼此比較，有沒有誰漏設了某個項目」。
+</p>
+</div>
+
+<div class="hl-card-grid">
+<div class="hc-card">
+<div class="hc-badge">1</div>
+<div class="hc-title">跨環境缺漏比對</div>
+<div class="hc-desc">同一天，把 <code>TW</code>／<code>HK</code>／<code>MY</code> 三份設定檔互相比較，找出哪個市場漏設了其他市場都有的項目。</div>
+</div>
+<div class="hc-card tan">
+<div class="hc-badge">2</div>
+<div class="hc-title">今日新增／刪除比對</div>
+<div class="hc-desc">同一個市場，把「今天抓到的內容」跟「昨天存下來的內容」比較，找出今天新增或刪除了哪些設定項目。</div>
+</div>
+<div class="hc-card red">
+<div class="hc-badge">3</div>
+<div class="hc-title">白名單排除</div>
+<div class="hc-desc">部分項目本來就設計成只有某些市場才需要，這類已知差異會被排除，不列入每天的告警。</div>
+</div>
+</div>
+</section>
+
+<section id="sec-02" class="doc-section">
+<div class="hl-hero">
+<div class="hh-tag">整體流程</div>
+<div class="hh-title">一次巡檢跑過的完整路徑</div>
+<div class="hh-desc">巡檢以「一個要比對的服務」為單位重複執行，設定檔內容統稱 <code>CompareGroup</code>，例如 <code>Shopping-Service-API</code>、<code>Cart-Service-API</code> 各自是一個 <code>CompareGroup</code>，底下各自綁定一個 GitLab repo 與 TW／HK／MY 三個檔案路徑。</div>
+</div>
+
+<div class="hl-swimlane">
+<div class="sl-head">讀取設定檔</div>
+<div class="sl-head">攤平內容</div>
+<div class="sl-head tan">新增／刪除比對</div>
+<div class="sl-head red">跨環境缺漏比對</div>
+<div class="sl-lane">
+<div class="sl-node">依序抓 TW / HK / MY 檔案</div>
+<div class="sl-node dim">失敗則記錄錯誤原因</div>
+</div>
+<div class="sl-lane">
+<div class="sl-node">把巢狀 JSON 展開成一維字典</div>
+<div class="sl-step">逐一市場 →</div>
+</div>
+<div class="sl-lane">
+<div class="sl-node">與昨日快照比對差集</div>
+<div class="sl-node">存回今日內容作為新基準</div>
+</div>
+<div class="sl-lane">
+<div class="sl-node dim">至少兩個市場成功才進行</div>
+<div class="sl-node">套用白名單後彙整結果</div>
+</div>
+</div>
+
+<div class="hl-decision">
+<div class="dc-gate">
+<div class="dc-diamond">單一市場的檔案這次讀取成功嗎？</div>
+<div class="dc-branches">
+<div class="dc-branch yes"><span class="dc-tag">YES</span><span class="dc-text">攤平內容，並拿去跟該市場昨天的快照比對新增／刪除，比對完後用今天的內容覆蓋快照，成為明天的比對基準。</span></div>
+<div class="dc-branch no"><span class="dc-tag">NO</span><span class="dc-text">記錄一筆讀取失敗（含錯誤訊息），該市場快照維持不動，不會被不完整的資料覆蓋。</span></div>
+</div>
+</div>
+<div class="dc-gate">
+<div class="dc-diamond">這個服務本次成功抓到的市場數量達到 2 個以上嗎？</div>
+<div class="dc-branches">
+<div class="dc-branch yes"><span class="dc-tag">YES</span><span class="dc-text">才進行跨環境缺漏比對，找出各市場之間互相缺少的設定項目。</span></div>
+<div class="dc-branch no"><span class="dc-tag">NO</span><span class="dc-text">跳過本次跨環境缺漏比對，只留下讀取失敗的紀錄，避免用不足兩個市場的資料做出沒有意義的比較。</span></div>
+</div>
+</div>
+</div>
+
+<div class="hl-callout warn">
+<span class="hc-icon">⚠️</span>
+<p><strong>待觀察：</strong>「新增／刪除比對」與「跨環境缺漏比對」是各自獨立執行的兩段邏輯，讀取失敗只會讓跨環境比對被跳過，
+不會影響已經成功的市場照常進行新增／刪除比對。</p>
+</div>
+</section>
+
+<section id="sec-03" class="doc-section">
+<div class="hl-hero">
+<div class="hh-tag">前置作業</div>
+<div class="hh-title">攤平：把巢狀設定變成一維字典</div>
+<div class="hh-desc">兩種比對邏輯都建立在同一份「攤平後的 key/value 字典」之上，攤平是整個機制的地基，先理解這一步才能理解後面兩種比對為什麼可以簡化成集合運算。</div>
+</div>
+
+<div class="hl-card-grid">
+<div class="hc-card">
+<div class="hc-badge">1</div>
+<div class="hc-title">物件會展開成路徑</div>
+<div class="hc-desc">JSON 物件的每個屬性會遞迴往下展開，用小數點串接路徑，例如巢狀屬性 <code>A</code> 底下的 <code>B</code> 會變成一個 key 叫 <code>A.B</code>。</div>
+</div>
+<div class="hc-card tan">
+<div class="hc-badge">2</div>
+<div class="hc-title">其餘型別一律當葉節點</div>
+<div class="hc-desc">陣列、字串、數字、布林、<code>null</code> 都不再往下展開，直接把原始 JSON 文字存成該 key 的值，用於比對與顯示。</div>
+</div>
+<div class="hc-card red">
+<div class="hc-badge">3</div>
+<div class="hc-title">陣列刻意不展開索引</div>
+<div class="hc-desc">如果把陣列每個項目也展開成 <code>A.0</code>、<code>A.1</code> 這種索引 key，陣列項目順序不同就會被誤判成新增或刪除，所以陣列整體視為一個葉節點。</div>
+</div>
+</div>
+
+<table class="hl-table">
+<tr><th>攤平前（原始 JSON 片段）</th><th>攤平後（一維字典）</th></tr>
+<tr><td><code>{ "A": { "B": 1, "C": [1,2] } }</code></td><td><code>A.B = "1"</code>，<code>A.C = "[1,2]"</code></td></tr>
+</table>
+
+<div class="hl-callout info">
+<span class="hc-icon">ℹ️</span>
+<p><strong>這一步的意義：</strong>把「巢狀結構比對」簡化成「單層 key/value 集合的集合運算」，後面兩種比對本質上都只是同一份攤平字典在不同維度上做聯集或差集。</p>
+</div>
+</section>
+
+<section id="sec-04" class="doc-section">
+<div class="hl-hero">
+<div class="hh-tag">比對一：橫向比市場</div>
+<div class="hh-title">跨環境缺漏比對</div>
+<div class="hh-desc">在同一天這個時間點上，把 <code>TW</code>／<code>HK</code>／<code>MY</code> 三份攤平字典放在一起比較，核心邏輯是「聯集加上逐一檢查成員是否存在」。</div>
+</div>
+
+<div class="hl-pill-flow">
+<div class="hp-step">取三個市場 key 的聯集</div>
+<div class="hp-arrow">→</div>
+<div class="hp-step tan">逐一檢查每個 key 在各市場是否存在</div>
+<div class="hp-arrow">→</div>
+<div class="hp-step red">任一市場缺少就記一筆缺漏</div>
+</div>
+
+<div class="hl-card-grid">
+<div class="hc-card">
+<div class="hc-badge">1</div>
+<div class="hc-title">取聯集</div>
+<div class="hc-desc">把 TW、HK、MY 三個攤平字典的所有 key 合併去重，得到「理論上應該存在的所有 key」清單。</div>
+</div>
+<div class="hc-card">
+<div class="hc-badge">2</div>
+<div class="hc-title">逐一檢查存在性</div>
+<div class="hc-desc">對聯集中每個 key，分別檢查 TW、HK、MY 三個字典裡有沒有這個 key，並記錄哪些市場有值、哪些市場沒有。</div>
+</div>
+<div class="hc-card red">
+<div class="hc-badge">3</div>
+<div class="hc-title">只要有一個市場缺少就成立</div>
+<div class="hc-desc">只要任一市場沒有這個 key，就判定為缺漏，輸出一筆結果，包含各市場實際的值以及缺少的市場清單。</div>
+</div>
+</div>
+
+<div class="hl-decision">
+<div class="dc-gate">
+<div class="dc-diamond">三個市場都有這個 key，但數值彼此不同？</div>
+<div class="dc-branches">
+<div class="dc-branch no"><span class="dc-tag">不算異常</span><span class="dc-text">只要三個市場都設定了這個 key，就算合理的市場差異（例如各自網域不同），不會出現在缺漏結果中。這套機制比對的是「有沒有設定」，不是「設定的值是否一致」。</span></div>
+</div>
+</div>
+</div>
+
+<div class="hl-callout success">
+<span class="hc-icon">✅</span>
+<p><strong>已完成：</strong>比對結果最後會依 key 的英文字母排序輸出，並附上白名單過濾（見第 06 章），避免已知差異每天重複告警。</p>
+</div>
+</section>
+
+<section id="sec-05" class="doc-section">
+<div class="hl-hero">
+<div class="hh-tag">比對二：縱向比時間</div>
+<div class="hh-title">今日新增／刪除比對</div>
+<div class="hh-desc">針對同一個市場，把「今天攤平出來的字典」跟「昨天存下來的快照字典」相比，本質是兩個時間點快照之間的差集運算，跟第 04 章的跨市場聯集是完全不同維度的比對。</div>
+</div>
+
+<div class="hl-pill-flow">
+<div class="hp-step">今天字典 減去 昨天快照</div>
+<div class="hp-arrow">=</div>
+<div class="hp-step tan">今日新增的 key</div>
+</div>
+<div class="hl-pill-flow">
+<div class="hp-step red">昨天快照 減去 今天字典</div>
+<div class="hp-arrow">=</div>
+<div class="hp-step tan">今日刪除的 key</div>
+</div>
+
+<div class="hl-decision">
+<div class="dc-gate">
+<div class="dc-diamond">這個市場有前一次快照可以比較嗎？</div>
+<div class="dc-branches">
+<div class="dc-branch yes"><span class="dc-tag">YES</span><span class="dc-text">正常執行差集比對，找出今日新增與今日刪除的 key。</span></div>
+<div class="dc-branch no"><span class="dc-tag">NO</span><span class="dc-text">代表是第一次執行、尚無比對基準，一律回傳空清單，只建立今天的內容作為未來比對用的基準，不會把既有的所有設定都誤判成新增。</span></div>
+</div>
+</div>
+</div>
+
+<ul class="hl-checklist">
+<li>比對範圍限定在同一個市場，不會拿 TW 今天的內容去跟 HK 昨天的內容比。</li>
+<li>只有本次成功讀取的市場才會比對並更新快照。</li>
+<li>讀取失敗的市場，快照保留原樣，不用不完整的內容覆蓋既有基準。</li>
+<li>比對完成後，無論有沒有發現新增或刪除，都會用今天的內容重新存一次快照，作為明天的比對基準。</li>
+</ul>
+</section>
+
+<section id="sec-06" class="doc-section">
+<div class="hl-hero">
+<div class="hh-tag">已知差異的排除</div>
+<div class="hh-title">白名單排除機制</div>
+<div class="hh-desc">部分設定項目本來就是設計成只有某些市場需要，例如某個東南亞地區專屬的運費區域設定，這種缺漏並非疏漏，而是刻意的市場差異，若每天都告警反而會讓工程師開始忽略通知。</div>
+</div>
+
+<div class="hl-card-grid">
+<div class="hc-card">
+<div class="hc-badge">1</div>
+<div class="hc-title">設定層級是每個服務各自獨立</div>
+<div class="hc-desc">白名單掛在 <code>CompareGroup</code> 底下，也就是每個 repo／服務各自維護自己的排除清單，不會互相影響。</div>
+</div>
+<div class="hc-card tan">
+<div class="hc-badge">2</div>
+<div class="hc-title">比對方式是完全字串相等</div>
+<div class="hc-desc">用大小寫敏感的完整字串比對排除清單裡的 key，不是模糊比對或前綴比對。</div>
+</div>
+<div class="hc-card red">
+<div class="hc-badge">3</div>
+<div class="hc-title">在跨環境比對完成後才過濾</div>
+<div class="hc-desc">先照第 04 章的邏輯找出全部缺漏，再把出現在白名單裡的 key 從結果中移除，並記錄本次排除了幾筆，方便追蹤白名單實際生效狀況。</div>
+</div>
+</div>
+
+<div class="hl-callout warn">
+<span class="hc-icon">⚠️</span>
+<p><strong>待觀察：</strong>白名單只影響「跨環境缺漏比對」，完全不影響「今日新增／刪除比對」。如果白名單裡的某個 key 今天被刪除了，仍然會照常出現在今日刪除清單中，因為那是兩種不同的比對邏輯。</p>
+</div>
+</section>
+
+<section id="sec-07" class="doc-section">
+<div class="hl-hero">
+<div class="hh-tag">總結對照</div>
+<div class="hh-title">兩種比對邏輯的本質差異</div>
+<div class="hh-desc">雖然都建立在同一份攤平字典上，跨環境缺漏比對與今日新增／刪除比對其實是兩個完全正交、互不影響的比對維度。</div>
+</div>
+
+<table class="hl-table">
+<tr><th>比對項目</th><th>比對對象</th><th>核心運算</th><th>是否比對數值本身</th></tr>
+<tr><td>跨環境缺漏比對</td><td>同一天，<code>TW</code>／<code>HK</code>／<code>MY</code> 之間互相比較</td><td>key 聯集後逐一檢查存在性</td><td>否，只比對有沒有設定</td></tr>
+<tr><td>今日新增／刪除比對</td><td>同一市場，今天與昨天兩個時間點比較</td><td>key 集合的差集運算</td><td>否，只比對 key 是否存在，值只是附帶記錄</td></tr>
+</table>
+
+<div class="hl-token-row">
+<div class="ht-item"><div class="ht-swatch navy"></div><div class="ht-label">共用地基</div><div class="ht-code">攤平字典</div></div>
+<div class="ht-item"><div class="ht-swatch tan"></div><div class="ht-label">橫向維度</div><div class="ht-code">跨市場聯集</div></div>
+<div class="ht-item"><div class="ht-swatch red"></div><div class="ht-label">縱向維度</div><div class="ht-code">今昔差集</div></div>
+</div>
+
+<div class="hl-callout info">
+<span class="hc-icon">ℹ️</span>
+<p><strong>白話總結：</strong>這整套機制從頭到尾都只在乎「有沒有這個設定項目」，完全不管「設定的內容是什麼意思」。
+把巢狀 JSON 攤平成一維的 key 清單之後，橫向去比三個市場的 key 有沒有缺，縱向去比今天跟昨天的 key 有沒有變化，
+兩件事各自算各自的，最後才把兩種結果彙整起來，一起送進同一則 Slack 通知。</p>
+</div>
+</section>
+
+<section id="sec-08" class="doc-section">
+<div class="hl-hero">
+<div class="hh-tag">結果呈現</div>
+<div class="hh-title">通知呈現：以 Repo 為主軸</div>
+<div class="hh-desc">比對邏輯算出來的結果最終會交給 Slack 通知模組整理成訊息，呈現方式的設計原則是「每個服務只出現一次，狀態逐項列清楚」，避免同一個服務的資訊分散在不同區塊、或某個服務因為沒有異動而完全消失看不見。</div>
+</div>
+
+<div class="hl-tabs">
+<div class="ht-bar">
+<button class="ht-btn on" data-tab="tab-quiet">某服務完全沒有異動</button>
+<button class="ht-btn" data-tab="tab-active">某服務有部分異動</button>
+</div>
+<div class="ht-panel on" id="tab-quiet">
+<ul>
+<li>顯示服務名稱加上「檢查完成」。</li>
+<li>底下逐項列出：無 <code>config</code> 新增、無 <code>config</code> 移除、無 <code>config</code> 缺漏。</li>
+</ul>
+</div>
+<div class="ht-panel" id="tab-active">
+<ul>
+<li>有資料的項目（例如缺漏）逐筆列出明細，跨環境缺漏會用市場並排的方式呈現每個 key 在各市場的實際數值。</li>
+<li>沒有資料的項目（例如當天沒有新增）仍然要顯示「無 <code>config</code> 新增」，不會因為缺漏區塊有內容就把新增／移除區塊整段省略。</li>
+</ul>
+</div>
+</div>
+
+<div class="hl-callout success">
+<span class="hc-icon">✅</span>
+<p><strong>已完成：</strong>只有讀取設定檔真的失敗時，才會額外顯示一個「取得狀態」區塊說明哪個市場失敗、失敗原因是什麼，避免每天都顯示一次「全部成功」造成洗版。</p>
+</div>
+</section>
+
+</main>
+</div>
+
+<script class="doc-shell-script">
+(function(){
+  var navItems = document.querySelectorAll('.doc-nav-item');
+  var sections = document.querySelectorAll('.doc-section');
+  navItems.forEach(function(item){
+    item.addEventListener('click', function(e){
+      e.preventDefault();
+      navItems.forEach(function(i){ i.classList.remove('active'); });
+      sections.forEach(function(s){ s.classList.remove('active'); });
+      item.classList.add('active');
+      var target = document.getElementById(item.getAttribute('data-target'));
+      if(target){ target.classList.add('active'); }
+      var content = document.querySelector('.doc-content');
+      if(content){ content.scrollTop = 0; }
+    });
+  });
+})();
+(function(){
+  document.querySelectorAll('.hl-tabs .ht-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var group = btn.closest('.hl-tabs');
+      group.querySelectorAll('.ht-btn').forEach(function(b){ b.classList.remove('on'); });
+      group.querySelectorAll('.ht-panel').forEach(function(p){ p.classList.remove('on'); });
+      btn.classList.add('on');
+      var panel = group.querySelector('#' + btn.getAttribute('data-tab'));
+      if(panel){ panel.classList.add('on'); }
+    });
+  });
+})();
+</script>
+</body>
+</html>

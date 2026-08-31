@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>regular_product 新增欄位規劃 — 定期購活動內容（贈品／折扣／點數）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif; background: #f0f2f5; color: #1a1a2e; font-size: 14px; }
+
+  /* ── Layout ─────────────────────────────── */
+  .sidebar { position: fixed; top: 0; left: 0; width: 220px; height: 100vh; background: #1a1a2e; color: #cdd6f4; overflow-y: auto; padding: 20px 0; z-index: 100; }
+  .sidebar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6272a4; padding: 8px 20px 4px; margin-top: 12px; }
+  .sidebar a { display: block; padding: 7px 20px; color: #cdd6f4; text-decoration: none; font-size: 13px; border-left: 3px solid transparent; transition: all .15s; }
+  .sidebar a:hover, .sidebar a.active { background: rgba(255,255,255,.06); border-left-color: #bd93f9; color: #fff; }
+  .sidebar .logo { padding: 16px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .sidebar .logo .title { font-size: 14px; font-weight: 700; color: #f8f8f2; line-height: 1.4; }
+  .sidebar .logo .sub { font-size: 11px; color: #6272a4; margin-top: 4px; }
+
+  .main { margin-left: 220px; padding: 32px; max-width: 1100px; }
+  section { margin-bottom: 40px; }
+  h1 { font-size: 28px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+  h2 { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+  h3 { font-size: 15px; font-weight: 700; color: #44475a; margin-bottom: 10px; }
+  p { color: #4a5568; line-height: 1.7; margin-bottom: 10px; }
+
+  /* ── Cards ───────────────────────────────── */
+  .card { background: #fff; border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 4px solid transparent; }
+  .card.blue  { border-left-color: #4dabf7; }
+  .card.green { border-left-color: #51cf66; }
+  .card.orange{ border-left-color: #ff922b; }
+  .card.purple{ border-left-color: #bd93f9; }
+  .card.red   { border-left-color: #ff5555; }
+  .card.gray  { border-left-color: #868e96; }
+  .card.teal  { border-left-color: #20c997; }
+
+  /* ── Tags / Badges ───────────────────────── */
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 2px 8px; margin: 2px; }
+  .badge-blue   { background: #e7f5ff; color: #1971c2; }
+  .badge-green  { background: #ebfbee; color: #2f9e44; }
+  .badge-orange { background: #fff4e6; color: #d9480f; }
+  .badge-purple { background: #f3f0ff; color: #7048e8; }
+  .badge-red    { background: #fff5f5; color: #c92a2a; }
+  .badge-gray   { background: #f1f3f5; color: #495057; }
+  .badge-teal   { background: #e6fcf5; color: #0f9177; }
+
+  /* ── Tables ──────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f1f3f5; text-align: left; padding: 8px 12px; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6; }
+  td { padding: 7px 12px; border-bottom: 1px solid #f1f3f5; vertical-align: top; }
+  tr:hover td { background: #fafbfc; }
+  code { font-family: 'Fira Code', 'Consolas', monospace; background: #f1f3f5; padding: 1px 5px; border-radius: 3px; font-size: 12px; color: #d63384; }
+  .code-block { font-family: 'Fira Code', 'Consolas', monospace; background: #1e1e2e; color: #cdd6f4; padding: 14px 18px; border-radius: 8px; font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre; margin: 10px 0; }
+  .code-block .cm { color: #6272a4; }
+
+  /* ── Grid ────────────────────────────────── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── Alert / Note ────────────────────────── */
+  .note { background: #fff9db; border: 1px solid #ffd43b; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #664d03; margin: 12px 0; }
+  .note strong { color: #495057; }
+
+  /* ── Separator ───────────────────────────── */
+  .hero { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; border-radius: 12px; padding: 32px 36px; margin-bottom: 32px; }
+  .hero h1 { color: #fff; font-size: 26px; }
+  .hero p { color: #a8b2d8; margin-bottom: 4px; }
+  .hero .meta { display: flex; gap: 20px; margin-top: 16px; flex-wrap: wrap; }
+  .hero .meta-item { display: flex; flex-direction: column; }
+  .hero .meta-item .label { font-size: 11px; color: #6272a4; text-transform: uppercase; letter-spacing: .5px; }
+  .hero .meta-item .value { font-size: 13px; color: #cdd6f4; font-weight: 600; margin-top: 2px; }
+
+  /* ── Steps ───────────────────────────────── */
+  .steps { list-style: none; padding: 0; counter-reset: step; }
+  .steps li { position: relative; padding: 8px 0 8px 44px; }
+  .steps li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 6px; width: 28px; height: 28px; background: #4dabf7; color: #fff; font-weight: 700; font-size: 12px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .steps li::after { content:''; position:absolute; left:13px; top:34px; bottom:0; width:2px; background:#e2e8f0; }
+  .steps li:last-child::after { display:none; }
+  .step-title { font-weight: 600; color: #1a1a2e; margin-bottom: 2px; }
+  .step-desc { color: #6272a4; font-size: 13px; }
+
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; }
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════ SIDEBAR ═══════════ -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="title">定期購贈品活動</div>
+    <div class="sub">regular_product 欄位規劃</div>
+  </div>
+  <h2>總覽</h2>
+  <a href="#overview">異動總覽</a>
+  <h2>DB 欄位</h2>
+  <a href="#new-fields">新增欄位定義</a>
+  <a href="#json-schema">rpd_promotion_json Schema</a>
+  <a href="#examples">需求對照範例</a>
+  <a href="#validation">驗證規則</a>
+  <h2>程式碼</h2>
+  <a href="#entity-changes">Entity / Request 異動</a>
+  <h2>後續</h2>
+  <a href="#future-design">未來設計討論</a>
+  <a href="#page-relation">商品頁 vs 定期購方案</a>
+  <a href="#page-gift-flag">商品頁是否為定期購商品</a>
+  <a href="#sms-status">NineYi.Sms 現況分析</a>
+  <a href="#sms-new-api">NineYi.Sms 新增規劃</a>
+  <a href="#vsts-gap">VSTS #643392 需求缺口</a>
+  <a href="#gift-relation">贈品定義與定期購關聯</a>
+  <a href="#v2-gap">v2 端現況落差與欄位對照</a>
+  <a href="#e2e-data-flow">逐欄位端到端資料流</a>
+  <h2>Create API</h2>
+  <a href="regular-product-create-api-spec.html#s1" target="_blank">新增方案 Create</a>
+  <a href="regular-product-create-api-spec.html#s1" target="_blank" style="padding-left:36px;font-size:12px;">1. API 基本資訊</a>
+  <a href="regular-product-create-api-spec.html#s2" target="_blank" style="padding-left:36px;font-size:12px;">2. Request Body</a>
+  <a href="regular-product-create-api-spec.html#s3" target="_blank" style="padding-left:36px;font-size:12px;">3. Request Sample</a>
+  <a href="regular-product-create-api-spec.html#s4" target="_blank" style="padding-left:36px;font-size:12px;">4. Response Body</a>
+  <a href="regular-product-create-api-spec.html#s5" target="_blank" style="padding-left:36px;font-size:12px;">5. 串接注意事項</a>
+  <a href="regular-product-create-api-spec.html#s6" target="_blank" style="padding-left:36px;font-size:12px;">6. 版本與待確認</a>
+</nav>
+
+<!-- ═══════════════════════════════════════════ MAIN ══════════════ -->
+<div class="main">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>regular_product 新增欄位規劃</h1>
+    <p>定期購活動內容（贈品／折扣／點數）— rpd_plan_date_begin / rpd_plan_date_end / rpd_promotion_json</p>
+    <div class="meta">
+      <div class="meta-item"><span class="label">專案</span><span class="value">nine1.regularpurchase.v2</span></div>
+      <div class="meta-item"><span class="label">異動資料表</span><span class="value">regular_product（既有表，ALTER 加欄位）</span></div>
+      <div class="meta-item"><span class="label">撰寫日期</span><span class="value">2026-07-31</span></div>
+    </div>
+  </div>
+
+  <!-- ── 異動總覽 ──────────────────────────── -->
+  <section id="overview">
+    <h2>📋 異動總覽</h2>
+
+    <div class="card blue">
+      <table>
+        <tr><th style="width:16%">異動類型</th><th style="width:24%">資料表</th><th>說明</th></tr>
+        <tr>
+          <td><span class="badge badge-blue">ALTER（加欄位）</span></td>
+          <td><code>regular_product</code></td>
+          <td>新增 <code>rpd_plan_date_begin</code> ／ <code>rpd_plan_date_end</code> ／ <code>rpd_promotion_json</code> 三個欄位</td>
+        </tr>
+      </table>
+    </div>
+
+  </section>
+
+  <!-- ── 新增欄位定義 ──────────────────────── -->
+  <section id="new-fields">
+    <h2>🗃 新增欄位定義</h2>
+
+    <div class="card green">
+      <div class="code-block">ALTER TABLE regular_product
+  ADD COLUMN rpd_plan_date_begin      timestamp   NULL,          <span class="cm">-- 定期購方案生效開始時間</span>
+  ADD COLUMN rpd_plan_date_end        timestamp   NULL,          <span class="cm">-- 定期購方案生效結束時間（NULL = 永久有效）</span>
+  ADD COLUMN rpd_promotion_json  jsonb       NOT NULL DEFAULT '[]';  <span class="cm">-- 定期購活動內容（JSON 陣列）</span>
+
+CREATE INDEX idx_regular_product_rpd_date_range     ON regular_product (rpd_plan_date_begin, rpd_plan_date_end);
+CREATE INDEX idx_regular_product_rpd_promotion_json ON regular_product USING gin (rpd_promotion_json);</div>
+    </div>
+
+    <div class="card">
+      <table>
+        <tr><th>欄位</th><th>型別</th><th>Null</th><th>說明</th></tr>
+        <tr>
+          <td><code>rpd_plan_date_begin</code></td>
+          <td>timestamp</td>
+          <td>可為 NULL</td>
+          <td>控制「定期購訂閱」本身是否開放讓會員訂閱的起始時間，屬於<strong>方案層級</strong>，比商品層級的 <code>rpd_sale_date_begin</code>／<code>rpd_sale_date_end</code> 更上層。即使商品仍在一般販售期間內，定期購訂閱視窗仍可獨立提前關閉或延後開放；<code>rpd_sale_date_*</code> 維持原本「商品本身是否可見／可購買」的用途不變</td>
+        </tr>
+        <tr>
+          <td><code>rpd_plan_date_end</code></td>
+          <td>timestamp</td>
+          <td>可為 NULL</td>
+          <td>定期購訂閱視窗結束時間；<code>NULL</code> 表示永久開放訂閱，無到期日</td>
+        </tr>
+        <tr>
+          <td><code>rpd_promotion_json</code></td>
+          <td>jsonb</td>
+          <td>NOT NULL DEFAULT '[]'</td>
+          <td>該定期購商品設定的<strong>活動規則陣列</strong>，可同時包含贈品／折扣／點數多筆規則，見下一節</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="note">
+      <code>rpd_promotion_json</code> 使用 <code>jsonb</code> + GIN index，便於未來以 <code>rpd_promotion_json @&gt; '[{"type":"GIFT"}]'</code> 查詢「哪些設定含贈品規則」等後台統計需求。編輯時採<strong>整段陣列覆寫</strong>（非局部 patch），驗證與 <code>id</code> 唯一性交由 Application Layer 處理，DB 端不做 CHECK constraint（jsonb 欄位無法有效表達分支驗證規則）。
+    </div>
+  </section>
+
+  <!-- ── rpd_promotion_json Schema ──────────── -->
+  <section id="json-schema">
+    <h2>🎁 rpd_promotion_json — 活動內容 JSON Schema</h2>
+
+    <p>以<strong>陣列</strong>保存該定期購設定的所有活動規則。單一 JSON 物件即可描述「多期數觸發」與「多贈品品項」，不需要為每個期數或每個贈品品項各存一列。</p>
+
+    <div class="card purple">
+      <div class="code-block">[
+  {
+    "id": "promo-1",                 <span class="cm">// 本設定列內唯一 id，訂單觸發時快照用來回溯來源規則</span>
+    "type": "GIFT",                  <span class="cm">// GIFT | DISCOUNT | POINT（未來可擴充 COUPON / FREE_SHIP）</span>
+    "triggerMode": "INTERVAL",       <span class="cm">// INTERVAL | SEQUENCE | THRESHOLD</span>
+    "interval": 3,                   <span class="cm">// INTERVAL 模式：每 N 期觸發一次（第 3, 6, 9... 期）</span>
+    "outOfStockAction": "PROCEED",   <span class="cm">// GIFT 專用：贈品缺貨處理，PROCEED=照常建單／SKIP_PERIOD=不建立訂單</span>
+    "items": [                       <span class="cm">// GIFT 專用：同一次觸發可送多個不同贈品，各自數量獨立</span>
+      { "pageId": 50001, "sku": "SKU-GIFT-123", "name": "保溫杯", "picUrl": "https://cdn.../a.jpg", "qty": 2 },
+      { "pageId": 50002, "sku": "SKU-GIFT-456", "name": "環保袋", "picUrl": "https://cdn.../b.jpg", "qty": 1 }
+    ]
+  },
+  {
+    "id": "promo-2",
+    "type": "DISCOUNT",
+    "triggerMode": "SEQUENCE",
+    "shipSequences": [4, 7, 9],       <span class="cm">// SEQUENCE 模式：指定多個期數，同一物件即可描述「第4、7、9期」，不需拆多列</span>
+    "discountType": "AMOUNT",         <span class="cm">// AMOUNT（固定折抵）/ PERCENT（折數）</span>
+    "discountValue": 10.000
+  },
+  {
+    "id": "promo-3",
+    "type": "POINT",
+    "triggerMode": "THRESHOLD",
+    "fromSequence": 3,                <span class="cm">// THRESHOLD 模式：從第 N 期起，之後「每一期」都觸發（無需窮舉期數，亦適用無限期方案）</span>
+    "pointValue": 20                  <span class="cm">// 第 3 期起，每期加贈 20 點</span>
+  }
+]</div>
+    </div>
+
+    <div class="card">
+      <h3>outOfStockAction 可選值</h3>
+      <table>
+        <tr><th style="width:20%">值</th><th>說明</th></tr>
+        <tr><td><code>PROCEED</code></td><td>照常建單：訂單照常成立，會員收到商品及有庫存的贈品（缺貨贈品不出貨，不影響商品訂單成立）</td></tr>
+        <tr><td><code>SKIP_PERIOD</code></td><td>不建立訂單：本期視為異常不建立，會員收不到該期商品，下期恢復正常建單</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── 需求對照範例 ──────────────────────── -->
+  <section id="examples">
+    <h2>📐 對照使用者需求範例</h2>
+
+    <div class="card">
+      <table>
+        <tr><th style="width:40%">商業需求</th><th>JSON 表達</th></tr>
+        <tr><td>每 3 期送贈品（可多品項不同數量）</td><td><code>type=GIFT, triggerMode=INTERVAL, interval=3, items=[{sku:123,qty:2},{sku:456,qty:1}]</code></td></tr>
+        <tr><td>指定第 4、7、9 期折 10 元</td><td><code>type=DISCOUNT, triggerMode=SEQUENCE, shipSequences=[4,7,9], discountValue=10</code></td></tr>
+        <tr><td>每滿 3 期送 20 點</td><td><code>type=POINT, triggerMode=INTERVAL, interval=3, pointValue=20</code></td></tr>
+        <tr><td>第 3 期以後，之後每一期都送 20 點（非每 3 期一次，是從第 3 期起連續每期）</td><td><code>type=POINT, triggerMode=THRESHOLD, fromSequence=3, pointValue=20</code></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── 驗證規則 ──────────────────────────── -->
+  <section id="validation">
+    <h2>✅ 型別欄位規則（Application Layer 驗證，非 DB Constraint）</h2>
+
+    <div class="card orange">
+      <table>
+        <tr><th style="width:26%">條件</th><th>規則</th></tr>
+        <tr><td><code>triggerMode = INTERVAL</code></td><td><code>interval</code> 必填（&gt;0），<code>shipSequences</code>、<code>fromSequence</code> 不可出現</td></tr>
+        <tr><td><code>triggerMode = SEQUENCE</code></td><td><code>shipSequences</code> 必填且非空陣列，<code>interval</code>、<code>fromSequence</code> 不可出現</td></tr>
+        <tr><td><code>triggerMode = THRESHOLD</code></td><td><code>fromSequence</code> 必填（&gt;0），<code>interval</code>、<code>shipSequences</code> 不可出現；觸發條件為 <code>期數 &gt;= fromSequence</code>，無終止期數（除非本設定列本身有 <code>rpd_ship_limit_count</code> 限制）</td></tr>
+        <tr><td><code>type = GIFT</code></td><td><code>items</code> 必填且非空陣列，每筆需有 <code>sku</code>／<code>qty</code>（<code>qty</code> &gt; 0）；<code>outOfStockAction</code> 必填，僅允許 <code>PROCEED</code>／<code>SKIP_PERIOD</code></td></tr>
+        <tr><td><code>type = DISCOUNT</code></td><td><code>discountType</code>、<code>discountValue</code> 必填</td></tr>
+        <tr><td><code>type = POINT</code></td><td><code>pointValue</code> 必填（&gt;0）</td></tr>
+        <tr><td>上限驗證（GIFT 專用，對應畫面規則）</td><td><code>items.length &lt;= 10</code>；每筆 <code>1 &lt;= qty &lt;= 10</code>；<code>sum(items[].qty) &lt;= 50</code></td></tr>
+        <tr><td>期數上限驗證</td><td>若 <code>rpd_ship_limit_status = 2</code>（有限制）：<code>interval &lt;= rpd_ship_limit_count</code>；<code>shipSequences</code> 內所有值 <code>&lt;= rpd_ship_limit_count</code>；<code>fromSequence &lt;= rpd_ship_limit_count</code></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Entity / Request 異動 ─────────────── -->
+  <section id="entity-changes">
+    <h2>🧩 RegularProductEntity 對應異動（程式碼落地）</h2>
+
+    <div class="card blue" style="margin-bottom:16px">
+      <h3>RegularProductEntity.cs</h3>
+      <p style="font-size:12px; color:#868e96; margin-bottom:8px">src\BusinessLogic\Nine1.Regularpurchase.V2.BL.BE\RegularProducts\RegularProductEntity.cs</p>
+      <table>
+        <tr><th>新增屬性</th><th>對應欄位</th><th>型別</th></tr>
+        <tr><td><code>RpdPlanDateBegin</code></td><td><code>rpd_plan_date_begin</code></td><td><code>DateTime?</code></td></tr>
+        <tr><td><code>RpdPlanDateEnd</code></td><td><code>rpd_plan_date_end</code></td><td><code>DateTime?</code></td></tr>
+        <tr><td><code>RpdPromotionJson</code></td><td><code>rpd_promotion_json</code></td><td><code>string</code>（儲存原始 JSON 字串，或反序列化為強型別 <code>List&lt;PromotionRule&gt;</code>，視 Repository 層設計而定）</td></tr>
+      </table>
+    </div>
+
+    <div class="card teal">
+      <h3>ProductAddRequest.cs ／ ProductEditRequest.cs</h3>
+      <table>
+        <tr><th>新增欄位</th><th>說明</th></tr>
+        <tr><td><code>PlanDateBegin</code> / <code>PlanDateEnd</code></td><td>對應畫面「方案生效期間」</td></tr>
+        <tr><td><code>Promotions</code></td><td><code>List&lt;PromotionRuleRequest&gt;</code>，對應畫面「贈品設定」等活動規則區塊；目前畫面僅提供 GIFT／INTERVAL 操作介面，DISCOUNT／POINT／SEQUENCE／THRESHOLD 為 Schema 預留擴充，尚無對應 UI</td></tr>
+      </table>
+      <p style="margin-top:8px; font-size:12px; color:#6272a4">本次僅規劃「畫面目前有的 GIFT + INTERVAL」路徑；DISCOUNT/POINT/SEQUENCE/THRESHOLD 為預留擴充能力，實作優先序與 UI 開放時程另行確認。</p>
+    </div>
+  </section>
+
+  <!-- ── 未來設計討論 ──────────────────────── -->
+  <section id="future-design">
+    <h2>🔭 未來設計討論（非本次實作範圍，先記錄設計方向）</h2>
+
+    <div class="card purple">
+      <h3>每期實際觸發的贈品/折扣/點數快照紀錄</h3>
+      <p><code>rpd_promotion_json</code> 只是「規則定義」；當某一期實際觸發規則（例如送出贈品）時，需要有地方記錄「這期實際觸發了什麼、狀態如何」，供後台/客服查詢。</p>
+      <p><strong>方向：延伸既有 <code>regular_order_detail</code>（<code>rod_*</code>），不新建表</strong>，與 <code>regular_product</code> 這次的做法一致：</p>
+      <div class="code-block">ALTER TABLE regular_order_detail
+  ADD COLUMN rod_promotion_snapshot_json jsonb NULL;
+  <span class="cm">-- 該期實際觸發的活動快照（贈品/折扣/點數），建單當下寫入；未觸發任何規則時為 NULL</span></div>
+
+      <p>顆粒度延續既有 <code>rod_gift_ts_code</code>（該期贈品獨立建單後的訂單編號）的精神，<code>rod_promotion_snapshot_json</code> 記錄「這期觸發了哪些規則、內容是什麼、各品項狀態如何」：</p>
+      <div class="code-block">[
+  {
+    "promoId": "promo-1",           <span class="cm">// 回溯 rpd_promotion_json 裡的 id</span>
+    "type": "GIFT",
+    "items": [
+      { "sku": "SKU-GIFT-123", "name": "保溫杯", "qty": 2, "status": "SUCCESS" },
+      { "sku": "SKU-GIFT-456", "name": "環保袋", "qty": 1, "status": "OUT_OF_STOCK" }
+    ]
+  }
+]</div>
+      <ul style="margin:8px 0 4px 20px; color:#4a5568; line-height:1.8;">
+        <li><s>贈品實際訂單號仍用既有 <code>rod_gift_ts_code</code> 追蹤</s>：<strong>此假設已推翻</strong>（見 5.2），贈品未來會合併進商品本身那張訂單一起下單，<code>rod_gift_ts_code</code>（獨立贈品訂單編號）用途需重新檢視，可能需廢止或改設計，待建單流程定案後處理。</li>
+        <li><code>rod_promotion_snapshot_json</code> 只負責記錄「規則內容與各品項狀態」，供客服/後台查詢用，不再依賴獨立訂單號欄位。</li>
+        <li>折扣／點數觸發時，同一 JSON 陣列可放 <code>type=DISCOUNT</code>／<code>POINT</code> 的快照物件，欄位比照 <code>rpd_promotion_json</code> 的規則物件精簡對應。</li>
+      </ul>
+    </div>
+
+    <div class="grid2">
+      <div class="card green">
+        <h3>✅ 優點</h3>
+        <ol class="steps">
+          <li><div class="step-desc">與 <code>regular_product</code> 加 <code>rpd_promotion_json</code> 的做法一致，架構風格統一、學習成本低</div></li>
+          <li><div class="step-desc">查詢單一期別的完整資訊（含贈品內容）不需 JOIN，一次 SELECT 拿到</div></li>
+          <li><div class="step-desc">不新增表，維運（DDL、遷移、權限）成本最低</div></li>
+        </ol>
+      </div>
+      <div class="card red">
+        <h3>⚠️ 缺點</h3>
+        <ol class="steps">
+          <li><div class="step-desc"><code>rod_gift_ts_code</code>（訂單號）與 <code>rod_promotion_snapshot_json</code>（內容快照）兩個欄位分別描述同一件事，未來若沒同步更新容易兜不起來</div></li>
+          <li><div class="step-desc">若要做「這個 SKU 這個月總共送出幾件」這類跨期統計，得對 <code>regular_order_detail</code>（本身是高頻成長表）整表掃 JSON，效能較差、無法建 index 到單一品項層級</div></li>
+          <li><div class="step-desc">更新單一品項狀態（例如缺貨→事後補貨成功）要整段 JSON 讀出再寫回，不能像關聯表一樣單列 UPDATE</div></li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>結論與保留退路：</strong>現階段沒有明確的「跨 SKU / 跨期贈品統計報表」需求，先採用上述擴充欄位方案即可（避免過度設計）。<code>rod_promotion_snapshot_json</code> 的 JSON 內容刻意讓每個 <code>items[]</code> 都帶獨立 <code>status</code>，未來若真的出現統計需求，可以直接寫 migration script 把既有 JSON 資料展開匯入成獨立明細表，不會是死路。
+    </div>
+
+    <div class="card orange" style="margin-top:16px">
+      <h3>5.2 建單流程如何判斷 outOfStockAction（Worker 設計方向）</h3>
+      <p><strong>現況確認：</strong><code>nine1.regularpurchase.v2.worker</code> 的 <code>RegularCreateOrderJob.cs</code> 目前完全沒有贈品相關程式碼，只有「呼叫一次下游 mweb 建單 API、整單 Success/Fail」的商品訂單流程，贈品判斷需全新設計。</p>
+      <p><strong>討論結論：</strong></p>
+      <ol class="steps">
+        <li>
+          <div class="step-title">贈品合併進同一張訂單</div>
+          <div class="step-desc">同一次 API 呼叫、同一張訂單，不另外建立獨立的贈品訂單。</div>
+        </li>
+        <li>
+          <div class="step-title">判斷時機在呼叫建單 API 之前</div>
+          <div class="step-desc">Worker 先讀取本方案 <code>rpd_promotion_json</code> 中 GIFT 規則的 <code>outOfStockAction</code>：<br>
+            <span class="badge badge-green">PROCEED</span> 不做贈品庫存 pre-check，直接建單（各贈品品項是否出貨，交由下游 mweb 訂單建立結果決定；細節待與 mweb API 對接規格確認）。<br>
+            <span class="badge badge-red">SKIP_PERIOD</span> 建單前先做贈品庫存 pre-check，只要任一贈品品項庫存不足，本期就不建立訂單（視為異常），下一期恢復正常排程。
+          </div>
+        </li>
+        <li>
+          <div class="step-title">待確認：排程影響</div>
+          <div class="step-desc"><code>SKIP_PERIOD</code> 情境下，本期「不建立訂單」是否計入 <code>rgo_ship_count</code>（影響下一期配送日期的排程計算），此細節待建單流程子項目實作時再與現有排程邏輯對齊。</div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ── 商品頁 vs 定期購方案 ────────────────── -->
+  <section id="page-relation">
+    <h2>🔗 商品頁（pageId）與定期購方案的關聯設計</h2>
+
+    <div class="card blue">
+      <h3>現況：全有全無擋法，非時間區間判斷</h3>
+      <p>既有 <code>RegularProductRepository.ExistsByProductAsync(shopId, pageId)</code> 的檢查邏輯：</p>
+      <div class="code-block">SELECT COUNT(1) FROM regular_product
+WHERE rpd_shop_id = @ShopId AND rpd_page_id = @PageId AND rpd_status = 1
+LIMIT 1</div>
+      <p>只要該 pageId 底下存在<strong>任一筆</strong> <code>rpd_status = 1</code>（啟用中）的設定，就視為「已被設定」而擋下新增。此方法被兩處呼叫：</p>
+      <table>
+        <thead><tr><th>呼叫者</th><th>對應端點</th><th>時機</th></tr></thead>
+        <tbody>
+          <tr><td><code>ValidateProductAsync</code></td><td><code>POST /api/regular/products/validate</code></td><td>新增畫面輸入商品序號當下的即時驗證</td></tr>
+          <tr><td><code>AddProductAsync</code></td><td><code>POST /api/regular/products</code></td><td>表單送出、正式 INSERT 前的伺服器端最終防呆</td></tr>
+        </tbody>
+      </table>
+      <p>且新增當下 <code>RpdStatus</code> 是寫死 <code>= 1</code>（<code>AddProductAsync</code> 內），<code>EditProductAsync</code> 不會改動此欄位，目前程式碼中<strong>沒有任何路徑會把 <code>rpd_status</code> 改回非啟用</strong>。現況設計是「一個 pageId 一旦被設定過，就永久佔用、沒有結束機制」，與時間區間完全無關。</p>
+    </div>
+
+    <div class="card green">
+      <h3>未來目標：改為時間區間 overlap 判斷</h3>
+      <p>隨著本次新增 <code>rpd_plan_date_begin</code>／<code>rpd_plan_date_end</code>，方案與商品的關聯改為：<strong>一個 pageId 可以被多個 <code>regular_product</code> 設定列關聯，但同一 pageId 底下，不同設定列的生效區間不可重疊（overlap）</strong>。</p>
+      <div class="code-block">SELECT COUNT(1) FROM regular_product
+WHERE rpd_shop_id = @ShopId
+  AND rpd_page_id  = @PageId
+  AND rpd_status   = 1
+  AND rpd_plan_date_begin < COALESCE(@NewEnd, TIMESTAMP '9999-12-31')
+  AND COALESCE(rpd_plan_date_end, TIMESTAMP '9999-12-31') > @NewBegin</div>
+      <p><code>NULL</code> 視為「無限遠的未來」參與比較，讓永久有效方案（<code>rpd_plan_date_end = NULL</code>）也能正確納入 overlap 判斷。</p>
+    </div>
+
+    <div class="card orange">
+      <h3>✅ 本次範圍定案：生效時間為必填，不支援「永久有效」</h3>
+      <p>依 <strong>VSTS #643392</strong>（EPIC：定期購支援贈品_202607）需求文字明確載明「生效時間：<strong>必填，無預設值</strong>」「生效結束時間須晚於生效開始時間」，<strong>未提及可留空／永久有效</strong>。因此本次範圍定案如下：</p>
+      <ol class="steps">
+        <li><div class="step-desc"><strong>API／畫面層強制 <code>PlanDateBegin</code>／<code>PlanDateEnd</code> 皆為必填</strong>，不接受 null；新增/編輯方案時，若任一欄位為空，前端與後端皆須擋下並提示「此為必填欄位」。</div></li>
+        <li><div class="step-desc"><code>regular_product.rpd_plan_date_end</code> 於 <strong>DB 層仍保留可為 <code>NULL</code> 的彈性</strong>（欄位定義不變），僅是本次透過 API／UI 驗證層強制不得傳入 null，避免因應未來其他建立管道需要用到「永久有效」語意時，還要再異動 DB schema。</div></li>
+        <li><div class="step-desc">前一版「永久有效方案會卡死該 pageId」的 side effect 討論，<strong>本次不會發生</strong>（因為不允許建立 <code>rpd_plan_date_end = NULL</code> 的方案），改列為下方備註，供日後若真的要開放永久方案時參考。</div></li>
+        <li><div class="step-desc">上方 overlap 判斷式維持不變（仍相容 <code>NULL</code> 比較邏輯），作為未來若開放永久方案時可直接沿用的判斷基礎，不需重新設計。</div></li>
+      </ol>
+      <div class="note">
+        <strong>備註（非本次實作範圍，僅記錄以利未來查閱）</strong>：若未來確實開放「效期永久」的方案（<code>rpd_plan_date_end = NULL</code>），則會出現「一個 pageId 一旦被設定為永久有效方案，且沒有下架/結束方案的操作入口，該 pageId 就無法再被任何其他方案關聯」的 side effect，屬於業務上可接受、且與現況（6.1）行為一致的設計，但仍需額外設計「方案下架」功能才能解除卡死狀態。
+      </div>
+    </div>
+
+  </section>
+
+  <section id="page-gift-flag">
+    <h2>🏷️ 6.4 商品頁如何辨別「是否為定期購商品」——不需新增標記欄位</h2>
+    <div class="card teal">
+      <p>延伸第 10.5 節「贈品項目需標記為定期購使用」的討論，特別釐清<strong>商品頁本身</strong>是否也需要類似的標記機制。查證 NineYi.Sms 既有程式碼後，結論是：<strong>不需要，既有欄位＋即時查詢即可滿足，這與贈品品項的標記需求（10.5）是兩件不同的事</strong>。</p>
+      <p>商品「是否為定期購使用」實際上分兩層意思：</p>
+      <table>
+        <thead><tr><th>層級</th><th>意思</th><th>判斷依據</th><th>資料位置</th></tr></thead>
+        <tbody>
+          <tr><td>靜態屬性（商品資格）</td><td>這個商品的交期類型是否為「定期購」，決定它<strong>能不能</strong>被設定進定期購方案</td><td>商品頁本身的交期欄位，既有 <code>SaleProductShippingTypeDefEnum.RegularOrder = 7</code>（<code>BusinessLogic/BE/SaleProducts/SaleProductShippingTypeDefEnum.cs</code>）</td><td>NineYi.Sms 商品資料（既有欄位，非本次新增）</td></tr>
+          <tr><td>動態狀態（目前是否被關聯）</td><td>這個商品<strong>目前實際</strong>有幾組生效中的定期購方案</td><td>需即時查詢 nine1.regularpurchase.v2 的 <code>regular_product</code> 表（<code>rpd_page_id</code>）</td><td>nine1.regularpurchase.v2 端資料庫，不在 NineYi.Sms 本地</td></tr>
+        </tbody>
+      </table>
+      <ul style="margin-top:12px; padding-left:20px; line-height:1.8;">
+        <li>「商品交期＝定期購」既有欄位已可作為新增方案時「商品資格檢核」的依據（對照 VSTS #643392 需求「檢核商品條件：商品交期為『定期購』」），本次規劃無需新增任何商品層級的標記欄位。</li>
+        <li>「商品目前是否有生效中的方案」屬於動態關聯資訊，<strong>不應在 NineYi.Sms 本地另存一個標記欄位去追蹤</strong>，正確作法是透過 9.4／9.5 規劃的查詢 API 即時向 nine1.regularpurchase.v2 查詢，避免雙邊資料不同步（例如方案於 v2 端被刪除，但 SMS 端標記忘了同步清除）的風險。</li>
+        <li>此結論與 10.5 節「贈品項目需可辨別為定期購商品使用」<strong>不是同一件事</strong>：10.5 討論的是<strong>贈品品項</strong>（活動小舖庫存商品）需要被標記為「被定期購佔用」，用途是給庫存/活動小舖系統識別，目前確實<strong>沒有現成機制</strong>，10.5 的缺口分析維持不變，仍需另外向需求方確認範圍；本節（6.4）僅釐清「商品頁本身」不需要比照辦理。</li>
+      </ul>
+    </div>
+
+    <div class="card orange">
+      <h3>6.5 釐清順序：新增定期購方案「不會」新增商品頁，是反過來引用既有商品頁</h3>
+      <p>延伸 6.4 節，特別澄清一個常見的順序誤解：<strong>「新增定期購方案」這個動作，完全不涉及新增/建立商品頁，商品頁必須是早就已經存在、且交期類型已設定為「定期購」的既有資料，定期購方案只是去引用它。</strong></p>
+      <div class="code-block">【第一步：商品在 SMS 早就已經存在（既有商品管理流程，非本次新增）】
+  營運人員在「商品管理」建立一般商品頁時
+    → 選擇「交期」欄位 = 「定期購」（ShippingTypeDef = 7，既有選項，非本次新增）
+    → 這個商品頁就此被標記為「可設定定期購方案的商品」
+        ↓
+【第二步：之後，才去「新增定期購方案」畫面，設定既有商品要怎麼跑定期購】
+  操作人員輸入「商品序號」（ProductNo，就是這個既有商品的 SalePageId）
+    → 呼叫 9.2 驗證 API → 查詢這個 pageId 的 ShippingTypeDef 是否 = 7
+    → 是 → 才允許繼續設定配送週期/次數/贈品等
+    → 不是 → 擋下並提示「此商品交期非定期購，無法設定」</div>
+      <ul style="margin-top:12px; padding-left:20px; line-height:1.8;">
+        <li><strong>確認「是否為定期購商品」的時機，不是商品頁建立當下，而是「新增定期購方案、輸入商品序號當下」</strong>——商品頁本身的「交期＝定期購」屬性，是在商品建立/編輯階段（既有商品管理功能）就已經設定好的既有欄位，定期購方案這邊只負責讀取、驗證，不負責設定。</li>
+        <li>這個「先建立好既有資源、再由定期購方案引用、不會順便新建」的模式，與第 11 章「贈品」的處理方式完全一致（贈品也必須先在既有贈品管理頁面建立好，定期購方案只負責引用，不會呼叫 <code>CreateSaleProductGift</code> 去新建贈品），兩者可互相對照理解。</li>
+        <li>對應既有 API：<code>Api/SalePage/Get/{id}</code>（<code>SalePageController.Get</code> → <code>SalePageService.Get</code>）已可一次查到 <code>ShippingTypeDef</code>（交期）、<code>SellingStartDateTime</code>／<code>SellingEndDateTime</code>（商品銷售起訖時間，用於比對 <code>PlanDateBegin</code>／<code>PlanDateEnd</code>）、<code>ValidFlag</code>（商品頁是否有效）等驗證所需欄位，<strong>9.2 節規劃的驗證 API 可直接複用此既有查詢，不需另外設計商品頁資料結構</strong>。</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ── NineYi.Sms 串接現況與規劃 ────────── -->
+  <section id="sms-status">
+    <h2>🧭 NineYi.Sms（OSM 後台）現況分析</h2>
+    <p>NineYi.Sms 是營運人員實際操作的後台系統，未來將由此站台呼叫 nine1.regularpurchase.v2 的 API，讓營運人員可在 OSM 畫面上設定定期購方案（含贈品活動）。本節先整理 <strong>NineYi.Sms 目前已有的現況</strong>（已串接的 API、前端頁面骨架），下一節再另外規劃本次需新增的內容。</p>
+
+    <div class="card blue">
+    <h3>8.1 現況：已串接的 API（BFF 代理層模式）</h3>
+      <p>目前有兩組「定期購」功能走 <strong>BFF（Backend For Frontend）代理層</strong>設計：OSM 前端 → NineYi.Sms 後端 Controller（登入驗證＋資料轉換）→ 呼叫下游 v2 站台真正的 API。兩組功能皆與本次「定期購方案 + 贈品設定」無關，但架構是本次新增 API 的參考範本。</p>
+
+      <h4 style="margin-top:16px;">(1) 定期購功能設定（商店層級開關）</h4>
+      <table>
+        <thead><tr><th>項目</th><th>內容</th></tr></thead>
+        <tbody>
+          <tr><td>OSM 前端 Controller</td><td><code>Api/RegularShopSetting</code>（<code>RegularShopSettingController.cs</code>）</td></tr>
+          <tr><td>對應下游 v2 端點</td><td><code>GET /api/regular/shop-settings</code>、<code>PUT /api/regular/shop-settings</code>、<code>GET /api/regular/shop-settings/history</code></td></tr>
+          <tr><td>用途</td><td>商店層級「消費者可否自行終止定期購」「消費者可否自行暫停定期購」兩個開關的查詢/更新/異動歷程</td></tr>
+          <tr><td>Request（UpdateSettings）</td><td><code>ShopId</code>（long）、<code>IsCancelRegularEnabled</code>（bool?）、<code>IsSuspendRegularEnabled</code>（bool?）—— 合併更新，至少需提供一個欄位</td></tr>
+          <tr><td>Response（GetSetting）</td><td><code>ShopId</code>、<code>ShopName</code>、<code>IsCancelRegularEnabled</code>（bool）、<code>IsSuspendRegularEnabled</code>（bool）</td></tr>
+          <tr><td>與本次範疇的關係</td><td><span class="badge badge-gray">無關</span> 僅為既有架構參考</td></tr>
+        </tbody>
+      </table>
+
+      <h4 style="margin-top:16px;">(2) 消費者定期購訂單管理（訂單查詢/建單歷程）</h4>
+      <table>
+        <thead><tr><th>項目</th><th>內容</th></tr></thead>
+        <tbody>
+          <tr><td>OSM 前端 Controller</td><td><code>api/RegularOrderManagement</code>（<code>RegularOrderManagementController.cs</code>）</td></tr>
+          <tr><td>對應下游 v2 端點</td><td><code>GET /api/regular/orders</code>（分頁查詢）、<code>GET /api/regular/orders/{id}/history</code>（建單歷程）</td></tr>
+          <tr><td>用途</td><td>客服/營運查詢會員的定期購訂單狀態、建單成功/失敗、暫停/終止操作</td></tr>
+          <tr><td>Request（GetList，摘要）</td><td><code>ShopId</code>、<code>DateOption</code>（NextShipDate/NewCreateDate）、<code>StartDate</code>／<code>EndDate</code>、<code>OrderStatus</code>（Ordering/Pause/Cancel）、<code>OrderResult</code>（Success/Fail）、<code>MemberMobile</code>、<code>MemberCode</code>、<code>SalepageTitle</code>、<code>SalepageId</code>、<code>PlanTitle</code>、<strong><code>PlanId</code>（定期購方案序號，精確比對）</strong>、<code>ShipCount</code>、分頁 <code>PageNo</code>／<code>PageSize</code></td></tr>
+          <tr><td>Response（摘要）</td><td>訂單主鍵 <code>Id</code>、<code>MemberCode</code>、<strong><code>PlanTitle</code>／<code>PlanId</code>（方案名稱快照與序號）</strong>、收件資訊、<code>SalepageId</code>／<code>SKUId</code>／<code>SalepageTitle</code>、<code>ShipPeriodDays</code>、<code>ShipCount</code>、<code>OrderStatus</code>／<code>OrderResultText</code>、各操作按鈕開關</td></tr>
+          <tr><td>HttpClient</td><td><code>RegularShopSettingHttpClient</code>（沿用 <code>Nine1V2.RegularOrder.Url</code>／<code>Api.Key</code> 設定，以 Flurl.Http 封裝）</td></tr>
+          <tr><td>與本次範疇的關係</td><td><span class="badge badge-gray">無關</span> 是查詢「已建立的訂單」，非「建立/編輯方案」；但 <code>PlanId</code>／<code>PlanTitle</code> 欄位證實 v2 站台已有「方案」概念可被引用查詢</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        上述兩組 API 皆採用相同三層架構：<code>Controller</code>（登入驗證＋路由）→ <code>Service</code>（商業邏輯、下游回應轉換）→ <code>HttpClient</code>（Flurl.Http 封裝，共用 <code>Nine1V2.RegularOrder.Url</code>／<code>Nine1V2.RegularOrder.Api.Key</code> 設定）。<strong>本次新增「定期購方案（含贈品設定）」相關 API 時，將直接比照此架構複製一份</strong>（見下一節）。
+      </div>
+    </div>
+
+    <div class="card orange">
+      <h3>8.2 現況：前端頁面骨架已建立但尚無內容</h3>
+      <p>前端（React，<code>ClientApp/package_cloud/commerce/src/pages/RegularPurchase/</code>）已註冊以下路由，但「新增/編輯方案」頁面目前是空殼：</p>
+      <table>
+        <thead><tr><th>Route</th><th>對應頁面</th><th>現況</th></tr></thead>
+        <tbody>
+          <tr><td><code>RegularPurchaseManagement</code></td><td>定期購方案管理（列表頁）</td><td>空殼，僅 <code>&lt;div&gt;定期購方案管理&lt;/div&gt;</code></td></tr>
+          <tr><td><code>RegularPurchaseTemplate/:mode</code>（create/edit/clone/view）</td><td>新增/編輯/複製/檢視方案</td><td>空殼，僅依 mode 顯示對應標題文字，<strong>無任何表單欄位、無 Service、無 Type</strong></td></tr>
+          <tr><td><code>RegularPurchaseCustomerOrder</code></td><td>消費者定期購訂單管理</td><td><span class="badge badge-green">已完整實作</span>（對應 8.1-(2)）</td></tr>
+          <tr><td><code>RegularPurchaseSettings</code></td><td>定期購功能設定</td><td><span class="badge badge-green">已完整實作</span>（對應 8.1-(1)）</td></tr>
+        </tbody>
+      </table>
+      <p>也就是說，截圖「新增定期購方案」畫面（基本設定＋贈品設定）<strong>應該落地在 <code>RegularPurchaseTemplate.tsx</code> 的 create 分支，但目前完全沒有實作</strong>。</p>
+    </div>
+  </section>
+
+  <section id="sms-new-api">
+    <h2>🆕 NineYi.Sms 本次新增規劃</h2>
+    <p>依截圖畫面欄位與本文件第 2、3 節的 <code>regular_product</code> 新欄位設計，NineYi.Sms 端需新增以下 API（比照現況的三層 BFF 架構：<code>RegularProductController</code> → <code>RegularProductService</code> → <code>RegularProductHttpClient</code>，命名比照下游 v2 站台同名 <code>RegularProductController.cs</code>，直接對應 <code>regular_product</code> 資源）：</p>
+
+    <div class="card purple">
+      <h3>9.1 - 9.5 本次需新增的 API（NineYi.Sms → nine1.regularpurchase.v2）</h3>
+
+      <h4 style="margin-top:16px;">9.1 新增定期購方案</h4>
+      <table>
+        <thead><tr><th>項目</th><th>內容</th></tr></thead>
+        <tbody>
+          <tr><td>OSM 前端 Controller（新增）</td><td><code>Api/RegularProduct/Create</code>（<code>RegularProductController</code>，比照下游 v2 站台同名 <code>RegularProductController.cs</code>）</td></tr>
+          <tr><td>對應下游 v2 端點</td><td><code>POST /api/regular/products</code></td></tr>
+          <tr><td>Response</td><td>新增結果（成功/失敗訊息），失敗時比照既有錯誤訊息文案風格</td></tr>
+          <tr><td>對應下游驗證</td><td>商品序號需為定期購交期、非點數商品、尚未結束銷售；生效開始時間須晚於現在時間 10 分鐘以上，生效結束時間須晚於生效開始時間，且開始/結束時間皆不得超出商品銷售時間範圍；同 pageId 需通過本文件 6.2 節 overlap 檢查</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:12px; font-weight:600;">Request 欄位（對應截圖「基本設定＋贈品設定」，依 VSTS #643392 需求核對）</p>
+      <table>
+        <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
+        <tbody>
+          <tr><td><code>ShopId</code></td><td>long</td><td>商店代碼</td></tr>
+          <tr><td><code>Title</code></td><td>string</td><td><strong>非必填</strong>，此名稱不顯示於前台；全形/半形混合上限 20 字，若皆為半形則上限 40 字；輸入或貼上超過上限時前端需自動截斷</td></tr>
+          <tr><td><code>ProductNo</code></td><td>string</td><td><strong>必填</strong>；每個方案只能設定一個商品，同一商品可設定於多個方案（受 6.2 overlap 規則限制）</td></tr>
+          <tr><td><code>PlanDateBegin</code></td><td>datetime</td><td><strong>必填</strong>（依 VSTS 需求本次不支援留空，見第 6.3 節定案）</td></tr>
+          <tr><td><code>PlanDateEnd</code></td><td>datetime</td><td><strong>必填</strong>（本次不支援「永久有效」，見第 6.3 節定案）</td></tr>
+          <tr><td><code>ShipPeriodList</code></td><td>int[]</td><td><strong>必填</strong>，選項限定為 <code>3/7/10/14/15/30/45/60/90/180/365/730</code>（天）</td></tr>
+          <tr><td><code>ShippingCountMode</code></td><td>enum</td><td><strong>必填</strong>，單選：<code>Unlimited</code>（無上限）／<code>CustomerChoice</code>（消費者自選次數）／<code>Fixed</code>（固定次數）</td></tr>
+          <tr><td><code>ShipLimitCount</code></td><td>int?</td><td>當 <code>ShippingCountMode</code> 為 <code>CustomerChoice</code> 或 <code>Fixed</code> 時必填，範圍為 <strong>2~99 的正整數</strong>；<code>Unlimited</code> 時免填</td></tr>
+          <tr><td><code>AllowOneTimePurchase</code></td><td>bool</td><td><strong>必填</strong>，是否允許消費者在此商品頁「單次購買（不訂閱定期購）」，預設 <code>false</code>（僅提供『定期購』購買選項）；<code>true</code> 時同時提供『定期購』與『僅購買一次』兩種購買方式</td></tr>
+          <tr><td><code>IsGiftEnabled</code></td><td>bool</td><td><strong>必填</strong>，預設「關閉」；<strong>僅為 OSM 端畫面控制欄位</strong>，不會透傳給 v2 API、也不會存成獨立 DB 欄位，v2 端由 <code>Promotions</code> 陣列是否為空來判斷</td></tr>
+          <tr><td><code>Promotions</code></td><td><code>List&lt;PromotionRuleRequest&gt;</code></td><td>僅當 <code>IsGiftEnabled=true</code> 時必填，結構對應本文件第 3 節 JSON Schema；<strong>本次 VSTS 範圍僅使用 <code>type=GIFT</code> 且 <code>triggerMode=INTERVAL</code></strong>（對應需求「配送每滿 X 次，送贈品 Y 件」），<code>DISCOUNT</code>／<code>POINT</code> 與 <code>SEQUENCE</code>／<code>THRESHOLD</code> 模式為既有 schema 的預留擴充，本次不實作</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <strong><code>Promotions</code> 內 GIFT 規則細節（對應需求 2、3）</strong>：<code>interval</code> 即需求中的 <code>X</code>（配送每滿 X 次觸發），範圍為 2 至「最高配送次數」之間的正整數（例如選「消費者自選次數 3-5次」則 <code>interval</code> 僅能為 2~5；選「固定次數 6 次」則僅能為 2~6）；需求中的 <code>Y</code>（送贈品 Y 件）並非單一欄位，而是透過 <code>items[].qty</code> 加總表達（<code>items.length &lt;= 10</code>、單品 <code>1 &lt;= qty &lt;= 10</code>、<code>sum(items[].qty) &lt;= 50</code>）；<code>outOfStockAction</code> 對應「贈品缺貨處理」（<code>PROCEED</code>＝照常建單／<code>SKIP_PERIOD</code>＝不建立訂單），為必填欄位。
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0;">PromotionRuleRequest 欄位定義（Promotions 陣列內單一元素，本次 VSTS 範圍僅會有 0 或 1 筆）</h4>
+        <table>
+          <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+          <tr><td><code>Id</code></td><td>string（GUID）</td><td>本設定列內唯一 id，用於訂單觸發時快照回溯來源規則；<strong>由 OSM 後端在收到 Request 後自動產生（GUID），前端 Request 不需要、也不應該帶入此欄位</strong></td></tr>
+          <tr><td><code>Type</code></td><td>enum（string）</td><td>活動類型，值域 GIFT／DISCOUNT／POINT；<strong>本次 VSTS #643392 僅使用 GIFT</strong>，DISCOUNT／POINT 為既有 schema 預留擴充，本次不實作、後端可先擋掉非 GIFT 的輸入，<strong>必填</strong></td></tr>
+          <tr><td><code>TriggerMode</code></td><td>enum（string）</td><td>觸發模式，值域 INTERVAL／SEQUENCE／THRESHOLD；<strong>本次僅使用 INTERVAL</strong>，其餘為既有 schema 預留擴充，本次不實作，<strong>必填</strong></td></tr>
+          <tr><td><code>Interval</code></td><td>int</td><td>TriggerMode=INTERVAL 時必填：每 N 期觸發一次（配送每滿 X 次送贈品的 X），範圍為 2 至「最高配送次數」之間的正整數（依 ShippingCountMode／ShipLimitCount 動態決定上限）</td></tr>
+          <tr><td><code>OutOfStockAction</code></td><td>enum（string）</td><td>Type=GIFT 專用，值域 PROCEED（照常建單）／SKIP_PERIOD（不建立訂單），<strong>必填</strong></td></tr>
+          <tr><td><code>Items</code></td><td><code>List&lt;PromotionGiftItemRequest&gt;</code></td><td>Type=GIFT 專用，本次觸發要送的贈品清單，可一次送多個不同贈品；限制 Items.Count&lt;=10、sum(Items[].Qty)&lt;=50，<strong>必填，至少 1 筆</strong></td></tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0;">PromotionGiftItemRequest 欄位定義（Items 陣列內單一元素，對應畫面每一筆已驗證的贈品項目）</h4>
+        <table>
+          <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+          <tr><td><code>PageId</code></td><td>long</td><td>贈品序號，即該贈品自己的 SalePageId（見第 11 章查證），<strong>必填</strong>；新增時需先透過既有「批次驗證贈品序號」機制（CheckIsPromotionFreeGiftValid）驗證為合法 PromotionFreeGift 類型</td></tr>
+          <tr><td><code>Sku</code></td><td>string</td><td>贈品的 SKU 編號，驗證通過後由後端查詢帶出，前端唯讀顯示</td></tr>
+          <tr><td><code>Name</code></td><td>string</td><td>贈品名稱，驗證通過後由後端查詢帶出，前端唯讀顯示</td></tr>
+          <tr><td><code>PicUrl</code></td><td>string</td><td>贈品圖片網址，驗證通過後由後端查詢帶出，前端唯讀顯示</td></tr>
+          <tr><td><code>Qty</code></td><td>int</td><td>本次送出的數量，操作人員手動輸入，範圍 1&lt;=Qty&lt;=10，<strong>必填</strong></td></tr>
+        </table>
+        <div class="code-block">// 前端會送入的實際內容範例（Request 中不含 id，由後端產生）
+"promotions": [
+  {
+    "type": "GIFT",
+    "triggerMode": "INTERVAL",
+    "interval": 3,
+    "outOfStockAction": "PROCEED",
+    "items": [
+      { "pageId": 50001, "sku": "SKU-GIFT-123", "name": "保溫杯", "picUrl": "https://cdn.../a.jpg", "qty": 2 },
+      { "pageId": 50002, "sku": "SKU-GIFT-456", "name": "環保袋", "picUrl": "https://cdn.../b.jpg", "qty": 1 }
+    ]
+  }
+]</div>
+        <p style="font-size:12.5px; color:#495057;">這份範例逐欄位對應到上面 PromotionRuleRequest／PromotionGiftItemRequest 兩張表，細節說明見第 13.2 節。</p>
+      </div>
+
+      <div class="note" style="border-left-color:#f59f00;">
+        <strong><code>ShippingCountMode</code> enum 值定義</strong>（原命名 <code>ShipLimitStatus</code> 經討論後正式改名，理由：舊名稱看不出是在講「配送次數的限制方式」，<code>ShippingCountMode</code> 更貼近語意）：
+        <ul style="padding-left:20px; margin-top:6px;">
+          <li><code>Unlimited</code>＝1：無上限，持續配送到消費者自行取消訂閱為止</li>
+          <li><code>CustomerChoice</code>＝2：有上限，但配送次數由消費者自己選擇（例如 3~5 次自選）</li>
+          <li><code>Fixed</code>＝3：固定次數，配滿系統設定的次數即自動終止，消費者不能自行選擇（畫面提示「僅支援 APP 25.12 以上版本」，見 12.4 節）</li>
+        </ul>
+        <p style="margin-top:8px;">⚠️ <strong>待討論</strong>：<code>ShippingCountMode</code> 這個命名雖然已比原本 <code>ShipLimitStatus</code> 更清楚，但仍有人覺得不夠直覺（容易與「配送週期」搞混），<strong>尚未定案</strong>，留待後續確認是否有更好的命名。</p>
+      </div>
+
+      <h4 style="margin-top:16px;">9.2 驗證商品序號（新增畫面即時驗證）</h4>
+      <table>
+        <thead><tr><th>項目</th><th>內容</th></tr></thead>
+        <tbody>
+          <tr><td>OSM 前端 Controller（新增）</td><td><code>Api/RegularProduct/Validate</code></td></tr>
+          <tr><td>對應下游 v2 端點</td><td><code>POST /api/regular/products/validate</code></td></tr>
+          <tr><td>Request 欄位</td><td><code>ShopId</code>、<code>ProductNo</code>、<code>PlanDateBegin</code>／<code>PlanDateEnd</code>（用於 overlap 檢查）</td></tr>
+          <tr><td>Response</td><td>是否可設定（<code>IsValid</code>）、若不可設定之錯誤訊息（例如「此商品序號在此期間已被其他定期購方案設定」，需因應 overlap 邏輯調整既有全有全無錯誤文案，見 6.3）</td></tr>
+          <tr><td>呼叫時機</td><td>使用者於新增畫面點擊「新增商品」/輸入商品序號當下</td></tr>
+        </tbody>
+      </table>
+
+      <h4 style="margin-top:16px;">9.3 編輯定期購方案</h4>
+      <table>
+        <thead><tr><th>項目</th><th>內容</th></tr></thead>
+        <tbody>
+          <tr><td>OSM 前端 Controller（新增）</td><td><code>Api/RegularProduct/Edit</code></td></tr>
+          <tr><td>對應下游 v2 端點</td><td><code>PUT /api/regular/products/{productNo}</code></td></tr>
+          <tr><td>Request 欄位</td><td>同「新增」，但不可變更 <code>ProductNo</code>（商品序號綁定後不可更換，比照既有 <code>EditProductAsync</code> 行為）</td></tr>
+          <tr><td>Response</td><td>更新結果</td></tr>
+        </tbody>
+      </table>
+
+      <h4 style="margin-top:16px;">9.4 查詢單一方案（供編輯頁載入既有資料 / 列表頁使用）</h4>
+      <table>
+        <thead><tr><th>項目</th><th>內容</th></tr></thead>
+        <tbody>
+          <tr><td>OSM 前端 Controller（新增）</td><td><code>Api/RegularProduct/Get</code></td></tr>
+          <tr><td>對應下游 v2 端點</td><td><code>GET /api/regular/products/{productNo}</code></td></tr>
+          <tr><td>Response 欄位</td><td>對應新增/編輯的所有欄位，含 <code>PlanDateBegin</code>／<code>PlanDateEnd</code>／<code>Promotions</code>（<code>rpd_promotion_json</code> 反序列化後的結構）</td></tr>
+        </tbody>
+      </table>
+
+      <h4 style="margin-top:16px;">9.5 方案列表查詢（列表頁所需）</h4>
+      <table>
+        <thead><tr><th>項目</th><th>內容</th></tr></thead>
+        <tbody>
+          <tr><td>OSM 前端 Controller（新增）</td><td><code>Api/RegularProduct/GetList</code></td></tr>
+          <tr><td>對應下游 v2 端點</td><td><code>GET /api/regular/products</code>（分頁查詢，比照既有 <code>GetListAsync</code>）</td></tr>
+          <tr><td>Request 欄位</td><td><code>ShopId</code>、分頁 <code>PageNo</code>／<code>PageSize</code>，及既有列表頁篩選條件（方案名稱、商品序號等，待與 UI 設計確認）</td></tr>
+          <tr><td>Response 欄位</td><td>方案清單摘要（方案名稱、商品序號、生效期間、贈品開關狀態、啟用狀態等）</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        以上 9.1-9.5 為依現有畫面與資料設計推導出的<strong>規劃草案</strong>，實際 Request/Response 欄位命名與是否需要額外欄位，需待與 nine1.regularpurchase.v2 端 API 規格文件（或該專案 Swagger）逐一核對後定案，本節僅先行記錄設計方向與對應關係，作為後續開發依據。
+      </div>
+    </div>
+  </section>
+
+  <section id="vsts-gap">
+    <h2>🕳️ VSTS #643392 需求缺口盤點</h2>
+    <p>比對 VSTS #643392（EPIC：定期購支援贈品_202607）完整需求文字與本文件第 8、9 章現有規劃，整理出以下<strong>尚未涵蓋或涵蓋不完整</strong>的項目，作為後續補件依據。</p>
+
+    <div class="card red">
+      <h3>10.1 缺漏：少一支「贈品序號驗證／查詢」API</h3>
+      <p>需求「3. 新增贈品選項流程」描述的是新增畫面上一個<strong>獨立的、即時互動的批次查詢動作</strong>：textarea 貼上多筆贈品序號（單次上限 10 筆）→ 後端逐筆檢查 → 回傳有誤序號清單（彈窗顯示＋提供複製功能）→ 重複序號<strong>直接靜默略過、不列入有誤、不提示</strong>→ 若加總後超過總上限 10 筆，另外顯示「超過贈品選項數量上限」彈窗。</p>
+      <p>這不是單純把 <code>Promotions.items</code> 塞進 9.1 <code>Add</code> API 就能滿足的需求，目前 9.1-9.5 規劃<strong>完全沒有這一支 API</strong>，需要新增：</p>
+      <table>
+        <thead><tr><th>項目</th><th>內容</th></tr></thead>
+        <tbody>
+          <tr><td>OSM 前端 Controller（新增）</td><td><code>Api/RegularProduct/GiftItems/Validate</code></td></tr>
+          <tr><td>對應下游 v2 端點（建議新增）</td><td><code>POST /api/regular/products/gift-items/validate</code></td></tr>
+          <tr><td>Request 欄位</td><td><code>ShopId</code>、<code>GiftNoList</code>（string[]，單次最多 10 筆）</td></tr>
+          <tr><td>Response 欄位</td><td>驗證成功清單（含贈品圖片、名稱、序號、庫存數量）、有誤序號清單（序號不存在或非「活動贈品」類型）</td></tr>
+          <tr><td>特別規則</td><td>重複序號（同批次內重複，或與既有已新增贈品重複）<strong>不落入有誤清單，直接靜默略過</strong>，此規則容易被忽略，需特別提醒實作與測試</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card red">
+      <h3>10.2 缺漏：9.2「驗證商品序號」的 Response 欄位不完整</h3>
+      <p>需求「商品頁檢核正確：顯示商品名稱、商品主圖、商品銷售時間」，但目前 9.2 的 Response 只規劃了 <code>IsValid</code> + 錯誤訊息，<strong>未包含商品名稱／主圖／銷售時間</strong>這幾個畫面顯示用欄位，需要補進 9.2 Response（或另外新增一支查商品資訊的 API）。</p>
+    </div>
+
+    <div class="card orange">
+      <h3>10.3 缺漏：9.4「查詢單一方案」未涵蓋配送方式／付款方式</h3>
+      <p>需求「5. 配送方式及付款方式」要求顯示該商品的配送方式、付款方式資料（唯讀，來源為商品頁本身既有設定，非本次新增欄位）。目前 9.4 Response 僅列出 <code>PlanDateBegin</code>／<code>PlanDateEnd</code>／<code>Promotions</code>，未納入這兩項商品既有資訊，需確認是否由 <code>Get</code> API 一併回傳，或前端另行呼叫既有商品頁 API 取得。</p>
+    </div>
+
+    <div class="card orange">
+      <h3>10.4 缺漏：「示意圖」彈窗與多語系需求未被記錄</h3>
+      <p>需求「商品頁購買設定」旁有「示意圖」彈窗，且<strong>需支援多語系</strong>。此屬於前端靜態圖片／文案，但因涉及多語系，需走既有 Language Tool 抽多語系流程。目前文件完全未提及此項，容易於開發規劃時遺漏，需另外排入前端任務並確認多語系 Key 命名。</p>
+    </div>
+
+    <div class="card orange">
+      <h3>10.5 缺漏：贈品項目「辨別為定期購商品使用」的標記機制歸屬未定</h3>
+      <p>需求「2. 贈品設定」與「3. 新增贈品選項流程」皆提到「需可辨別此贈品為定期購商品所使用」。此暗示贈品品項需要某種標記／分類機制，讓其他系統（如活動小舖／庫存管理）能識別「此贈品被定期購佔用」。目前文件僅將贈品資料視為 <code>rpd_promotion_json</code> 的內容快照，<strong>未討論此標記要寫在哪裡、由哪個系統負責維護</strong>，可能牽涉跨系統的庫存鎖定邏輯，需另外向需求方確認範圍（純顯示用 tag，或涉及庫存預留機制）。</p>
+    </div>
+
+    <div class="card gray">
+      <h3>10.6 關聯需求：商品頁狀態依定期購方案數量鎖定（依賴 #649890，本文件未涵蓋）</h3>
+      <p>另有一張關聯需求：商品「目前 0 組定期購方案」時（無論從未建立過，或既有方案已全數刪除降回 0 組），商品頁狀態應鎖定為「關閉」且不可切換；商品新建立第一組方案後解鎖。此需求依賴 #649890（定期購方案刪除規則）尚未定案，且改動範圍屬於「商品頁管理」模組而非本文件的 <code>RegularProductController</code>，<strong>目前本文件完全未涵蓋</strong>，僅在此記錄提醒：待 #649890 定案後，需另開文件或章節追蹤此聯動邏輯的開發歸屬。</p>
+    </div>
+  </section>
+
+  <section id="gift-relation">
+    <h2>🎁 贈品定義、新增機制與定期購方案的關聯</h2>
+    <p>延伸第 10.1、10.5 節的缺口，本章查證 NineYi.Sms 既有「贈品」相關程式碼，釐清三件事：<strong>贈品目前怎麼被定義／怎麼被新增／怎麼分類活動贈品</strong>，以及<strong>定期購方案要如何跟既有贈品機制關聯</strong>。</p>
+
+    <div class="card gray">
+      <h3>11.0 先搞懂資料階層：SalePage 是商品頁，SaleProduct 是頁面底下的銷售項目</h3>
+      <p>在談贈品之前，必須先釐清 NineYi.Sms 商品資料的階層關係，否則容易誤解「贈品」跟「一般商品」的資料是怎麼疊在一起的。</p>
+      <div class="code-block">SalePage（商品頁，SalePage_Id）
+   —— 一個「頁面」：決定消費者看到的標題、圖片、售價、上下架時間
+   │
+   └─ SaleProduct（頁面底下掛的銷售項目，SaleProduct_SalePageId → 指回 SalePage_Id）
+        —— 關鍵：一個 SalePage 底下可以掛「多筆」SaleProduct！
+        —— 用旗標欄位區分這筆 SaleProduct 在頁面中扮演的角色：
+             SaleProduct_IsMajor         = true  → 本頁的「主商品」
+             SaleProduct_IsGift          = true  → 本頁綁定的「滿額贈贈品」項目
+             SaleProduct_IsExtra         = true  → 本頁的「加價購」項目
+             SaleProduct_IsOptionalGift  = true  → 本頁的「任選贈品」項目</div>
+      <p>依 <code>SaleProductConfiguration.cs</code> 的 FK 設定 <code>HasRequired(a =&gt; a.SalePage).WithMany(b =&gt; b.SaleProduct)</code>，證實這是「一對多」：<strong>一個 SalePage 可以對應多筆 SaleProduct</strong>。</p>
+      <p style="margin-top:12px;">延伸出兩種完全不同的「送贈品」情境，容易搞混，先在這裡分清楚：</p>
+      <table>
+        <thead><tr><th>情境</th><th>白話說法</th><th>資料上怎麼實現</th><th>是否需要「另外建立」一個贈品商品頁</th></tr></thead>
+        <tbody>
+          <tr><td><strong>A. 買這個商品就附贈</strong>（商品贈品／買就送）</td><td>買 A 商品，加送隨附的小贈品，贈品本身不是拿來單獨賣的</td><td>同一個 SalePage（就是 A 商品自己的頁面）底下，多掛一筆 SaleProduct（<code>IsMajor=false, IsGift=true</code> 或 <code>IsOptionalGift=true</code>）</td><td><span class="badge badge-gray">不需要</span>贈品資訊直接掛在原商品頁下面，沒有獨立序號</td></tr>
+          <tr><td><strong>B. 活動贈品</strong>（滿額贈／滿件贈／贈品券兌換／本次定期購要用的）</td><td>贈品是「共用池」概念，可以被很多個不同活動／方案引用，本身要有獨立庫存、獨立管理</td><td>贈品是<strong>它自己獨立的一個 SalePage</strong>（有自己的 SalePage_Id），其下掛一筆 SaleProduct（<code>IsMajor=true</code>，因為對「贈品」這個頁面而言它自己就是主件），並透過 <code>SaleProductGiftType = PromotionFreeGift</code> 標記這個頁面是拿來當「活動贈品」用</td><td><span class="badge badge-orange">需要</span>必須先在「贈品管理」頁面建立好，取得屬於它自己的 SalePageId</td></tr>
+        </tbody>
+      </table>
+      <div class="note"><strong>定期購贈品屬於情境 B</strong>：因為同一個贈品要能被 X 期觸發、被多組定期購方案引用，甚至未來可能同時被滿額贈活動共用，所以走的是「獨立商品頁」的活動贈品機制，不是掛在原商品底下的買就送。</div>
+    </div>
+
+    <div class="card blue">
+      <h3>11.1 贈品目前如何被定義與新增（既有機制，非本次新增）</h3>
+      <p>NineYi.Sms 早已有一套完整的「贈品」管理機制，位於 <code>SaleProductController</code>（<code>Api/SaleProduct/*</code>）＋ <code>SaleProductService</code>：</p>
+      <table>
+        <thead><tr><th>操作</th><th>Controller Route</th><th>說明</th></tr></thead>
+        <tbody>
+          <tr><td>查詢贈品庫存清單</td><td><code>GetSaleProductGiftList</code></td><td>依商店、上下架時間、活動序號、庫存量等條件查詢，回傳 <code>SaleProductGiftDataEntity</code> 清單</td></tr>
+          <tr><td>查詢單筆贈品資料</td><td><code>GetSaleProductGift/{shopId}/{id}</code></td><td><code>id</code> 即贈品的商品頁序號（<code>SalePageId</code>），回傳完整贈品資料（含庫存、圖片、物流/付款方式等）</td></tr>
+          <tr><td>新增贈品</td><td><code>CreateSaleProductGift</code></td><td>Request 為 <code>SaleProductGiftUpdateEntity</code>，本質上是<strong>建立一個新的商品頁（SalePage）</strong>，只是被歸類為「贈品」用途</td></tr>
+          <tr><td>更新贈品</td><td><code>UpdateSaleProductGift</code></td><td>同上，更新既有贈品的庫存、上下架時間等資料</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:12px;">也就是說：<strong>贈品在資料層級上就是一個「商品頁」（SalePage）</strong>，跟一般銷售商品共用同一套商品頁基礎設施（<code>SaleProductId</code>／<code>SkuId</code>／<code>SaleProductDescId</code> 等欄位皆存在），差異只在於多了 <code>SaleProductGiftType</code> 這個分類欄位（見 11.2）與贈品專屬欄位（<code>ReqQty</code> 已發送數量、<code>SafetyStockQty</code> 安全庫存等）。</p>
+    </div>
+
+    <div class="card green">
+      <h3>11.2 「活動贈品」如何被定義（分類依據）</h3>
+      <p><code>SaleProductGiftUpdateEntity.SaleProductGiftType</code>（string 列舉值）是判斷贈品類型的欄位，前端下拉選單（<code>saleProductGiftEdit.controller.ts</code>）目前提供兩種類型：</p>
+      <table>
+        <thead><tr><th><code>SaleProductGiftType</code> 值</th><th>中文名稱</th><th>說明</th></tr></thead>
+        <tbody>
+          <tr><td><code>SalePageFreeGift</code></td><td>商品贈品（買就送）</td><td>綁定特定商品頁，消費者購買該商品頁時直接附贈，不透過活動引擎判斷</td></tr>
+          <tr><td><code>PromotionFreeGift</code></td><td><strong>活動贈品</strong>（滿額贈／滿件贈／贈品券兌換）</td><td>透過既有「活動引擎」（PromotionEngine）的滿額/滿件規則觸發贈送，<code>SaleProductService.CheckIsPromotionFreeGiftValid()</code> 即用來驗證一批商品頁序號是否皆為此類型</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:12px;">VSTS #643392 需求中所有提到的「使用『活動贈品』」，對應的就是 <code>SaleProductGiftType = PromotionFreeGift</code> 這個既有分類，<strong>本次不需要新增贈品類型，只需要沿用既有的 <code>PromotionFreeGift</code> 分類</strong>。</p>
+    </div>
+
+    <div class="card purple">
+      <h3>11.3 既有「批次驗證贈品序號」機制可直接參考（呼應 10.1 缺口）</h3>
+      <p><code>SaleProductService</code> 已有現成的<strong>批次驗證商品頁序號是否合法</strong>的 pattern：</p>
+      <pre><code>// 驗證是否為合法的活動贈品
+public SalePageIdCheckValidResultEntity CheckIsPromotionFreeGiftValid(long shopId, List&lt;long&gt; salePageIds)
+{
+    var data = this._saleProductRepository.GetPromotionFreeGiftSalePageId(salePageIds, shopId);
+    var exceptIds = salePageIds.Where(a =&gt; data.Contains(a) == false);
+
+    return new SalePageIdCheckValidResultEntity
+    {
+        FailCount = exceptIds.Count(),
+        FailIds = exceptIds.ToList(),
+        SuccessCount = salePageIds.Count - exceptIds.Count()
+    };
+}</code></pre>
+      <ul style="margin-top:12px; padding-left:20px; line-height:1.8;">
+        <li><code>SalePageIdCheckValidResultEntity</code>（<code>FailCount</code>／<code>FailIds</code>／<code>SuccessCount</code>）這個既有回傳結構，<strong>與 10.1 節規劃的「贈品序號驗證／查詢」API 需求高度吻合</strong>，10.1 建議新增的 <code>Api/RegularProduct/GiftItems/Validate</code> 可直接比照此架構實作。</li>
+        <li>驗證邏輯：判斷傳入序號是否存在、且 <code>SaleProductGiftType = PromotionFreeGift</code>（活動贈品），不合格者列入 <code>FailIds</code>。</li>
+        <li>重複序號的靜默略過規則（VSTS 需求特別要求）<strong>需要額外補在 <code>RegularProductService</code> 這層</strong>，因為既有 <code>CheckIsPromotionFreeGiftValid</code> 本身不處理輸入去重，此為本次新增邏輯需自行實作的部分。</li>
+        <li>驗證成功後，畫面需顯示的圖片/名稱/庫存數量，可透過既有 <code>GetSaleProductGift</code> 或 <code>GetSaleProductGiftList</code> 取得，不需重新設計欄位。</li>
+      </ul>
+    </div>
+
+    <div class="card orange">
+      <h3>11.4 贈品與定期購方案的關聯方式（資料流向釐清）</h3>
+      <p>依前述機制，定期購方案與贈品的關聯關係如下：</p>
+      <ol class="steps">
+        <li><div class="step-desc"><strong>贈品本身的建立與維護，完全沿用既有 <code>SaleProduct</code> 贈品機制</strong>（<code>SaleProductGiftType = PromotionFreeGift</code>），本次規劃<strong>不需要</strong>在 NineYi.Sms 新增另一套贈品建立流程。</div></li>
+        <li><div class="step-desc"><strong>定期購方案（<code>regular_product</code>）只儲存贈品的「引用關係」</strong>：<code>rpd_promotion_json</code> 內 <code>items[]</code> 陣列僅記錄贈品的 <code>pageId</code>／<code>sku</code>／<code>name</code>／<code>picUrl</code>／<code>qty</code>（見本文件第 3 節），這些內容是<strong>新增方案當下向既有贈品資料查詢後寫入的快照</strong>，並非另建一份贈品主檔。</div></li>
+        <li><div class="step-desc"><strong>「新增贈品選項流程」（10.1）的批次驗證，驗證的對象就是既有的活動贈品商品頁</strong>，通過驗證後，只是把該贈品的 <code>pageId</code>／基本資訊組進 <code>Promotions</code> JSON，不會呼叫 <code>CreateSaleProductGift</code> 去新建贈品——若營運人員要用的贈品序號不存在，必須<strong>先到既有「贈品管理」頁面建立好該贈品</strong>，定期購新增畫面只負責「引用」而非「建立」。</div></li>
+        <li><div class="step-desc">呼應 10.5 節缺口：既有 <code>SaleProductGiftType</code> 分類欄位<strong>只能區分「商品贈品」vs「活動贈品」兩種既有用途，無法標記「此贈品目前被定期購方案佔用」</strong>，這是本次真正的缺口所在——若庫存/活動小舖系統需要辨識「此贈品被定期購鎖定」，需另外設計標記機制（例如新增 <code>SaleProductGiftType = RegularOrderGift</code> 分類，或另建一張引用關聯表記錄「哪些贈品被哪些 <code>regular_product</code> 引用」），10.5 節的待確認事項維持不變，本節補充的是「可行方案方向」而非最終定案。</div></li>
+      </ol>
+    </div>
+
+    <div class="card red">
+      <h3>11.5 完整情境還原：操作人員從 0 到 1 設定「定期購送贈品」的實際步驟</h3>
+      <p>把 11.0-11.4 串成一個完整、好懂的操作情境：</p>
+      <div class="code-block">【第一步：先在「贈品管理」頁面建立好活動贈品（既有功能，非本次新增）】
+  操作人員開啟 EditGift.cshtml（新增贈品視窗）
+    → 贈品類型選「活動贈品(滿額贈/滿件贈/贈品券兌換)」= PromotionFreeGift
+    → 填寫 Title／OuterId／庫存／圖片／物流付款方式等
+    → 送出 → 呼叫 CreateSaleProductGift
+    → 後端建立一個全新、獨立的 SalePage（連帶掛一筆 IsMajor=true 的 SaleProduct）
+    → 取得這個贈品自己的 SalePageId（例如 50001）
+        ↓
+【第二步：到「新增定期購方案」畫面，引用剛剛建立好的贈品】
+  操作人員開啟贈品設定：
+    IsGiftEnabled = 開啟
+        ↓
+  在「新增贈品選項」流程貼上贈品序號 50001（可一次貼多筆，最多 10 筆／次）
+        ↓
+  前端送出查詢 → 呼叫 10.1 節規劃的驗證 API（比照既有 CheckIsPromotionFreeGiftValid 架構）
+    → 後端逐筆檢查：
+       a. 序號是否存在
+       b. 該序號的 SaleProductGiftType 是否為 PromotionFreeGift（活動贈品）
+       c. 是否與本批次或既有清單重複（重複則靜默略過，不提示）
+    → 序號有誤（不存在 / 類型不對）→ 彈窗列出，供「繼續新增」或「重新確認」
+        ↓
+  驗證通過的序號，連同查到的名稱／圖片／庫存，寫入畫面上的「贈品內容」清單
+    → 操作人員設定每個贈品的「數量」（qty）
+        ↓
+【第三步：設定觸發條件並儲存方案】
+  設定「配送每滿 X 次，送贈品」→ 對應 rpd_promotion_json 的 interval
+  設定「缺貨處理」→ 對應 outOfStockAction
+        ↓
+  儲存方案 → 通過 6.2 overlap 檢查等驗證後
+    → 將上述贈品清單（pageId/sku/name/picUrl/qty）連同 X／缺貨處理，
+      整包寫入 regular_product.rpd_promotion_json（快照，不建立新贈品主檔）</div>
+      <p style="margin-top:12px; font-weight:600;">這個流程明確回答三個常見疑問：</p>
+      <ul style="padding-left:20px; line-height:1.9;">
+        <li><strong>Q：定期購的贈品是不是要先額外建立活動贈品？</strong><br/>A：<strong>是的，必須先建立。</strong> 定期購方案的新增畫面只負責「輸入序號→驗證→引用」，完全不會幫你新建贈品；如果序號對應的贈品還沒建立，或建立時類型選錯（選了「商品贈品」而非「活動贈品」），驗證都會失敗。</li>
+        <li><strong>Q：既有的一般商品頁能不能直接變成贈品？</strong><br/>A：<strong>不能直接變身。</strong> 贈品是它自己獨立的一個 SalePage（獨立序號、獨立庫存），跟一般販售商品是兩筆分開的商品頁資料；「一般商品」與「贈品」唯一的橋樑是操作人員手動重新建立一筆贈品，資料上沒有「一鍵轉換」的機制。</li>
+        <li><strong>Q：贈品序號、SalePageId、SaleProductId 是什麼關係？</strong><br/>A：<strong>贈品序號＝該贈品自己的 SalePageId</strong>。這個 SalePage 底下掛一筆 SaleProduct（因為對贈品頁面而言，它自己就是主件，<code>IsMajor=true</code>），SaleProductId 只是這筆內部銷售項目的識別碼，操作人員平常看到、填寫、引用的都是 SalePageId。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="v2-gap">
+    <h2>🚧 對照截圖畫面 + 實查 nine1.regularpurchase.v2 現況：Request 欄位總表與重大落差發現</h2>
+    <p>依 2026-08-03 截圖（新增定期購方案畫面：基本設定／贈品設定／配送付款方式三段），重新逐欄位比對 VSTS #643392 需求文字，<strong>並實際查看 nine1.regularpurchase.v2 專案現有程式碼</strong>，發現 SMS 端規劃與 v2 端現況存在重大落差，記錄如下。</p>
+
+    <div class="card">
+      <h3>12.1 截圖畫面逐欄位比對結果</h3>
+      <table>
+        <tr><th>畫面欄位</th><th>對應 Request 欄位</th><th>比對結果</th></tr>
+        <tr><td>方案名稱</td><td><code>Title</code></td><td>✅ 與文件 9.1 節一致（6/20 字數提示、全半形規則）</td></tr>
+        <tr><td>定期購商品頁序號</td><td><code>ProductNo</code></td><td>✅ 一致；卡片顯示「商品名稱＋商品銷售時間」證實 9.2 驗證 API 需回傳這兩項</td></tr>
+        <tr><td>定期購方案生效時間</td><td><code>PlanDateBegin</code>／<code>PlanDateEnd</code></td><td>✅ 一致，畫面提示「方案生效時間需介於商品銷售時間內」對應 6.3／6.5 節規則</td></tr>
+        <tr><td>配送週期設定</td><td><code>ShipPeriodList</code></td><td>✅ 一致，12 個選項天數完全吻合</td></tr>
+        <tr><td>配送次數設定</td><td><code>ShippingCountMode</code>／<code>ShipLimitCount</code></td><td>⚠️ 新發現缺口：「固定次數」提示「僅支援 APP 25.12 以上版本」，VSTS 需求與文件皆未記錄，見 12.4</td></tr>
+        <tr><td>商品頁購買設定</td><td><code>AllowOneTimePurchase</code></td><td>✅ 一致</td></tr>
+        <tr><td>贈送贈品</td><td><code>IsGiftEnabled</code></td><td>✅ 一致</td></tr>
+        <tr><td>配送每滿 N 次，送贈品</td><td><code>Promotions[].interval</code></td><td>✅ 一致</td></tr>
+        <tr><td>贈品缺貨處理</td><td><code>Promotions[].outOfStockAction</code></td><td>✅ 一致</td></tr>
+        <tr><td>贈品項目清單</td><td><code>Promotions[].items[]</code></td><td>✅ 一致，畫面「共 3 種，合計 13/50 件」印證數量限制</td></tr>
+        <tr><td>配送方式及付款方式</td><td>（唯讀顯示，非 Request 欄位）</td><td>✅ 確認為唯讀顯示既有商品頁設定，非新增方案輸入欄位</td></tr>
+      </table>
+    </div>
+
+    <div class="card orange">
+      <h3>12.2 重大發現：nine1.regularpurchase.v2 目前已有 RegularProductController，但完全不支援本次新欄位</h3>
+      <p>實查發現該站台<strong>已經有一支 RegularProductController（路由 api/regular/products）在運作</strong>，但這是<strong>沿用 V1 PHP 舊功能搬遷過來的版本</strong>，完全沒有實作本次「生效時間」「贈品」相關的任何欄位：</p>
+      <div class="code-block">// ProductAddRequest.cs（v2 端現有，非本次新增）
+public class ProductAddRequest
+{
+    public long ShopId { get; set; }
+    public long ProductNo { get; set; }
+    public List&lt;object&gt; ProductShippingPeriod { get; set; } = [];   // 未型別化
+    public int ProductShippingSet { get; set; }                      // 1=無限制,2=有限制,3=固定次數
+    public int? ProductShippingMax { get; set; }
+    public int? ProductShippingFixed { get; set; }
+    public int ProductPurchaseOption { get; set; }                   // 1=僅定期購,2=定期購+一次性
+    public string OperatorName { get; set; } = string.Empty;
+}</div>
+      <p>同時 <code>RegularProductEntity</code>（對應 <code>regular_product</code> 現況）只有 <code>RpdSaleDateBegin</code>／<code>RpdSaleDateEnd</code>（<strong>商品販售時間</strong>，非本次「方案生效時間」），<strong>沒有任何 rpd_plan_date_begin／rpd_plan_date_end／rpd_promotion_json 的痕跡</strong>——證實第 2 節規劃的 DB／Entity 異動，v2 端目前都還沒真的落地，僅停留在本文件規劃階段。</p>
+    </div>
+
+    <div class="card">
+      <h3>12.3 命名原則確認：既有欄位沿用 v2 命名 mapping，新欄位維持文件原規劃的清楚命名</h3>
+      <p>討論後確認命名原則：<strong>v2 既有欄位（型別/命名已定案、正在運作）</strong>OSM 端不改名遷就，直接沿用 v2 既有命名與型別，呼叫 v2 API 時做轉換／mapping 即可；<strong>v2 目前沒有、本次才新增的欄位</strong>因雙方都是從零開始、沒有既有命名要遷就，直接採用文件原規劃、較好懂的命名（<code>Title</code>／<code>PlanDateBegin</code>／<code>PlanDateEnd</code>／<code>Promotions</code>），OSM 與 v2 統一用同一套名稱，欄位對欄位透傳，不需要額外 mapping（<code>IsGiftEnabled</code> 例外，僅為 OSM 端畫面控制欄位，不會出現在 v2 端）。</p>
+      <table>
+        <tr><th>概念</th><th>OSM 端欄位</th><th>v2 端欄位</th><th>屬性</th><th>串接方式</th></tr>
+        <tr><td>配送週期</td><td><code>ShipPeriodList: int[]</code></td><td><code>ProductShippingPeriod: List&lt;int&gt;</code>（本次順便型別化）</td><td>v2 既有</td><td>直接放入 <code>ProductShippingPeriod</code></td></tr>
+        <tr><td>配送次數設定</td><td><code>ShippingCountMode: enum</code></td><td><code>ProductShippingSet: int</code></td><td>v2 既有</td><td>enum 轉換為對應 int 值</td></tr>
+        <tr><td>次數上限值</td><td><code>ShipLimitCount: int?</code></td><td><code>ProductShippingMax</code>／<code>ProductShippingFixed</code> 兩欄位</td><td>v2 既有</td><td>依 ShippingCountMode 決定填哪一欄，另一欄傳 null</td></tr>
+        <tr><td>購買設定</td><td><code>AllowOneTimePurchase: bool</code></td><td><code>ProductPurchaseOption: int</code></td><td>v2 既有</td><td>轉換：false→1／true→2</td></tr>
+        <tr><td>方案名稱</td><td><code>Title: string</code></td><td><code>Title: string</code>（本次新增，雙方統一命名）</td><td>雙方新增</td><td>直接透傳</td></tr>
+        <tr><td>生效時間</td><td><code>PlanDateBegin</code>／<code>PlanDateEnd: datetime</code></td><td><code>PlanDateBegin</code>／<code>PlanDateEnd: datetime</code>（本次新增，雙方統一命名；注意與既有 RpdSaleDateBegin 不同）</td><td>雙方新增</td><td>直接透傳</td></tr>
+        <tr><td>贈品開關</td><td><code>IsGiftEnabled: bool</code>（僅 OSM 端畫面控制欄位）</td><td><strong>不存在，v2 端無此欄位</strong></td><td>僅 OSM 端</td><td>只控制畫面展開與 Promotions 必填判斷，不傳給 v2 API；v2 端以 Promotions 是否為空陣列判斷</td></tr>
+        <tr><td>贈品規則</td><td><code>Promotions: List&lt;PromotionRuleRequest&gt;</code></td><td><code>Promotions: List&lt;PromotionRuleRequest&gt;</code>（本次新增，雙方統一命名）</td><td>雙方新增</td><td>直接透傳</td></tr>
+      </table>
+    </div>
+
+    <div class="card gray">
+      <h3>12.4 App 版本相依限制（新缺口，補充進 10 章需求缺口盤點）</h3>
+      <p>截圖畫面「固定次數」選項下方文字：「達固定次數會自動終止，消費者無法自行選擇。<strong>僅支援 APP 25.12 以上版本</strong>」。這條規則 VSTS #643392 原始需求文字未提及、文件 9.1 節未記錄。隱含意義：若消費者 APP 版本低於 25.12，「固定次數」選項對該會員可能無法正常運作或需要相容性處理——此為<strong>待與需求方／App 團隊確認的新缺口</strong>，本文件目前僅記錄現象，不做結論。</p>
+    </div>
+
+    <div class="card">
+      <h3>12.5 本次待確認事項彙總</h3>
+      <ol style="padding-left:20px; line-height:1.9;">
+        <li><strong>v2 端 RegularProductController 需要同步改造</strong>：新增 Title／PlanDateBegin／PlanDateEnd／Promotions 欄位（沿用文件原命名，不加 Product 前綴；IsGiftEnabled 僅 OSM 端使用不需新增），且 ProductShippingPeriod 需型別化；<strong>這不是只改 SMS 端就能完成的串接</strong>。</li>
+        <li><strong>命名原則</strong>：v2 既有欄位（ProductShippingPeriod 等）由 OSM 端轉換／mapping 過去沿用；本次雙方新增的欄位統一用文件原規劃的清楚命名，直接透傳，無需二次轉換。</li>
+        <li><strong>「方案生效時間」與「商品販售時間」欄位語意不可混淆</strong>：v2 端既有 RpdSaleDateBegin／RpdSaleDateEnd 是商品販售時間，本次新增的 PlanDateBegin／PlanDateEnd 是方案生效時間，兩者語意不同。</li>
+        <li><strong>APP 版本相依的「固定次數」限制</strong>需另外向需求方／App 團隊確認範圍與處理方式。</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="e2e-data-flow">
+    <h2>🔄 逐欄位端到端資料流：前端輸入 → OSM Request → 轉換／驗證 → v2 API → 落地 DB 欄位</h2>
+    <p>逐一欄位說明從「使用者在畫面輸入」到「最終寫入 v2 端 regular_product 資料表」的完整路徑，包含每個欄位在 OSM 後端會做什麼驗證／轉換、呼叫 v2 API 時傳的是什麼、以及 v2 端具體存進哪個 DB 欄位。</p>
+    <div class="card">
+      <table>
+        <tr><th>#</th><th>欄位</th><th>前端行為</th><th>OSM 後端驗證／轉換</th><th>呼叫 v2 API 欄位</th><th>最終落地 DB 欄位</th></tr>
+        <tr><td>1</td><td><code>ShopId</code></td><td>不需輸入，登入 session 自動帶入</td><td>原樣放入</td><td><code>ShopId</code></td><td><code>rpd_shop_id</code>（既有）</td></tr>
+        <tr><td>2</td><td><code>Title</code></td><td>輸入框，非必填，全半形混合上限 20 字／純半形 40 字，超過自動截斷</td><td>後端二次驗證長度</td><td><code>Title</code>（雙方統一命名）</td><td><code>rpd_title</code>（<strong>本次新增</strong>）</td></tr>
+        <tr><td>3</td><td><code>ProductNo</code></td><td>輸入 pageId，觸發即時驗證，成功後顯示商品名稱＋銷售時間</td><td>呼叫既有 Api/SalePage/Get/{id}，確認商品頁存在、ShippingTypeDef=7，取得銷售時間供下一步比對</td><td><code>ProductNo</code></td><td><code>rpd_product_no</code>（既有）</td></tr>
+        <tr><td>4</td><td><code>PlanDateBegin</code>／<code>PlanDateEnd</code></td><td>選日期時間，提示需介於商品銷售時間內</td><td>①比對商品銷售時間區間；②6.2 節 overlap 規則檢查同商品時間重疊</td><td><code>PlanDateBegin</code>／<code>PlanDateEnd</code>（雙方統一命名）</td><td><code>rpd_plan_date_begin</code>／<code>rpd_plan_date_end</code>（<strong>本次新增</strong>；與既有 rpd_sale_date_begin/end「商品販售時間」不同）</td></tr>
+        <tr><td>5</td><td><code>ShipPeriodList</code></td><td>複選框勾選天數</td><td>驗證值域為合法選項</td><td>放入 v2 既有 <code>ProductShippingPeriod</code>（型別化為 List&lt;int&gt;）</td><td>v2 既有配送週期欄位</td></tr>
+        <tr><td>6</td><td><code>ShippingCountMode</code></td><td>單選（無上限／自選次數／固定次數），選固定次數顯示 App 版本提示</td><td>轉換 enum→v2 既有 int：Unlimited→1／CustomerChoice→2／Fixed→3</td><td>放入 v2 既有 <code>ProductShippingSet</code></td><td>v2 既有 ProductShippingSet 對應欄位</td></tr>
+        <tr><td>7</td><td><code>ShipLimitCount</code></td><td>選自選次數或固定次數才顯示輸入框，範圍 2~99</td><td>依 ShippingCountMode 決定放哪一欄：CustomerChoice→ProductShippingMax；Fixed→ProductShippingFixed；Unlimited→兩欄皆 null</td><td>放入 v2 既有 <code>ProductShippingMax</code>／<code>ProductShippingFixed</code></td><td>v2 既有對應欄位</td></tr>
+        <tr><td>8</td><td><code>AllowOneTimePurchase</code></td><td>單選（僅提供定期購／定期購+一次性），附示意圖連結</td><td>轉換：false→1／true→2</td><td>放入 v2 既有 <code>ProductPurchaseOption</code></td><td>v2 既有對應欄位</td></tr>
+        <tr><td>9</td><td><code>IsGiftEnabled</code></td><td>開關切換，預設關閉，開啟後展開贈品設定區塊</td><td><strong>僅 OSM 端畫面控制欄位</strong>：true 時要求 Promotions 必填且至少一筆；false 時 Promotions 送空陣列 []</td><td><strong>不傳給 v2 API</strong></td><td><strong>無對應 DB 欄位</strong>（不會有 rpd_is_gift_enabled）；v2 端由 rpd_promotion_json 是否為空陣列判斷</td></tr>
+        <tr><td>10</td><td><code>Promotions[].id</code></td><td><strong>前端不需輸入、Request 中不包含此欄位</strong></td><td>後端收到 Request 後，為每筆 PromotionRuleRequest 自動產生 GUID 作為 id</td><td><strong>不在前端傳入的 Request 內</strong>，由 OSM 後端補上後才組成要存入 v2 的完整 Promotions 結構</td><td>同上，連同後端產生的 id 一併整包存入 rpd_promotion_json</td></tr>
+        <tr><td>11</td><td><code>Promotions[].type</code></td><td>不需選擇（本次畫面僅提供贈品設定 UI），但<strong>前端仍需在 Request 中明確帶入 "type": "GIFT"</strong>，不可省略或由後端推斷</td><td>驗證值域為 GIFT／DISCOUNT／POINT；本次僅開放 GIFT 通過，其餘值直接拒絕（<strong>保留欄位供未來 UI 開放 DISCOUNT／POINT 時直接沿用同一資料流</strong>）</td><td>同上，Promotions 結構一部分</td><td>同上，整包存入 rpd_promotion_json</td></tr>
+        <tr><td>12</td><td><code>Promotions[].triggerMode</code></td><td>不需選擇（本次畫面僅提供「配送每滿 X 次」UI），但<strong>前端仍需在 Request 中明確帶入 "triggerMode": "INTERVAL"</strong>，不可省略或由後端推斷</td><td>驗證值域為 INTERVAL／SEQUENCE／THRESHOLD；本次僅開放 INTERVAL 通過，其餘值直接拒絕（<strong>保留欄位供未來 UI 開放 SEQUENCE／THRESHOLD 時直接沿用同一資料流</strong>）</td><td>同上，Promotions 結構一部分</td><td>同上，整包存入 rpd_promotion_json</td></tr>
+        <tr><td>13</td><td><code>Promotions[].items[]</code></td><td>輸入贈品序號（SalePageId），觸發既有批次驗證機制（CheckIsPromotionFreeGiftValid），驗證成功回傳名稱/圖片/庫存</td><td>二次驗證 items.length&lt;=10、單品 1&lt;=qty&lt;=10、sum(qty)&lt;=50</td><td><code>Promotions</code>（雙方統一命名）</td><td><code>rpd_promotion_json</code>（<strong>本次新增</strong>，整包序列化存入快照）</td></tr>
+        <tr><td>14</td><td><code>Promotions[].interval</code></td><td>輸入 X，提示需為 2 至最高配送次數之間整數</td><td>依當下 ShippingCountMode／ShipLimitCount 計算合法上限並驗證</td><td>同上，Promotions 結構一部分</td><td>同上，整包存入 rpd_promotion_json</td></tr>
+        <tr><td>15</td><td><code>Promotions[].outOfStockAction</code></td><td>單選（照常建單／不建立訂單）</td><td>必填驗證</td><td>同上，Promotions 結構一部分</td><td>同上，整包存入 rpd_promotion_json</td></tr>
+      </table>
+    </div>
+    <div class="note">
+      <strong>共同的最後一步</strong>：OSM 後端把上述所有欄位組成單一 Request，呼叫 <code>Api/RegularProduct/Create</code>（對應 v2 端 RegularProductController），v2 端 Service 層再把整個 Request 拆解，分別寫入 regular_product 資料表的既有欄位（rpd_shop_id／rpd_product_no／ProductShippingPeriod 對應欄位等）與<strong>本次新增欄位</strong>（rpd_title／rpd_plan_date_begin／rpd_plan_date_end／rpd_promotion_json）。<strong>注意 IsGiftEnabled 不在此列，它不會出現在 v2 API 或 DB 欄位中。</strong>
+    </div>
+
+    <div class="card">
+      <h3>13.1 完整 Request Sample（對照上表 15 個欄位，前端實際會送出的內容）</h3>
+      <p><strong>情境一：開啟贈品（IsGiftEnabled=true），配送次數設為「消費者自選次數」</strong></p>
+      <div class="code-block">{
+  "shopId": 1001,
+  "title": "夏季保養品訂閱方案",
+  "productNo": "20240001",
+  "planDateBegin": "2026-08-01T00:00:00",
+  "planDateEnd": "2026-12-31T23:59:59",
+  "shipPeriodList": [30, 60, 90],
+  "shippingCountMode": "CustomerChoice",
+  "shipLimitCount": 5,
+  "allowOneTimePurchase": true,
+  "isGiftEnabled": true,
+  "promotions": [
+    {
+      "type": "GIFT",
+      "triggerMode": "INTERVAL",
+      "interval": 3,
+      "outOfStockAction": "PROCEED",
+      "items": [
+        { "pageId": 50001, "sku": "SKU-GIFT-123", "name": "保溫杯", "picUrl": "https://cdn.../a.jpg", "qty": 2 },
+        { "pageId": 50002, "sku": "SKU-GIFT-456", "name": "環保袋", "picUrl": "https://cdn.../b.jpg", "qty": 1 }
+      ]
+    }
+  ]
+}</div>
+      <p><strong>情境二：關閉贈品（IsGiftEnabled=false），配送次數設為「固定次數」</strong></p>
+      <div class="code-block">{
+  "shopId": 1001,
+  "title": "",
+  "productNo": "20240002",
+  "planDateBegin": "2026-09-01T00:00:00",
+  "planDateEnd": "2027-08-31T23:59:59",
+  "shipPeriodList": [7, 14, 30],
+  "shippingCountMode": "Fixed",
+  "shipLimitCount": 6,
+  "allowOneTimePurchase": false,
+  "isGiftEnabled": false,
+  "promotions": []
+}</div>
+      <ul style="padding-left:20px; line-height:1.9;">
+        <li>情境一對照上表第 7 列：<code>shippingCountMode="CustomerChoice"</code> → OSM 呼叫 v2 時放入 <code>ProductShippingMax=5</code>、<code>ProductShippingFixed=null</code></li>
+        <li>情境二對照第 7 列：<code>shippingCountMode="Fixed"</code> → OSM 呼叫 v2 時放入 <code>ProductShippingFixed=6</code>、<code>ProductShippingMax=null</code></li>
+        <li>情境二 <code>title</code> 為空字串示範「非必填」情境；<code>promotions</code> 為空陣列時，<code>isGiftEnabled</code> 這欄<strong>不會</strong>傳給 v2 API（見第 9 列），v2 端存入 <code>rpd_promotion_json</code> 的內容即為空陣列 <code>[]</code></li>
+        <li><strong>promotions[].id 刻意未出現在以上 Request Sample 中</strong>：此欄位由 OSM 後端收到 Request 後自動產生 GUID 補上，最終存入 rpd_promotion_json 的內容才會包含 id（見 13.2 節範例）</li>
+      </ul>
+    </div>
+
+    <div class="card gray">
+      <h3>13.2 Promotions 陣列實際內容範例（本次 VSTS #643392 範圍：僅贈品 type=GIFT）</h3>
+      <p>當 <code>IsGiftEnabled=true</code> 時，OSM 後端會依畫面填寫的贈品設定，組出一筆 <code>PromotionRuleRequest</code> 放進 <code>Promotions</code> 陣列（本次範圍僅會有 0 或 1 筆，因為 VSTS #643392 只支援單一組「配送每滿 X 次送贈品」規則；陣列結構保留供未來擴充多筆／多類型規則）。<strong>以下是「最終落地 rpd_promotion_json 的內容」，id 是後端補上後才有的值，前端 Request 本身不含 id（見 13.1 節說明）</strong>：</p>
+      <div class="code-block">{
+  "promotions": [
+    {
+      "id": "3f7b8e4a-1c2d-4e5f-9a6b-7c8d9e0f1a2b",  // 由 OSM 後端產生的 GUID，前端 Request 不含此欄位；訂單觸發時快照用來回溯來源規則
+      "type": "GIFT",                  // GIFT | DISCOUNT | POINT（未來可擴充 COUPON / FREE_SHIP，本次僅用 GIFT）
+      "triggerMode": "INTERVAL",       // INTERVAL | SEQUENCE | THRESHOLD（本次僅用 INTERVAL）
+      "interval": 3,                   // INTERVAL 模式：每 N 期觸發一次（第 3, 6, 9... 期），對應 Promotions[].interval
+      "outOfStockAction": "PROCEED",   // GIFT 專用：贈品缺貨處理，PROCEED=照常建單／SKIP_PERIOD=不建立訂單
+      "items": [                       // GIFT 專用：同一次觸發可送多個不同贈品，各自數量獨立
+        { "pageId": 50001, "sku": "SKU-GIFT-123", "name": "保溫杯", "picUrl": "https://cdn.../a.jpg", "qty": 2 },
+        { "pageId": 50002, "sku": "SKU-GIFT-456", "name": "環保袋", "picUrl": "https://cdn.../b.jpg", "qty": 1 }
+      ]
+    }
+  ]
+}</div>
+      <ul style="padding-left:20px; line-height:1.9;">
+        <li><code>IsGiftEnabled=false</code> 時，<code>Promotions</code> 傳空陣列 <code>[]</code>，這筆 JSON 完全不會產生</li>
+        <li><code>items[].pageId</code> 即畫面輸入的「贈品序號」，也就是該贈品自己的 <code>SalePageId</code>（見第 11 章查證）</li>
+        <li>這整包 JSON 序列化後就是 v2 端 <code>regular_product.rpd_promotion_json</code> 欄位的內容</li>
+      </ul>
+    </div>
+  </section>
+
+  <div style="margin-top:40px; padding:20px; text-align:center; color:#adb5bd; font-size:12px; border-top:1px solid #e2e8f0;">
+    regular_product 新增欄位規劃 · nine1.regularpurchase.v2 · 最後更新 2026-08-03
+  </div>
+
+</div>
+
+<script>
+  // Highlight active sidebar link on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const links = document.querySelectorAll('.sidebar a');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 80) current = s.id;
+    });
+    links.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  });
+</script>
+</body>
+</html>
+
+

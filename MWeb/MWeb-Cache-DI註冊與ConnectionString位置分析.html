@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>MWeb 快取服務 DI 註冊與 Connection String 位置分析</title>
+<style class="doc-shell-style">
+:root{
+  --doc-accent:#e8875a; --doc-accent2:#f3b28c; --doc-ink:#22394f; --doc-sub:#5a7089;
+  --doc-card:#ffffff; --doc-line:#dbe6f0; --doc-bg:#eef5fb; --doc-shadow:0 10px 30px -12px rgba(20,45,70,.18);
+}
+html,body{margin:0;padding:0;}
+.doc-shell{
+  display:flex;
+  min-height:100vh;
+  background:var(--doc-bg);
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei',sans-serif;
+  color:var(--doc-ink);
+}
+.doc-sidebar{
+  flex:0 0 268px;
+  max-width:268px;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  padding:28px 16px;
+  border-right:1px solid var(--doc-line);
+  background:var(--doc-card);
+}
+.doc-sidebar-title{
+  font-size:.72rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--doc-sub);
+  font-weight:700;
+  padding:0 10px;
+  margin-bottom:14px;
+}
+.doc-nav-item{
+  display:block;
+  padding:10px 12px;
+  margin-bottom:4px;
+  border-radius:10px;
+  font-size:.88rem;
+  font-weight:600;
+  color:var(--doc-sub);
+  text-decoration:none;
+  cursor:pointer;
+  border:1px solid transparent;
+  transition:background .15s ease,color .15s ease;
+}
+.doc-nav-item:hover{background:var(--doc-line);}
+.doc-nav-item.active{
+  background:var(--doc-accent);
+  color:#fff;
+  box-shadow:var(--doc-shadow);
+}
+.doc-content{
+  flex:1;
+  height:100vh;
+  overflow-y:auto;
+  padding:40px 5vw 60px;
+}
+.doc-section{display:none;}
+.doc-section.active{display:block;}
+@media (max-width:860px){
+  .doc-shell{flex-direction:column;}
+  .doc-sidebar{position:relative;height:auto;max-width:none;flex:none;display:flex;overflow-x:auto;gap:6px;border-right:none;border-bottom:1px solid var(--doc-line);}
+  .doc-nav-item{white-space:nowrap;margin-bottom:0;}
+  .doc-content{height:auto;}
+}
+</style>
+<style>
+.gho{
+  display:block;
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei',sans-serif;
+  background:
+    radial-gradient(700px 400px at 92% -5%, rgba(232,135,94,.14), transparent 60%),
+    radial-gradient(900px 500px at -8% 108%, rgba(111,163,216,.16), transparent 55%),
+    #eef5fb;
+  color:#22394f!important;
+  line-height:1.75;
+  border-radius:20px;
+  padding:1px 0 28px;
+  margin:0 0 20px;
+  overflow:hidden;
+  --ink:#22394f; --sub:#5a7089; --card:#ffffff; --line:#dbe6f0;
+  --sky:#6fa3d8; --sky2:#a9cbe8; --coral:#e8875a; --coral2:#f3b28c; --teal:#0f9488; --violet:#7c6cf7; --danger:#e5484d;
+  --shadow:0 10px 30px -12px rgba(20,45,70,.18);
+}
+.gho *{box-sizing:border-box;}
+.gho a{color:var(--coral)!important;text-decoration:none;}
+.gho a:hover{text-decoration:underline;}
+.gho .gho-hero{padding:48px 6vw 34px;text-align:center;position:relative;overflow:hidden;background:linear-gradient(165deg,#89b3de,#6fa3d8 55%,#5a90c8);}
+.gho .gho-hero::before{content:"👻 · · · 👻 · · · 👻 · · · 👻";position:absolute;top:14px;left:0;right:0;text-align:center;font-size:.9rem;opacity:.28;letter-spacing:.3em;color:#fff!important;pointer-events:none;}
+.gho .gho-eyebrow{display:inline-block;font-size:.78rem;letter-spacing:.16em;color:#fff!important;text-transform:uppercase;font-weight:700;margin-bottom:12px;background:rgba(232,135,94,.4);padding:6px 14px;border-radius:999px;}
+.gho .gho-hero h1{font-size:1.7rem;margin:0 0 12px;color:#fff!important;font-weight:800;}
+.gho .gho-hero p{color:#e4f0fa!important;max-width:700px;margin:0 auto;font-size:1rem;}
+.gho .gho-badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px;}
+.gho .gho-badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);padding:6px 14px;border-radius:999px;font-size:.8rem;color:#f3f8fc!important;}
+.gho .gho-container{padding:0 5vw;}
+.gho section{margin-bottom:44px;}
+.gho .gho-section-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+.gho .gho-section-head .gho-chip{flex:none;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:800;background:linear-gradient(135deg,#4c7fb0,var(--sky));color:#fff!important;font-size:1rem;box-shadow:var(--shadow);}
+.gho .gho-section-head.accent .gho-chip{background:linear-gradient(135deg,#c2683f,var(--coral2));}
+.gho .gho-section-head.teal .gho-chip{background:linear-gradient(135deg,#0d7a70,#5fd4c4);}
+.gho .gho-section-head.violet .gho-chip{background:linear-gradient(135deg,#7c6cf7,#a78bfa);}
+.gho .gho-section-head h2{margin:0;font-size:1.3rem;font-weight:800;color:var(--ink)!important;}
+.gho h3{font-size:1.08rem;margin:26px 0 10px;color:var(--ink)!important;border-left:4px solid var(--sky);padding-left:10px;}
+.gho p{color:var(--sub)!important;}
+.gho .gho-card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px 22px;margin:14px 0;}
+.gho table{width:100%;border-collapse:separate;border-spacing:0;background:var(--card)!important;border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:14px 0 22px;font-size:.88rem;box-shadow:var(--shadow);}
+.gho thead th{background:#e6f0f9!important;color:var(--ink)!important;text-align:left;padding:13px 16px;font-weight:800;border-bottom:1px solid var(--line);}
+.gho tbody td{padding:13px 16px;border-bottom:1px solid var(--line);color:#324a5f!important;vertical-align:top;background:var(--card)!important;}
+.gho tbody tr:last-child td{border-bottom:none;}
+.gho tbody tr:hover td{background:#f5faff!important;}
+.gho tbody td strong{color:var(--ink)!important;}
+.gho tbody td code{color:#b5502b!important;}
+.gho code{font-family:Consolas,'SFMono-Regular','Liberation Mono',Menlo,monospace;background:#e7f0f8!important;color:#b5502b!important;padding:2px 7px;border-radius:6px;font-size:.88em;border:1px solid #d5e3ee;}
+.gho pre.gho-pre{background:#16283a!important;border:none;border-radius:16px;padding:20px 22px;overflow-x:auto;margin:16px 0;position:relative;color:#e8f1fa!important;font-size:.85rem!important;line-height:1.7!important;font-family:Consolas,'SFMono-Regular','Liberation Mono',Menlo,monospace!important;white-space:pre!important;box-shadow:var(--shadow);}
+.gho pre.gho-pre::before{content:attr(data-lang);position:absolute;top:12px;right:16px;font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;color:#7fa0ba!important;font-family:'Segoe UI',sans-serif;}
+.gho .kw{color:#ffb08a!important;} .gho .str{color:#c3e88d!important;} .gho .cm{color:#6b869c!important;font-style:italic;} .gho .fn{color:#7fd0ff!important;} .gho .type{color:#f3b28c!important;} .gho .num{color:#c3e88d!important;} .gho .op{color:#ff6b9d!important;}
+.gho .gho-callout{border-radius:16px;padding:18px 22px;margin:18px 0;border:1px solid transparent;display:flex;gap:14px;}
+.gho .gho-callout .gho-icon{font-size:1.3rem;flex:none;}
+.gho .gho-callout.info{background:#eff6ff;border-color:#bfdbfe;}
+.gho .gho-callout.warn{background:#fffbeb;border-color:#fde68a;}
+.gho .gho-callout.danger{background:#fef2f2;border-color:#fecaca;}
+.gho .gho-callout.ok{background:#ecfdf5;border-color:#a7f3d0;}
+.gho .gho-callout p{margin:0;font-size:.92rem;color:#324a5f!important;}
+.gho .gho-callout strong{color:var(--ink)!important;}
+.gho .gho-tag{display:inline-block;font-size:.72rem;font-weight:800;padding:3px 11px;border-radius:999px;letter-spacing:.02em;}
+.gho .gho-tag.danger{background:#fee2e2!important;color:#b91c1c!important;}
+.gho .gho-tag.ok{background:#dcfce7!important;color:#15803d!important;}
+.gho .gho-tag.warn{background:#fef3c7!important;color:#b45309!important;}
+.gho .gho-tag.info{background:#e0f2fe!important;color:#0369a1!important;}
+.gho .gho-tag.sky{background:#dceaf6!important;color:#2a5b85!important;}
+.gho .gho-tag.coral{background:#fbe4d6!important;color:#a04a22!important;}
+.gho .gho-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0;}
+.gho .gho-summary-grid .gho-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow);border-top:4px solid var(--sky);position:relative;overflow:hidden;}
+.gho .gho-summary-grid .gho-box.sky{border-top-color:var(--sky);}
+.gho .gho-summary-grid .gho-box.coral{border-top-color:var(--coral);}
+.gho .gho-summary-grid .gho-box.teal{border-top-color:var(--teal);}
+.gho .gho-summary-grid .gho-box h4{margin:0 0 8px;color:var(--ink)!important;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;}
+.gho .gho-summary-grid .gho-box p{margin:0;font-size:.87rem;color:var(--sub)!important;}
+@media (max-width:780px){.gho .gho-summary-grid{grid-template-columns:1fr;}}
+.gho .gho-flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:20px 0;}
+.gho .gho-flow .gho-step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-size:.85rem;font-weight:700;color:var(--ink)!important;box-shadow:var(--shadow);}
+.gho .gho-flow .gho-step.cond{background:#fffbeb;border-color:#fde68a;color:#b45309!important;}
+.gho .gho-flow .gho-arrow{color:var(--coral)!important;font-size:1.2rem;font-weight:900;}
+.gho .gho-steps{display:flex;flex-direction:column;gap:14px;margin:16px 0 22px;}
+.gho .gho-stepcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px;position:relative;padding-left:60px;box-shadow:var(--shadow);}
+.gho .gho-stepcard .gho-stepnum{position:absolute;left:16px;top:16px;width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#4c7fb0,var(--sky));color:#fff!important;font-weight:800;font-size:.9rem;display:flex;align-items:center;justify-content:center;}
+.gho .gho-stepcard.cond .gho-stepnum{background:linear-gradient(135deg,#c2683f,var(--coral2));}
+.gho .gho-stepcard .gho-step-title{font-weight:700;color:var(--ink)!important;font-size:1rem;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.gho .gho-stepcard p{margin:6px 0;font-size:.9rem;color:var(--sub)!important;}
+.gho .gho-checklist{list-style:none;padding:0;margin:16px 0;}
+.gho .gho-checklist li{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line);color:var(--sub)!important;}
+.gho .gho-checklist li:last-child{border-bottom:none;}
+.gho .gho-checklist li::before{content:"✓";flex:none;width:22px;height:22px;border-radius:7px;background:#dceaf6;color:#2a5b85!important;font-size:.75rem;display:flex;align-items:center;justify-content:center;margin-top:2px;font-weight:900;}
+.gho .gho-evidence{border:1px solid var(--line);background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:18px 20px;margin:16px 0 22px;}
+.gho .gho-evidence .gho-evidence-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.gho .gho-evidence .gho-evidence-head .gho-tag{background:var(--ink)!important;color:#fff!important;}
+.gho .gho-crossing{height:34px;border-radius:8px;margin:36px 0;position:relative;background:repeating-linear-gradient(90deg,var(--sky) 0 26px,#eef5fb 26px 46px);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:var(--shadow);}
+.gho .gho-crossing span{position:relative;z-index:1;font-size:1.15rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));}
+.gho footer{text-align:center;padding:30px 5vw 6px;color:var(--sub)!important;font-size:.82rem;border-top:1px solid var(--line);margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="doc-shell">
+<nav class="doc-sidebar">
+<div class="doc-sidebar-title">章節目錄</div>
+<a class="doc-nav-item active" data-target="sec-01">01 情境概述</a>
+<a class="doc-nav-item" data-target="sec-02">02 DataCacheService 是誰</a>
+<a class="doc-nav-item" data-target="sec-03">03 從啟動到組裝：DI 註冊鏈路</a>
+<a class="doc-nav-item" data-target="sec-04">04 CacheModule 裡到底裝了什麼</a>
+<a class="doc-nav-item" data-target="sec-05">05 Connection String 讀取規則</a>
+<a class="doc-nav-item" data-target="sec-06">06 各環境設定檔實際位置</a>
+<a class="doc-nav-item" data-target="sec-07">07 正式環境的秘密去哪了</a>
+<a class="doc-nav-item" data-target="sec-08">08 mweb 自己這邊呢</a>
+</nav>
+<main class="doc-content">
+
+<div class="gho">
+
+<section id="sec-01" class="doc-section active">
+<div class="gho-hero">
+<span class="gho-eyebrow">Config 對齊分析 · MWeb Cache 註冊鏈路</span>
+<h1>👻 MWeb 快取服務 DI 註冊與 Connection String 位置分析</h1>
+<p>前一份文件追到 <code>SearchService.GetShopCategorySalePageList</code> 會透過 <code>DataCacheService</code> 存取 Redis 快取。這份文件接著往下挖：<code>DataCacheService</code> 這個物件實際上是怎麼被組裝出來的，它連的 Redis 位址又藏在哪一個設定檔裡。</p>
+<div class="gho-badges">
+<span class="gho-badge">nineyi.webstore.mobilewebmall</span>
+<span class="gho-badge">Autofac DI</span>
+<span class="gho-badge">Redis ConnectionString</span>
+</div>
+</div>
+<div class="gho-container">
+
+<div class="gho-section-head">
+<div class="gho-chip">01</div>
+<h2>情境概述</h2>
+</div>
+
+<p>在 .NET 專案裡，程式碼裡看到的每一個服務物件，通常不是自己 <code>new</code> 出來的，而是由一個叫做依賴注入容器（這裡用的是 Autofac）的機制在程式啟動時統一組裝好，用到的時候再自動塞進建構子裡。<code>DataCacheService</code> 也是這樣，前一份文件裡看到的 <code>this._dataCacheService.GetRedisCacheData(...)</code>，這個 <code>_dataCacheService</code> 其實是啟動當下由 Autofac 幫忙組出來的一個實例，裡面已經先接好了要用哪一組 Redis 連線。</p>
+
+<div class="gho-card">
+<p>這份文件要回答三個問題：<code>DataCacheService</code> 在哪一段程式碼被註冊進容器、註冊的時候幫它接了哪些 Redis 連線、以及這些連線字串實際的值放在哪個設定檔裡，不同環境（QA、Debug、正式站）之間又差在哪。</p>
+</div>
+
+<div class="gho-summary-grid">
+<div class="gho-box sky">
+<h4>核心類別</h4>
+<p><code>NineYi.WebStore.Frontend.BLV2.DataCache.DataCacheService</code>，實作 <code>IDataCacheService</code>，是所有 Redis 快取存取的統一入口。</p>
+</div>
+<div class="gho-box coral">
+<h4>組裝地點</h4>
+<p>Autofac 模組 <code>CacheModule</code>（<code>Frontend\BLV2\Modules\CacheModule.cs</code>），負責建立六組 Redis 連線並注入 <code>DataCacheService</code>。</p>
+</div>
+<div class="gho-box teal">
+<h4>連線字串</h4>
+<p>用 <code>{Execmode}.Redis.Cache</code> 這種格式的 key，從 <code>ConnectionStrings*.config</code> 讀出來，正式環境的真實值不會出現在版控裡。</p>
+</div>
+</div>
+
+</div>
+</section>
+
+<section id="sec-02" class="doc-section">
+<div class="gho-section-head">
+<div class="gho-chip">02</div>
+<h2>DataCacheService 是誰</h2>
+</div>
+
+<p><code>DataCacheService</code> 的檔案位置是 <code>C:\91APP\nineyi.webstore.mobilewebmall\WebStore\Frontend\BLV2\DataCache\DataCacheService.cs</code>，它是整個 mweb 生態系裡所有需要「先查 Redis，查不到再算一次並存回去」這種快取模式的共用實作，前一份文件分析的 <code>GetRedisCacheData</code> 就是它公開的方法之一。</p>
+
+<p>它的建構子長這樣，注入了兩個 <code>ICacheService</code>，分別對應不同的用途：</p>
+
+<pre class="gho-pre" data-lang="csharp"><span class="cm">// DataCacheService.cs</span>
+<span class="kw">public</span> <span class="type">DataCacheService</span>(
+    <span class="type">ICacheService</span> cacheService,
+    <span class="type">ITranslationClient</span> translationClient,
+    <span class="type">IConfigService</span> configService,
+    [WithKey(<span class="str">"FileCache"</span>)] <span class="type">ICacheService</span> fileCacheService)
+{
+    <span class="kw">this</span>._cacheService = cacheService;
+    <span class="kw">this</span>._translationClient = translationClient;
+    <span class="kw">this</span>._configService = configService;
+    <span class="kw">this</span>._fileCacheService = fileCacheService;
+
+    <span class="kw">this</span>._isCacheWithLocale = <span class="type">bool</span>.Parse(<span class="kw">this</span>._configService.GetAppSetting(<span class="str">"Cache.Locale.Enable"</span>, <span class="str">"false"</span>));
+}</pre>
+
+<table>
+<thead><tr><th>建構子參數</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>cacheService</code></td><td>一般 Redis 快取服務，供 <code>GetRedisCacheData</code> 使用，也就是 <code>SearchService</code> 快取商品清單所走的那一組。</td></tr>
+<tr><td><code>fileCacheService</code>（帶 <code>"FileCache"</code> key）</td><td>另一組獨立的 Redis 快取服務，供 <code>GetRedisLargeCacheData</code> 使用，命名上是給比較大量的資料做快取用。</td></tr>
+<tr><td><code>translationClient</code></td><td>取得目前語系代碼，用在把 Key 加上語系後綴的 <code>AppendLocale</code> 方法。</td></tr>
+<tr><td><code>configService</code></td><td>讀取 <code>Cache.Locale.Enable</code> 這個設定，決定是否要幫每個 Key 加上語系後綴。</td></tr>
+</tbody>
+</table>
+
+<div class="gho-callout info">
+<span class="gho-icon">💡</span>
+<p><strong>重點：</strong><code>DataCacheService</code> 本身不知道 Redis 主機在哪裡，它只認得 <code>ICacheService</code> 這個介面。真正決定連到哪一台 Redis 的工作，是在下一節的 <code>CacheModule</code> 完成的。</p>
+</div>
+
+</section>
+
+<section id="sec-03" class="doc-section">
+<div class="gho-section-head accent">
+<div class="gho-chip">03</div>
+<h2>從啟動到組裝：DI 註冊鏈路</h2>
+</div>
+
+<p>以實際會觸發快取邏輯的 WebAPI 這個應用程式為例，從程式啟動到 <code>DataCacheService</code> 被組裝完成，會經過三層：</p>
+
+<div class="gho-steps">
+<div class="gho-stepcard">
+<div class="gho-stepnum">1</div>
+<div class="gho-step-title">App 啟動：<code>WebAPI\App_Start\AutofacConfig.cs</code></div>
+<p><code>AutofacConfig.Initialize()</code> 建立一個空的 <code>ContainerBuilder</code>，先註冊控制器、設定讀取、資料庫連線等基礎服務，接著呼叫 <code>builder.RegisterProxyService("NineYi.WebStore.Frontend.BLV2")</code>，把整個 BLV2 這個共用商業邏輯組件的內容納進來。</p>
+</div>
+<div class="gho-stepcard">
+<div class="gho-stepnum">2</div>
+<div class="gho-step-title">共用模組入口：<code>Frontend\BLV2\Modules\ServiceModule.cs</code></div>
+<p>BLV2 這個組件裡，商業邏輯服務的註冊集中在 <code>ServiceModule</code>。它的 <code>Load</code> 方法第 133 行有這一行：</p>
+<pre class="gho-pre" data-lang="csharp"><span class="fn">builder</span>.RegisterModule(<span class="kw">new</span> <span class="type">CacheModule</span>());</pre>
+<p>也就是說，只要 <code>ServiceModule</code> 被載入，<code>CacheModule</code> 就會跟著一起被載入。</p>
+</div>
+<div class="gho-stepcard">
+<div class="gho-stepnum">3</div>
+<div class="gho-step-title">真正組裝的地方：<code>Frontend\BLV2\Modules\CacheModule.cs</code></div>
+<p><code>CacheModule.Load()</code> 讀取 Redis 連線字串、建立六組 <code>ConnectionMultiplexer</code>，再一路包成 <code>ICacheProvider</code>、<code>ICacheService</code>，最後把其中兩組 <code>ICacheService</code> 餵給 <code>DataCacheService</code> 並註冊成 <code>IDataCacheService</code>。細節在下一節整理。</p>
+</div>
+</div>
+
+<div class="gho-callout ok">
+<span class="gho-icon">✅</span>
+<p><strong>換句話說：</strong>每一個會用到 <code>ISearchService</code>、<code>IDataCacheService</code> 之類 BLV2 商業邏輯服務的 ASP.NET 應用程式（例如 WebAPI），都要在自己的啟動流程裡引用同一份 <code>ServiceModule</code>／<code>CacheModule</code>，才能拿到能正常運作的 Redis 快取物件。</p>
+</div>
+
+</section>
+
+<section id="sec-04" class="doc-section">
+<div class="gho-section-head teal">
+<div class="gho-chip">04</div>
+<h2>CacheModule 裡到底裝了什麼</h2>
+</div>
+
+<p><code>CacheModule.Load()</code> 一開始會依序讀出六把 Redis 連線字串，任何一把找不到都會直接丟例外讓應用程式啟動失敗，避免帶著一個沒接好的快取服務跑上線：</p>
+
+<table>
+<thead><tr><th>連線字串 Key 後綴</th><th>Autofac Key</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>.Redis.Cache</code></td><td>（不加 Key，預設）</td><td>一般 Redis 快取，<code>SearchService</code> 分類商品清單快取走的就是這一組。</td></tr>
+<tr><td><code>.Redis.Data</code></td><td><code>"Data"</code></td><td>會員登入狀態等使用者資料快取，由 <code>UserRedisDataHelper</code> 使用。</td></tr>
+<tr><td><code>.Redis.Data2</code></td><td><code>"Data2"</code></td><td>與 <code>Data</code> 分流用的第二組使用者資料快取。</td></tr>
+<tr><td><code>.Redis.LineUp</code></td><td><code>"LineUp"</code></td><td>排隊機制（搶購/售完通知等情境）專用的 Redis。</td></tr>
+<tr><td><code>.Redis.FileCache</code></td><td><code>"FileCache"</code></td><td><code>DataCacheService</code> 建構子裡那個 <code>fileCacheService</code> 參數用的連線，供 <code>GetRedisLargeCacheData</code> 使用。</td></tr>
+<tr><td><code>.Redis.Sequence</code></td><td><code>"Sequence"</code></td><td>序號產生器專用的 Redis。</td></tr>
+</tbody>
+</table>
+
+<p>每一把連線字串都會先包成 <code>ConnectionMultiplexer</code>（單例），再包成 <code>IDatabase</code>，接著包成 <code>RedisCacheProvider</code>（<code>ICacheProvider</code>），最後才包成 <code>CacheService</code>（<code>ICacheService</code>）。整條包裝鏈畫成圖大概是這樣：</p>
+
+<div class="gho-flow">
+<div class="gho-step">ConnectionString</div>
+<div class="gho-arrow">→</div>
+<div class="gho-step">ConnectionMultiplexer</div>
+<div class="gho-arrow">→</div>
+<div class="gho-step">IDatabase</div>
+<div class="gho-arrow">→</div>
+<div class="gho-step">ICacheProvider</div>
+<div class="gho-arrow">→</div>
+<div class="gho-step">ICacheService</div>
+</div>
+
+<p>最後這一段，就是把包好的 <code>ICacheService</code> 餵給 <code>DataCacheService</code> 並註冊成 <code>IDataCacheService</code>：</p>
+
+<pre class="gho-pre" data-lang="csharp"><span class="cm">// CacheModule.cs：註冊 DataCacheService</span>
+<span class="fn">builder</span>.RegisterType&lt;<span class="type">DataCacheService</span>&gt;()
+       .WithParameter(<span class="kw">new</span> <span class="type">ResolvedParameter</span>(
+          (pi, ctx) => pi.ParameterType == <span class="kw">typeof</span>(<span class="type">ICacheService</span>) &amp;&amp; pi.Name == <span class="str">"cacheService"</span>,
+          (pi, ctx) => ctx.Resolve&lt;<span class="type">ICacheService</span>&gt;()))
+       .WithParameter(<span class="kw">new</span> <span class="type">ResolvedParameter</span>(
+          (pi, ctx) => pi.ParameterType == <span class="kw">typeof</span>(<span class="type">ICacheService</span>) &amp;&amp; pi.Name == <span class="str">"fileCacheService"</span>,
+          (pi, ctx) => ctx.ResolveKeyed&lt;<span class="type">ICacheService</span>&gt;(<span class="str">"FileCache"</span>)))
+       .As&lt;<span class="type">IDataCacheService</span>&gt;();</pre>
+
+<div class="gho-callout warn">
+<span class="gho-icon">⚠️</span>
+<p><strong>容易混淆的地方：</strong>整個模組其實包了不只一組 Redis，但 <code>SearchService</code> 分類商品清單快取只走最普通、沒有額外 Key 標記的那一組（<code>.Redis.Cache</code>）。其他像會員資料、排隊機制、序號產生，各自都是獨立的 Redis 連線，彼此互不影響。</p>
+</div>
+
+<h3>Cache Key Prefix 與過期時間怎麼決定</h3>
+
+<p>除了連線本身，<code>CacheModule</code> 還決定了兩件事：所有 Key 前面要不要加一段固定前綴、以及 Redis 物件的預設過期時間（TTL）。</p>
+
+<pre class="gho-pre" data-lang="csharp"><span class="cm">// CacheModule.cs：取得 KeyPrefix</span>
+<span class="kw">var</span> cacheKeyPrefix = <span class="kw">ConfigurationManager</span>.AppSettings.Get(mode + <span class="str">".Cache.KeyPrefix"</span>);
+
+<span class="cm">// CacheModule.cs：取得預設過期時間，預設 86400 秒（1天）</span>
+<span class="kw">var</span> key = <span class="str">$"{mode}.Cache.DefaultExpire"</span>;
+<span class="type">int</span>.TryParse(<span class="kw">ConfigurationManager</span>.AppSettings.Get(key), <span class="kw">out</span> defaultExpire);</pre>
+
+<div class="gho-callout info">
+<span class="gho-icon">💡</span>
+<p><strong>這個 TTL 跟前一份文件的一分鐘不是同一件事：</strong>這裡設定的是 <code>RedisCacheProvider</code> 沒被特別指定時的預設過期時間（預設一天）。<code>SearchService</code> 呼叫 <code>GetRedisCacheData</code> 時有另外指定 <code>expirationSecond = 60</code>，這個呼叫端指定的值會蓋掉這裡的預設值，所以分類商品清單快取實際只活一分鐘。</p>
+</div>
+
+</section>
+
+<section id="sec-05" class="doc-section">
+<div class="gho-section-head violet">
+<div class="gho-chip">05</div>
+<h2>Connection String 讀取規則</h2>
+</div>
+
+<p><code>CacheModule.Load()</code> 讀連線字串的方式，是先讀一個叫做 <code>Execmode</code> 的 AppSetting，再拿這個值當前綴，去組出實際要查的 Key：</p>
+
+<pre class="gho-pre" data-lang="csharp"><span class="cm">// CacheModule.cs</span>
+<span class="kw">var</span> mode = <span class="kw">ConfigurationManager</span>.AppSettings[<span class="str">"Execmode"</span>];
+<span class="kw">var</span> redisConfig = <span class="kw">ConfigurationManager</span>.ConnectionStrings[mode + <span class="str">".Redis.Cache"</span>];
+<span class="kw">if</span> (redisConfig == <span class="kw">null</span>)
+{
+    <span class="kw">throw new</span> <span class="type">ApplicationException</span>(<span class="str">$"Redis ConnectionString不存在, Key: {mode + ".Redis.Cache"}"</span>);
+}</pre>
+
+<p>也就是說，實際要在 <code>web.config</code> 的 <code>&lt;connectionStrings&gt;</code> 區塊裡找的名稱，長得像 <code>Dev.Redis.Cache</code>、<code>Prod.Redis.Cache</code> 這種「環境代號 + <code>.Redis.Cache</code>」的組合，六組連線分別對應 <code>.Redis.Cache</code>、<code>.Redis.Data</code>、<code>.Redis.Data2</code>、<code>.Redis.LineUp</code>、<code>.Redis.FileCache</code>、<code>.Redis.Sequence</code>。</p>
+
+<div class="gho-callout warn">
+<span class="gho-icon">⚠️</span>
+<p><strong>找不到就直接掛掉：</strong>六組連線字串只要有任何一組讀不到，<code>CacheModule.Load()</code> 就會丟出 <code>ApplicationException</code>，代表這個應用程式在啟動階段就會失敗，不會等到真的有人呼叫快取邏輯才發現設定漏掉。</p>
+</div>
+
+</section>
+
+<section id="sec-06" class="doc-section">
+<div class="gho-section-head">
+<div class="gho-chip">06</div>
+<h2>各環境設定檔實際位置</h2>
+</div>
+
+<p>連線字串的實際內容，放在 WebAPI 專案底下一系列以 <code>ConnectionStrings</code> 開頭、依環境命名的 <code>web.config</code> 轉換檔案（XDT Transform），路徑都在 <code>C:\91APP\nineyi.webstore.mobilewebmall\WebStore\WebAPI\</code> 這個資料夾下：</p>
+
+<table>
+<thead><tr><th>檔案</th><th>對應環境</th><th>內容狀態</th></tr></thead>
+<tbody>
+<tr><td><code>ConnectionStrings.config</code></td><td>基礎預設值（Dev）</td><td>有實際內容，例如 <code>Dev.Redis.Cache</code> 指向一組 QA 用的 AWS ElastiCache 網址。</td></tr>
+<tr><td><code>ConnectionStrings.Debug.HK.config</code></td><td>本機除錯，模擬 HK 市場</td><td>有實際內容，<code>Dev.Redis.Cache</code> 指向 HK QA 專用的 Redis 主機。</td></tr>
+<tr><td><code>ConnectionStrings.Debug.MY.config</code></td><td>本機除錯，模擬 MY 市場</td><td>有實際內容，指向 MY QA 專用的 Redis 主機。</td></tr>
+<tr><td><code>ConnectionStrings.Debug.PX.config</code></td><td>本機除錯，其他市場</td><td>有實際內容。</td></tr>
+<tr><td><code>ConnectionStrings.QA.config</code></td><td>共用 QA 站</td><td>整段 <code>xdt:Transform="RemoveAll"</code>，代表這個環境的真實值不寫在這份檔案裡。</td></tr>
+<tr><td><code>ConnectionStrings.Release.config</code> / <code>ConnectionStrings.PP.config</code> / <code>ConnectionStrings.LoadTest.config</code></td><td>其他非正式環境</td><td>同樣是轉換檔，實際值視部署流程而定。</td></tr>
+<tr><td><code>ConnectionStrings.Prod.config</code></td><td>正式環境</td><td>整段 <code>xdt:Transform="RemoveAll"</code>，見下一節說明。</td></tr>
+</tbody>
+</table>
+
+<div class="gho-card">
+<p>以 <code>ConnectionStrings.Debug.HK.config</code> 為例，六組 Redis 連線裡其實只看得到五組（少了 <code>.Redis.Sequence</code>），內容大致如下：</p>
+</div>
+
+<pre class="gho-pre" data-lang="xml">&lt;add name=<span class="str">"Dev.Redis.Cache"</span> connectionString=<span class="str">"hk-qa-backend-redis-1.xxxx.apse1.cache.amazonaws.com:6379,ssl=false,......"</span>/&gt;
+&lt;add name=<span class="str">"Dev.Redis.Data"</span> connectionString=<span class="str">"hk-qa-backend-redis-1.xxxx.apse1.cache.amazonaws.com:6379,ssl=false,......"</span>/&gt;
+&lt;add name=<span class="str">"Dev.Redis.Data2"</span> connectionString=<span class="str">"hk-qa-backend-redis-1.xxxx.apse1.cache.amazonaws.com:6379,ssl=false,......"</span>/&gt;
+&lt;add name=<span class="str">"Dev.Redis.LineUp"</span> connectionString=<span class="str">"hk-qa-backend-redis-1.xxxx.apse1.cache.amazonaws.com:6379,ssl=false,......"</span>/&gt;
+&lt;add name=<span class="str">"Dev.Redis.FileCache"</span> connectionString=<span class="str">"hk-qa-backend-redis-1.xxxx.apse1.cache.amazonaws.com:6379,ssl=false,......"</span>/&gt;</pre>
+
+<div class="gho-callout info">
+<span class="gho-icon">💡</span>
+<p><strong>觀察：</strong>在這個 HK 除錯環境裡，五組連線字串全部指到同一台 Redis 主機，只是邏輯上用不同的 Key 前綴（<code>.Redis.Cache</code>、<code>.Redis.Data</code> 等）區分用途，並非每組都各自有獨立主機，這在測試環境是常見的簡化做法。</p>
+</div>
+
+</section>
+
+<section id="sec-07" class="doc-section">
+<div class="gho-section-head accent">
+<div class="gho-chip">07</div>
+<h2>正式環境的秘密去哪了</h2>
+</div>
+
+<p><code>ConnectionStrings.Prod.config</code> 跟 <code>ConnectionStrings.QA.config</code> 的內容都只有這幾行：</p>
+
+<pre class="gho-pre" data-lang="xml">&lt;connectionStrings xmlns:xdt=<span class="str">"http://schemas.microsoft.com/XML-Document-Transform"</span>&gt;
+  &lt;add xdt:Transform=<span class="str">"RemoveAll"</span>/&gt;
+&lt;/connectionStrings&gt;</pre>
+
+<p><code>xdt:Transform="RemoveAll"</code> 的意思是，在套用這份轉換檔之後，<code>&lt;connectionStrings&gt;</code> 整個區塊會先被清空，再由後續的步驟填入真正的值。也就是說，正式環境（以及共用 QA 站）實際使用的 Redis 連線字串，並不會以明碼寫進這兩個 repo（<code>nineyi.webstore.mobilewebmall</code>、<code>nineyi.configuration</code>）裡的任何一份檔案。</p>
+
+<div class="gho-evidence">
+<div class="gho-evidence-head">
+<span class="gho-tag">推論</span>
+<strong>真正的值從哪裡來</strong>
+</div>
+<p>依照這兩個檔案清空後留白的設計，合理推測正式環境的連線字串是在部署流程（CI/CD）階段，由機密管理機制（例如 Secrets Manager、Vault，或部署管線自行注入的環境變數）另外寫進最終部署的 <code>web.config</code>，而不是走一般的原始碼版控。這一層目前不在 <code>nineyi.webstore.mobilewebmall</code> 或 <code>nineyi.configuration</code> 這兩個可檢視的 repo 範圍內，需要有部署管線或機密管理系統的存取權限才能進一步確認實際內容。</p>
+</div>
+
+<div class="gho-callout warn">
+<span class="gho-icon">⚠️</span>
+<p><strong>對照前面幾份文件的意義：</strong>如果要實際確認 HK、MY 兩個市場在 WebAPI 這個應用程式裡，是不是真的連到同一台或不同台 Redis，光看這兩個原始碼 repo 是看不到答案的，需要往部署管線或正式環境的機密管理系統再往下查。</p>
+</div>
+
+</section>
+
+<section id="sec-08" class="doc-section">
+<div class="gho-section-head teal">
+<div class="gho-chip">08</div>
+<h2>mweb 自己這邊呢</h2>
+</div>
+
+<p>前面幾節都是以 WebAPI 這個獨立應用程式為例，因為前一份文件已經確認消費者實際看到的商品清單，最終是打進 WebAPI 的 <code>ShopCategoryLiteController.GetSalePageList</code>。那 mweb 本身（<code>MobileWebMallV2</code> 專案）的 <code>OfficialController.SalePageCategory</code> 也會直接呼叫 <code>SearchService</code>，它是不是也走同一套 <code>CacheModule</code> 註冊鏈路？</p>
+
+<div class="gho-card">
+<p>檢查 <code>MobileWebMallV2</code> 專案自己的 <code>App_Start\AutofacConfig.cs</code>，目前沒有看到跟 WebAPI 相同的 <code>RegisterProxyService("NineYi.WebStore.Frontend.BLV2")</code> 呼叫，這個專案底下也沒有找到任何 <code>ConnectionStrings*.config</code> 這類獨立檔案，<code>web.config</code> 本身也沒有 <code>&lt;connectionStrings&gt;</code> 區塊。</p>
+</div>
+
+<div class="gho-callout danger">
+<span class="gho-icon">🚧</span>
+<p><strong>尚待確認：</strong>這代表 <code>MobileWebMallV2</code> 專案組裝 <code>ISearchService</code>／<code>IDataCacheService</code> 的方式，跟 WebAPI 不完全一樣，但目前的程式碼搜尋還無法確定它實際上是透過什麼路徑拿到可用的 Redis 連線（可能是另一種尚未追到的註冊慣例，也可能實際部署時這個專案的 <code>web.config</code> 另外被合併進了一份包含連線字串的設定）。這一段留待下次針對 <code>MobileWebMallV2</code> 專案的 Autofac 啟動流程再深入分析，目前不確定的部分不在這份文件裡下定論。</p>
+</div>
+
+</section>
+
+<footer>整理自 nineyi.webstore.mobilewebmall（BLV2 / WebAPI）程式碼分析</footer>
+
+</div>
+</div>
+
+</main>
+</div>
+
+<script class="doc-shell-script">
+(function(){
+  var navItems = document.querySelectorAll('.doc-nav-item');
+  var sections = document.querySelectorAll('.doc-section');
+  navItems.forEach(function(item){
+    item.addEventListener('click', function(e){
+      e.preventDefault();
+      navItems.forEach(function(i){ i.classList.remove('active'); });
+      sections.forEach(function(s){ s.classList.remove('active'); });
+      item.classList.add('active');
+      var target = document.getElementById(item.getAttribute('data-target'));
+      if(target){ target.classList.add('active'); }
+      var content = document.querySelector('.doc-content');
+      if(content){ content.scrollTop = 0; }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

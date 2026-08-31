@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regular V2 API — 編輯定期購方案 實作規劃</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif; background: #f0f2f5; color: #1a1a2e; font-size: 14px; }
+
+  .sidebar { position: fixed; top: 0; left: 0; width: 220px; height: 100vh; background: #1a1a2e; color: #cdd6f4; overflow-y: auto; padding: 20px 0; z-index: 100; }
+  .sidebar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6272a4; padding: 8px 20px 4px; margin-top: 12px; }
+  .sidebar a { display: block; padding: 7px 20px; color: #cdd6f4; text-decoration: none; font-size: 13px; border-left: 3px solid transparent; transition: all .15s; }
+  .sidebar a:hover, .sidebar a.active { background: rgba(255,255,255,.06); border-left-color: #bd93f9; color: #fff; }
+  .sidebar .logo { padding: 16px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .sidebar .logo .title { font-size: 14px; font-weight: 700; color: #f8f8f2; line-height: 1.4; }
+  .sidebar .logo .sub { font-size: 11px; color: #6272a4; margin-top: 4px; }
+
+  .main { margin-left: 220px; padding: 32px; max-width: 1100px; }
+  section { margin-bottom: 40px; }
+  h1 { font-size: 26px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+  h2 { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+  h3 { font-size: 15px; font-weight: 700; color: #44475a; margin-bottom: 10px; }
+  p { color: #4a5568; line-height: 1.7; margin-bottom: 10px; }
+
+  .card { background: #fff; border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 4px solid transparent; }
+  .card.blue  { border-left-color: #4dabf7; }
+  .card.green { border-left-color: #51cf66; }
+  .card.orange{ border-left-color: #ff922b; }
+  .card.purple{ border-left-color: #bd93f9; }
+  .card.red   { border-left-color: #ff5555; }
+  .card.gray  { border-left-color: #868e96; }
+  .card.teal  { border-left-color: #20c997; }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 2px 8px; margin: 2px; }
+  .badge-blue   { background: #e7f5ff; color: #1971c2; }
+  .badge-green  { background: #ebfbee; color: #2f9e44; }
+  .badge-orange { background: #fff4e6; color: #d9480f; }
+  .badge-purple { background: #f3f0ff; color: #7048e8; }
+  .badge-red    { background: #fff5f5; color: #c92a2a; }
+  .badge-gray   { background: #f1f3f5; color: #495057; }
+  .badge-teal   { background: #e6fcf5; color: #0f9177; }
+  .method-put { display:inline-block; background:#4dabf7; color:#fff; font-weight:700; font-size:12px; padding:3px 10px; border-radius:4px; margin-right:8px; }
+  .status-new { display:inline-block; background:#51cf66; color:#fff; font-weight:700; font-size:11px; padding:2px 8px; border-radius:4px; }
+  .status-change { display:inline-block; background:#ff922b; color:#fff; font-weight:700; font-size:11px; padding:2px 8px; border-radius:4px; }
+  .status-nochange { display:inline-block; background:#868e96; color:#fff; font-weight:700; font-size:11px; padding:2px 8px; border-radius:4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f1f3f5; text-align: left; padding: 8px 12px; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6; }
+  td { padding: 7px 12px; border-bottom: 1px solid #f1f3f5; vertical-align: top; }
+  tr:hover td { background: #fafbfc; }
+  code { font-family: 'Fira Code', 'Consolas', monospace; background: #f1f3f5; padding: 1px 5px; border-radius: 3px; font-size: 12px; color: #d63384; }
+  .code-block { font-family: 'Fira Code', 'Consolas', monospace; background: #1e1e2e; color: #cdd6f4; padding: 14px 18px; border-radius: 8px; font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre; margin: 10px 0; }
+  .code-block .cm { color: #6272a4; }
+
+  .note { background: #fff9db; border-left: 4px solid #ffd43b; padding: 12px 16px; border-radius: 6px; margin: 10px 0; font-size: 13px; color: #664d03; }
+  .warn { background: #fff5f5; border-left: 4px solid #ff5555; padding: 12px 16px; border-radius: 6px; margin: 10px 0; font-size: 13px; color: #c92a2a; }
+  .ok   { background: #ebfbee; border-left: 4px solid #51cf66; padding: 12px 16px; border-radius: 6px; margin: 10px 0; font-size: 13px; color: #2b8a3e; }
+  ul { padding-left: 20px; line-height: 1.9; color:#4a5568;}
+  .tag-editable { color:#2f9e44; font-weight:700; }
+  .tag-locked   { color:#c92a2a; font-weight:700; }
+  .todo { color:#c92a2a; }
+</style>
+</head>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<body>
+
+<div class="sidebar">
+  <div class="logo">
+    <div class="title">Regular V2 API<br>編輯定期購方案<br>實作規劃</div>
+    <div class="sub">Implementation Plan（僅限後端內部設計）</div>
+  </div>
+  <h2>Navigation</h2>
+  <a href="#s1">1. 背景與目標</a>
+  <a href="#s2">2. 新增/異動清單</a>
+  <a href="#s3">3. 欄位可編輯矩陣</a>
+  <a href="#s4">4. DTO 設計決策</a>
+  <a href="#s5">5. Validator 設計</a>
+  <a href="#s6">6. Service 設計</a>
+  <a href="#s7">7. Repository 設計決策</a>
+  <a href="#s8">8. Controller 設計</a>
+  <a href="#s9">9. 單元測試計畫</a>
+  <a href="#s10">10. 待確認項目</a>
+  <a href="#s11">11. 其他實作風險點</a>
+  <a href="#s12">12. 錯誤訊息文案定案</a>
+</div>
+
+<div class="main">
+
+  <section>
+    <h1>Regular V2 API — 編輯定期購方案 實作規劃</h1>
+    <p>對應 EPIC：<b>定期購支援贈品_202607</b>。</p>
+    <div class="warn">本文件為 <code>nine1.regularpurchase.v2</code> 下游 API 的<b>實作規劃文件</b>，聚焦後端內部設計決策與異動範圍。<b>不涵蓋</b> OSM 前端實際呼叫的 <code>Api/RegularProduct/Edit</code> 對外規格（SMS <code>ApiResultEntity</code> 包裝、前端錯誤文案對照等），該部分待後續另行整理為獨立的前端對接 Spec 文件。</div>
+  </section>
+
+  <section id="s1">
+    <h2>1. 背景與目標</h2>
+    <p>現況 <code>EditProductAsync</code>（<code>PUT /api/regular/products/{productNo}</code>）僅能修改配送設定，且以 <code>productNo</code> 定位「單一啟用中商品」。但同一商品頁可能對應<b>多筆方案</b>（不同生效期間），需求要求：</p>
+    <div class="card blue">
+      <ul>
+        <li>以 <code>planId</code>（<code>rpd_pk</code>）精準定位單一方案</li>
+        <li>依方案狀態（尚未生效／生效中／已結束）限制可修改欄位範圍</li>
+        <li>開放方案名稱、生效結束時間、贈品缺貨處理等既有 Edit 不支援的欄位</li>
+      </ul>
+    </div>
+    <div class="ok"><b>決策：</b>新增一支獨立的 API，不修改/共用舊有 <code>PUT /{productNo}</code> 相關程式（DTO／Validator／Service 方法／Controller Action 皆獨立）。舊路由暫不處理，維持現況。</div>
+  </section>
+
+  <section id="s2">
+    <h2>2. 新增／異動清單總覽</h2>
+    <div class="card gray">
+      <table>
+        <tr><th>層</th><th>項目</th><th>異動類型</th><th>說明</th></tr>
+        <tr><td>Repository</td><td><code>ExistsOverlappingPlanAsync</code></td><td><span class="status-change">異動既有方法</span></td><td>加 <code>long? excludePlanPk = null</code>，Edit 排除自己這筆方案；Add 呼叫端不需改動</td></tr>
+        <tr><td>Repository</td><td><code>LoadByPlanAsync</code></td><td><span class="status-nochange">不異動</span></td><td>既有查詢方法，確認欄位齊全可供 Update 前置查詢使用</td></tr>
+        <tr><td>DTO</td><td><code>ProductEditPlanRequest</code></td><td><span class="status-new">新增</span></td><td>獨立於 <code>ProductEditRequest</code></td></tr>
+        <tr><td>Validator</td><td><code>ProductEditPlanRequestValidator</code></td><td><span class="status-new">新增</span></td><td>獨立於既有 Validator（若存在）</td></tr>
+        <tr><td>Service</td><td><code>EditProductByPlanAsync</code></td><td><span class="status-new">新增</span></td><td>獨立於 <code>EditProductAsync</code></td></tr>
+        <tr><td>Service（重構）</td><td>共用私有方法抽取</td><td><span class="status-change">重構</span></td><td>「生效期間 vs 銷售期間」「重疊檢查」從 <code>ValidateSalePageDataForAddAsync</code> 抽出，Add/Edit 共用</td></tr>
+        <tr><td>Controller</td><td><code>EditProductByPlanAsync</code> Action</td><td><span class="status-new">新增</span></td><td><code>PUT /api/regular/products/plan/{planId}</code></td></tr>
+        <tr><td>單元測試</td><td><code>RegularProductServiceTests.cs</code></td><td><span class="status-new">新增案例</span></td><td>三種狀態情境 + 重疊排除自己</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="s3">
+    <h2>3. 依方案狀態的欄位可編輯矩陣</h2>
+    <p>方案狀態沿用既有 <code>PlanStatusEnum</code>／<code>GetPlanStatus</code> 邏輯，<b>後端一律以 DB 現值重新計算狀態</b>，不信任前端傳入的狀態判斷。</p>
+    <div class="card orange">
+      <table>
+        <tr><th>欄位</th><th>尚未生效</th><th>生效中</th><th>已結束</th></tr>
+        <tr><td>商品頁序號（<code>RpdPageId</code>）</td><td class="tag-editable">✅（換頁，見 3.1）</td><td class="tag-locked">❌</td><td class="tag-locked">❌</td></tr>
+        <tr><td>方案名稱（<code>RpdPlanTitle</code>）</td><td class="tag-editable">✅</td><td class="tag-editable">✅</td><td class="tag-locked">❌</td></tr>
+        <tr><td>生效開始時間（<code>RpdPlanDateBegin</code>）</td><td class="tag-editable">✅</td><td class="tag-locked">❌</td><td class="tag-locked">❌</td></tr>
+        <tr><td>生效結束時間（<code>RpdPlanDateEnd</code>）</td><td class="tag-editable">✅</td><td class="tag-editable">✅</td><td class="tag-locked">❌</td></tr>
+        <tr><td>配送週期／次數／購買設定</td><td class="tag-editable">✅</td><td class="tag-editable">✅</td><td class="tag-locked">❌</td></tr>
+        <tr><td>贈送條件 <code>Interval</code>、贈品內容</td><td class="tag-editable">✅</td><td class="tag-locked">❌</td><td class="tag-locked">❌</td></tr>
+        <tr><td>贈品缺貨處理 <code>OutOfStockAction</code></td><td class="tag-editable">✅</td><td class="tag-editable">✅</td><td class="tag-locked">❌</td></tr>
+        <tr><td>贈品開關</td><td class="tag-editable">✅</td><td class="tag-locked">❌</td><td class="tag-locked">❌</td></tr>
+      </table>
+    </div>
+    <div class="warn"><b>驗證失敗處理原則（已確認）：</b>Request 內「不可編輯欄位」的值與 DB 現值不同 → 整筆請求驗證失敗，不做任何寫入（all-or-nothing），不會忽略欄位或部分寫入。</div>
+
+    <h3 id="s3-1" style="margin-top:24px;">3.1 商品頁序號（<code>RpdPageId</code> / SalepageId）可編輯性與換頁風險處理 ✅ 已定案（依需求原文修正）</h3>
+    <div class="warn"><b>修正說明：</b>原規劃「任何狀態皆不可異動（含尚未生效）」為<b>風險評估建議，並非需求規定</b>。核對 EPIC 需求原文後，需求明確要求「尚未生效」狀態應開放<b>所有</b>欄位編輯（含商品頁序號）；僅「生效中」「已結束」鎖定商品頁序號。本節修正為依需求原文的最終結論，並補上對應的換頁防呆設計。</div>
+    <div class="ok"><b>結論：</b>「尚未生效」狀態<b>開放</b>修改商品頁序號（換頁）；「生效中」「已結束」<b>鎖定</b>，與 DB 現值不同即整筆驗證失敗。</div>
+
+    <h3>為何「尚未生效」開放換頁的風險相對可控</h3>
+    <p>「尚未生效」方案尚未實際出貨，<b>沒有任何訂單快照</b>依賴目前的商品頁綁定關係，換頁不會造成歷史訂單資料不一致；相對「生效中」方案已有訂單依此設定持續出貨，換頁會直接影響進行中的訂單，風險不對等，故僅在「尚未生效」開放。</p>
+
+    <h3>風險來源（換頁時仍需處理）</h3>
+    <p>修改商品頁序號等同「換綁商品頁」，需要處理：① 新商品頁：驗證交期為定期購、非點數商品、未結束銷售，成功後開啟該商品頁定期購標記；② 舊商品頁：判斷是否還有其他方案在使用，若無則關閉其定期購標記（<code>SalePage_IsClosed = true</code>），若有則維持開啟 —— <b>這是風險核心，需新增防呆檢查</b>。</p>
+    <div class="card red">
+      <p><code>SalePage_IsClosed</code> 是商品頁的<b>全站共用欄位</b>，並非定期購專屬，會被以下多處共用/引用：</p>
+      <ul>
+        <li><code>GetStatusValidList</code>（一般購買資格判斷，<code>SCMAPIV2</code>／<code>SalePageService.cs</code> line ~1766：<code>AND SalePage_IsClosed = 0</code>）</li>
+        <li>贈品商品頁邏輯（<code>SaleProductGiftService</code>）</li>
+        <li>促銷引擎排名（<code>PromotionEngineService</code>）</li>
+        <li>變更時會觸發全站事件 <code>SalePageClosed</code> / <code>SalePageOpened</code>（<code>FireEvents</code>，<code>SalePageService.cs</code> line ~2101-2105）</li>
+      </ul>
+      <p style="margin-top:8px;">且同一商品頁可能有<b>多筆非重疊的定期購方案</b>（例如方案 A 換到別的商品頁後，舊商品頁可能仍被方案 B 使用中），若換頁時貿然關閉舊商品頁，會誤傷其他仍在使用的方案，<b>因此必須新增防呆檢查</b>。</p>
+    </div>
+
+    <h3>既有行為佐證（「開」是既有、已驗證過的路徑）</h3>
+    <div class="card blue">
+      <p><b>SMS 前端</b>（<code>C:\91APP\NineYi.Sms\WebSite\WebSite\TypeScripts\Modules\SalePage\edit.controller.ts</code> line 3129-3135）：商品頁建立/複製時，若交期選擇「定期購」且供應商為支援的第三方 Provider，<b>前端會主動強制關閉商品頁</b>：</p>
+      <div class="code-block"><span class="cm">// 定期購，provider 為支援的第三方廠商，預先關閉商品頁</span>
+if (
+    this.Model.ApplyType === this.ApplyTypeValue.RegularOrder.Name &amp;&amp;
+    this.IsSupportedRegularOrderProvider(this.RegularOrderProvider)
+) {
+    this.Model.IsClosed = true;
+}</div>
+      <p>（對照組：一般商品/複製商品頁預設 <code>IsClosed: false</code> 開啟，見同檔 line 2963 註解「複製商品頁，預設開啟」）</p>
+      <p style="margin-top:10px;"><b>V2 <code>AddProductAsync</code></b>（<code>RegularProductService.cs</code> line ~409, 711）：新增定期購方案成功後，主動呼叫 <code>UpdateSalePageIsClosedOfRegularOrderAsync(apiProfile, request.ProductNo, isClosed: false)</code>，把商品頁<b>打開</b>，代表「方案設定完成，可以正式對外開放購買」。此呼叫失敗僅 <code>LogWarning</code>，不影響主流程（try/catch 吞例外，與 V1 行為一致）。</p>
+    </div>
+    <div class="note">完整迴圈：<b>SMS 建立商品頁時強制關閉 → 品牌方設定定期購方案（<code>AddProductAsync</code>）→ V2 主動打開商品頁</b>。這個「關 → 開」的迴圈設計良好且已在正式環境運行、驗證過，換頁時的「開新頁／關舊頁」比照此既有慣例延伸設計。</div>
+
+    <h3>換頁防呆設計 ✅ 已定案</h3>
+    <div class="card green">
+      <p>新增 Repository 方法判斷舊商品頁是否還有其他方案在使用：</p>
+      <div class="code-block">/// &lt;summary&gt;判斷指定商品頁除了 excludePlanPk 外，是否還有其他「尚未生效」或「已生效」方案在使用&lt;/summary&gt;
+Task&lt;bool&gt; ExistsOtherActivePlansByPageIdAsync(long shopId, long pageId, long excludePlanPk);</div>
+      <ul>
+        <li>換頁成功寫入（<code>UpdateAsync</code>）後：先對<b>新商品頁</b>呼叫 <code>UpdateSalePageIsClosedOfRegularOrderAsync(newPageId, isClosed: false)</code> 開啟</li>
+        <li>再呼叫 <code>ExistsOtherActivePlansByPageIdAsync(oldPageId, excludePlanPk: planId)</code>：
+          <ul>
+            <li>若<b>無</b>其他方案使用舊商品頁 → 呼叫 <code>UpdateSalePageIsClosedOfRegularOrderAsync(oldPageId, isClosed: true)</code> 安全關閉</li>
+            <li>若<b>有</b>其他方案使用中 → 維持開啟，不做任何動作</li>
+          </ul>
+        </li>
+        <li>開關頁呼叫皆比照既有 <code>AddProductAsync</code> 慣例：失敗僅 <code>LogWarning</code>，不影響主流程、不回滾方案本身異動</li>
+      </ul>
+    </div>
+
+    <h3>決策</h3>
+    <div class="card green">
+      <ul>
+        <li>「尚未生效」開放修改 <code>RpdPageId</code>（換頁），並執行上述換頁防呆設計；「生效中」「已結束」鎖定，與 DB 現值不同即整筆驗證失敗</li>
+        <li>換頁時新商品頁需通過完整 SCM 驗證（交期定期購、非點數商品、未結束銷售），並檢查與其他方案是否重疊（見第 7 節）</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <section id="s4">
+    <h2>4. DTO 設計決策：獨立新增 <code>ProductEditPlanRequest</code></h2>
+    <h3>4.1 決策理由</h3>
+    <div class="card purple">
+      <ul>
+        <li>Repo 既有先例：<code>ProductAddRequest</code> 與 <code>ProductEditRequest</code> 雖欄位高度重疊，但並未共用，各自獨立且有獨立 Validator</li>
+        <li>新舊兩支 API 的定位鍵（<code>ProductNo</code> vs <code>PlanId</code>）、欄位範圍、驗證規則差異過大，共用會讓 Validator 條件式越疊越複雜</li>
+        <li>舊路由已決定「暫不處理」，共用 DTO 等於間接牽動舊路由行為，違反此決定</li>
+      </ul>
+    </div>
+
+    <h3>4.2 欄位規劃 ✅ 已定案</h3>
+    <div class="ok">
+      <p>型別完全比照既有 <code>ProductAddRequest</code> 慣例，<code>ProductEditPlanRequest</code> 為<b>全新檔案</b>（非修改既有 <code>ProductEditRequest.cs</code>，該檔為舊路由 <code>PUT /{productNo}</code> 專用，欄位陽春，不含 Plan/贈品相關欄位）：</p>
+      <div class="code-block">namespace Nine1.Regularpurchase.V2.BL.BE.RegularProduct
+{
+    /// &lt;summary&gt;
+    /// 管理後台 - 依方案序號編輯定期購方案請求
+    /// &lt;/summary&gt;
+    public class ProductEditPlanRequest
+    {
+        /// &lt;summary&gt;定期購方案序號（對應 rpd_pk），路由參數帶入並覆寫此欄位&lt;/summary&gt;
+        public long PlanId { get; set; }
+
+        /// &lt;summary&gt;店家代號&lt;/summary&gt;
+        public long ShopId { get; set; }
+
+        /// &lt;summary&gt;商品頁序號；「尚未生效」可異動（換頁），「生效中」「已結束」須與 DB 現值一致，否則整筆驗證失敗&lt;/summary&gt;
+        public long ProductNo { get; set; }
+
+        /// &lt;summary&gt;方案名稱（對應 rpd_plan_title，可空）；「已結束」不可異動&lt;/summary&gt;
+        public string? PlanTitle { get; set; }
+
+        /// &lt;summary&gt;方案生效開始時間（對應 rpd_plan_date_begin）；僅「尚未生效」可異動&lt;/summary&gt;
+        public DateTime? PlanDateBegin { get; set; }
+
+        /// &lt;summary&gt;方案生效結束時間（對應 rpd_plan_date_end；NULL = 永久有效）；「尚未生效」「生效中」可異動&lt;/summary&gt;
+        public DateTime? PlanDateEnd { get; set; }
+
+        /// &lt;summary&gt;配送週期清單（JSON 物件陣列）&lt;/summary&gt;
+        public List&lt;object&gt; ProductShippingPeriod { get; set; } = [];
+
+        /// &lt;summary&gt;配送次數限制選項（1=無限制, 2=有限制, 3=固定次數）&lt;/summary&gt;
+        public int ProductShippingSet { get; set; }
+
+        /// &lt;summary&gt;最大配送次數（ProductShippingSet=2 時使用）&lt;/summary&gt;
+        public int? ProductShippingMax { get; set; }
+
+        /// &lt;summary&gt;固定配送次數（ProductShippingSet=3 時使用）&lt;/summary&gt;
+        public int? ProductShippingFixed { get; set; }
+
+        /// &lt;summary&gt;購買選項（1=僅定期購, 2=定期購+一次性）&lt;/summary&gt;
+        public int ProductPurchaseOption { get; set; }
+
+        /// &lt;summary&gt;
+        /// 贈品活動規則；本次僅會有 0 或 1 筆。
+        /// 「尚未生效」：Interval/GiftItemList 可改；「生效中」：僅 OutOfStockAction 可改，Id 由後端依 DB 現值強制帶入
+        /// &lt;/summary&gt;
+        public List&lt;RegularProductPromotionRule&gt; RegularProductPromotionRules { get; set; } = [];
+
+        /// &lt;summary&gt;操作人員名稱&lt;/summary&gt;
+        public string OperatorName { get; set; } = string.Empty;
+    }
+}</div>
+      <p style="margin-top:10px;"><b>與草案的差異：</b>型別完全比照 <code>ProductAddRequest</code> 既有慣例（<code>List&lt;object&gt;</code>／<code>int?</code>／<code>DateTime?</code>），不另創新型別，拿掉草案階段「陣列型別待確認」的不確定性。</p>
+    </div>
+  </section>
+
+  <section id="s5">
+    <h2>5. Validator 設計：<code>ProductEditPlanRequestValidator</code></h2>
+    <div class="card teal">
+      <table>
+        <tr><th>驗證類型</th><th>放置層</th><th>理由</th></tr>
+        <tr><td>純欄位格式驗證</td><td><b>Validator</b></td><td>不需外部 I/O，比照 <code>ProductAddRequestValidator</code> 慣例</td></tr>
+        <tr><td>狀態鎖定比對（需查 DB 取得現值）</td><td class="status-nochange" style="background:#51cf66;">✅ Service</td><td>需查詢 Repository，屬有 I/O 的驗證，比照 <code>ValidateSalePageDataForAddAsync</code> 先例放 Service 層</td></tr>
+        <tr><td>SCM 商品頁驗證</td><td><b>Service 層</b></td><td>需呼叫 SCM API</td></tr>
+      </table>
+    </div>
+    <div class="ok"><b>已確認：</b>狀態鎖定比對放在 <b>Service 層</b>，新增 private method（例如 <code>ValidateFieldLockByPlanStatusAsync</code>），Validator 僅負責純格式驗證，不查 DB。此設計與 <code>EditProductByPlanAsync</code> 流程草案（第 6.1 節第 4 步）一致。</div>
+
+    <h3>5.2 Validator 涵蓋規則（純格式，無 I/O）</h3>
+    <div class="card gray">
+      <ul>
+        <li><code>PlanId</code>／<code>ShopId</code>／<code>ProductNo</code> &gt; 0</li>
+        <li><code>PlanTitle</code> 字數上限（全半形混合 20 字／純半形 40 字，沿用 <code>ProductAddRequestValidator</code> 邏輯）</li>
+        <li><code>PlanDateEnd</code> 須晚於 <code>PlanDateBegin</code></li>
+        <li><code>ProductShippingPeriod</code> 不可為空</li>
+        <li><code>ProductShippingSet</code> 值域 1/2/3；<code>ProductShippingMax</code>/<code>ProductShippingFixed</code> 條件必填與範圍（2~99）</li>
+        <li><code>ProductPurchaseOption</code> 值域 1/2</li>
+        <li><code>RegularProductPromotionRules</code> 至多 1 筆；陣列內 <code>Interval</code> 範圍、<code>GiftItemList</code> 數量/加總上限（複用 <code>RegularProductPromotionRuleValidator</code>）</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="s6">
+    <h2>6. Service 設計：<code>EditProductByPlanAsync</code></h2>
+    <h3>6.1 流程草案</h3>
+    <div class="code-block">1. 呼叫 Validator（純格式驗證）→ 失敗直接回傳 Failure
+2. LoadByPlanAsync(shopId, planId) → 查無 → Failure「查無此定期購方案」
+3. 依 DB 現值計算 PlanStatus（沿用 GetPlanStatus）
+4. 依狀態鎖定矩陣，比對 Request 傳入值 vs DB 現值：
+   - 有差異的鎖定欄位 → 立即 Failure，不繼續往下執行（all-or-nothing）
+5. 呼叫 SCM 取得 salePageData，驗證：
+   - 商品交期為定期購、非點數商品（複用 ValidateSalePageData）
+   - 商品尚未結束銷售
+   - 生效結束時間不得晚於商品銷售結束時間（複用/抽出 Add 共用邏輯）
+   - 若 ProductNo（RpdPageId）與 DB 現值不同（換頁，僅「尚未生效」允許）：對新商品頁執行同樣的 SCM 驗證
+6. ExistsOverlappingPlanAsync(shopId, pageId, planDateBegin, planDateEnd, excludePlanPk: planId)
+   → 重疊 → Failure「此商品序號於指定生效期間已存在重疊方案」
+7. 組裝更新後的 entity（僅更新狀態允許的欄位，其餘沿用 DB 原值做雙重保險）
+8. UpdateAsync(entity)
+9. 若換頁：呼叫 UpdateSalePageIsClosedOfRegularOrderAsync(newPageId, isClosed:false) 打開新商品頁；
+   再呼叫 ExistsOtherActivePlansByPageIdAsync(oldPageId, excludePlanPk:planId)，若無其他方案使用舊商品頁，
+   呼叫 UpdateSalePageIsClosedOfRegularOrderAsync(oldPageId, isClosed:true) 關閉舊商品頁（皆比照 Add 慣例，失敗僅 LogWarning，不影響主流程）
+10. 清除 GetRegularSettingAsync 快取（換頁時新舊 PageId 快取皆需清除，見 11.3 節）
+11. 回傳 Success「成功儲存定期購方案」</div>
+
+    <h3>6.2 與 Add 共用邏輯抽取</h3>
+    <div class="card green">
+      <table>
+        <tr><th>共用邏輯</th><th>目前位置</th><th>抽取後</th></tr>
+        <tr><td>商品頁基本檢查</td><td><code>ValidateSalePageData</code>（已 static 共用）</td><td>不需異動</td></tr>
+        <tr><td>生效期間 vs 銷售期間</td><td><code>ValidateSalePageDataForAddAsync</code> 內</td><td>抽出共用 private method，Add/Edit 皆呼叫</td></tr>
+        <tr><td>重疊檢查</td><td><code>ValidateSalePageDataForAddAsync</code> 內</td><td>抽出共用 private method，帶 <code>excludePlanPk</code>（Add 傳 null，Edit 傳 planId）</td></tr>
+        <tr><td>開啟商品頁定期購標記</td><td><code>AddProductAsync</code> 末端呼叫</td><td>Edit 換頁時新商品頁比照呼叫；新增舊商品頁關閉前的 <code>ExistsOtherActivePlansByPageIdAsync</code> 防呆檢查（見 3.1 節）</td></tr>
+      </table>
+    </div>
+
+    <h3>6.3 完整更新歷程流程圖</h3>
+    <div class="card blue">
+      <div class="mermaid">
+flowchart TD
+    A["前端呼叫\nPUT /api/regular/products/plan/{planId}\nBody: ProductEditPlanRequest"] --> B["Controller\n路由 planId 覆寫 Body.PlanId"]
+    B --> C["Validator\nProductEditPlanRequestValidator\n（純格式驗證，不查DB）"]
+    C -->|格式錯誤| C1["回傳 Failure（不寫入）"]
+    C -->|格式通過| D["Service: EditProductByPlanAsync"]
+
+    D --> E["LoadByPlanAsync(shopId, planId)\n查詢 DB 現值"]
+    E -->|查無方案| E1["Failure「查無此定期購方案」"]
+    E -->|查得到| F["依 DB 現值計算 PlanStatus\n（GetPlanStatus：尚未生效/生效中/已結束）"]
+
+    F --> G["ValidateFieldLockByPlanStatusAsync\n狀態鎖定比對（Service層）"]
+    G --> G1{"依矩陣比對\nRequest vs DB現值"}
+    G1 -->|"鎖定欄位有差異\n(RpdPageId 僅尚未生效可異動)"| G2["Failure\n整筆拒絕，不寫入(all-or-nothing)"]
+    G1 -->|鎖定欄位皆一致| H["呼叫 SCM 驗證商品頁\n(交期定期購/非點數商品/未結束銷售)\n換頁時新舊商品頁皆驗證"]
+
+    H -->|驗證失敗| H1["Failure"]
+    H -->|驗證通過| I["ExistsOverlappingPlanAsync\n(shopId, pageId, planDateBegin,\nplanDateEnd, excludePlanPk: planId)"]
+
+    I -->|重疊| I1["Failure「重疊方案」"]
+    I -->|不重疊| J["組裝更新後 entity"]
+
+    J --> J1["贈品規則 Id 處理：\n生效中→強制沿用DB現值Id\n尚未生效→有傳沿用/無傳新產生"]
+    J1 --> K["UpdateAsync(entity)\n擴充後SQL含\nrpd_page_id/plan_title/plan_date_begin/\nplan_date_end/promotion_json"]
+
+    K -->|失敗| K1["Failure「儲存失敗」"]
+    K -->|成功| K2{"是否換頁？\n(ProductNo != DB原值)"}
+    K2 -->|是| K3["開新頁：UpdateSalePageIsClosedOfRegularOrderAsync\n(newPageId, isClosed:false)\n\n關舊頁前檢查：ExistsOtherActivePlansByPageIdAsync\n(oldPageId, excludePlanPk)\n無其他方案使用→關閉舊頁"]
+    K2 -->|否| L
+    K3 --> L["清除快取\nRegularPurchaseCacheKey\n(GetRegularSetting)\n換頁時新舊PageId皆清除"]
+    L --> M["Success「成功儲存定期購方案」"]
+
+    style C1 fill:#ffe3e3
+    style E1 fill:#ffe3e3
+    style G2 fill:#ffe3e3
+    style H1 fill:#ffe3e3
+    style I1 fill:#ffe3e3
+    style K1 fill:#ffe3e3
+    style M fill:#d3f9d8
+      </div>
+      <p style="margin-top:12px;"><b>關鍵設計重點對應：</b></p>
+      <ul>
+        <li>步驟 C：Validator 只做純格式驗證（第 5 節）</li>
+        <li>步驟 F→G：狀態鎖定比對放 Service 層</li>
+        <li>步驟 G1：<code>RpdPageId</code> 僅「尚未生效」可異動，其餘狀態鎖定（第 3.1 節）</li>
+        <li>步驟 I：<code>ExistsOverlappingPlanAsync</code> 帶 <code>excludePlanPk</code> 排除自己（第 7 節）</li>
+        <li>步驟 J1：贈品規則 Id 依狀態決定沿用邏輯（第 11.2 節）</li>
+        <li>步驟 K：<code>UpdateAsync</code> 擴充後的 SQL（第 11.1 節）</li>
+        <li>步驟 K2/K3：換頁時的開關頁防呆邏輯（第 3.1 節）</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="s7">
+    <h2>7. Repository 設計決策：<code>ExistsOverlappingPlanAsync</code> 加 Optional 參數</h2>
+    <div class="ok"><b>已確認採用方案：</b>加 Optional 參數，不使用 Overload 或 Request 物件包裝。</div>
+    <div class="code-block">Task&lt;bool&gt; ExistsOverlappingPlanAsync(
+    long shopId,
+    long pageId,
+    DateTime? planDateBegin,
+    DateTime? planDateEnd,
+    long? excludePlanPk = null);</div>
+
+    <h3>7.2 決策理由</h3>
+    <div class="card blue">
+      <table>
+        <tr><th>方案</th><th>評估</th></tr>
+        <tr><td><b>Optional 參數（採用）</b></td><td>與既有 repo 慣例一致（<code>LoadByProductAsync</code>/<code>LoadByPlanAsync</code> 已用 <code>status = 1</code> 模式）；Add 呼叫端零異動；SQL 僅一份</td></tr>
+        <tr><td>Overload</td><td>語意較明確，但介面多一個成員，需委派避免邏輯重複，對單一 nullable 參數而言略顯冗餘</td></tr>
+        <tr><td>Request 物件包裝</td><td>對未來擴充有利，但對現況屬於過度設計</td></tr>
+      </table>
+    </div>
+
+    <h3>7.3 SQL 異動草案</h3>
+    <div class="code-block">SELECT COUNT(1)
+FROM regular_product
+WHERE rpd_shop_id = @ShopId
+  AND rpd_page_id = @PageId
+  AND rpd_status  = 1
+  AND (rpd_plan_date_begin IS NULL OR rpd_plan_date_begin &lt; @PlanDateEnd)
+  AND (rpd_plan_date_end   IS NULL OR rpd_plan_date_end   &gt; @PlanDateBegin)
+  AND (@ExcludePlanPk IS NULL OR rpd_pk &lt;&gt; @ExcludePlanPk)
+LIMIT 1</div>
+  </section>
+
+  <section id="s8">
+    <h2>8. Controller 設計</h2>
+    <div class="card blue">
+      <table>
+        <tr><th>項目</th><th>內容</th></tr>
+        <tr><td>Route</td><td><span class="method-put">PUT</span><code>/api/regular/products/plan/{planId:long}</code></td></tr>
+        <tr><td>Action 名稱</td><td><code>EditProductByPlanAsync</code></td></tr>
+        <tr><td>Request Binding</td><td>路由 <code>planId</code> 覆寫 Body 內 <code>PlanId</code>（比照舊路由 <code>productNo</code> 覆寫的既有模式）</td></tr>
+        <tr><td>回應格式</td><td>沿用 <code>MessageApiResponseEntity&lt;T&gt;</code>，與既有 Add/Edit Action 一致</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="s9">
+    <h2>9. 單元測試計畫</h2>
+    <div class="card green">
+      <table>
+        <tr><th>測試情境</th><th>預期結果</th></tr>
+        <tr><td>尚未生效，全欄位合法異動</td><td>成功</td></tr>
+        <tr><td>生效中，僅異動允許欄位（名稱/結束時間/配送設定/缺貨處理）</td><td>成功</td></tr>
+        <tr><td>尚未生效，異動商品頁序號（換頁）</td><td>成功，並執行換頁防呆流程（開新頁/檢查關舊頁）</td></tr>
+        <tr><td>生效中，異動商品頁序號</td><td>失敗，不寫入</td></tr>
+        <tr><td>生效中，異動生效開始時間</td><td>失敗，不寫入</td></tr>
+        <tr><td>生效中，異動贈送條件 <code>Interval</code> 或贈品內容</td><td>失敗，不寫入</td></tr>
+        <tr><td>已結束，任何欄位異動</td><td>失敗，不寫入</td></tr>
+        <tr><td><code>PlanId</code> 查無方案</td><td>失敗「查無此定期購方案」</td></tr>
+        <tr><td>生效期間與其他方案重疊（非自己）</td><td>失敗</td></tr>
+        <tr><td>生效期間與自己原本區間相同（未變更）</td><td>不誤判為重疊，成功</td></tr>
+        <tr><td>商品已結束銷售 / 非定期購交期 / 點數商品</td><td>失敗</td></tr>
+        <tr><td>生效結束時間晚於商品銷售結束時間</td><td>失敗</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="s10">
+    <h2>10. 待確認 / 下一輪討論項目</h2>
+    <div class="card red">
+      <ul>
+        <li><s>商品頁序號（<code>RpdPageId</code>）是否開放修改</s> → <b>已依需求原文修正定案：「尚未生效」開放（換頁），「生效中」「已結束」鎖定</b>（見 3.1）</li>
+        <li><s>狀態鎖定比對邏輯放在 Validator 還是 Service</s> → <b>已定案：Service</b>（比照 Add 現有慣例，新增 <code>ValidateFieldLockByPlanStatusAsync</code>）</li>
+        <li><s><code>ProductEditPlanRequest</code> 完整欄位型別與命名最終定案</s> → <b>已定案</b>（見第 4.2 節，全新檔案，型別比照 <code>ProductAddRequest</code> 慣例）</li>
+        <li><s>錯誤訊息文案逐一定案</s> → <b>已定案</b>（見第 12 節）</li>
+        <li><s>是否需要 Repository 新增「依 <code>planId</code> 取得目前 DB 值做鎖定比對」的專用查詢</s> → <b>已定案：不需要，直接複用 <code>LoadByPlanAsync</code></b>（已回傳完整 entity，同時可供狀態鎖定比對與組裝更新後 entity 兩種用途）</li>
+        <li>OSM 前端對接 Spec（<code>Api/RegularProduct/Edit</code>）留待後續另行整理，本文件不涵蓋</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="s11">
+    <h2>11. 其他實作風險點（本輪新發現，待落實於實作階段）</h2>
+
+    <h3>11.1 🔴 <code>UpdateAsync</code> SQL 目前缺少本次所需欄位 ✅ 已定案</h3>
+    <div class="ok">
+      <p>現況 <code>RegularProductRepository.UpdateAsync</code>（line ~289-315）SQL 僅 UPDATE：<code>rpd_category_id</code>／<code>rpd_sku</code>／<code>rpd_shop_category_id</code>／<code>rpd_title</code>／<code>rpd_pic_url</code>／<code>rpd_original_price</code>／<code>rpd_sale_price</code>／<code>rpd_cost_price</code>／<code>rpd_sale_qty</code>／<code>rpd_limit_qty</code>／<code>rpd_ship_period</code>／<code>rpd_ship_limit_status</code>／<code>rpd_ship_limit_count</code>／<code>rpd_buy_setting</code>／<code>rpd_sale_date_begin</code>／<code>rpd_sale_date_end</code>／<code>rpd_update_time</code>／<code>rpd_update_user</code>。</p>
+      <p style="margin-top:8px;"><b>完全沒有</b>涵蓋本次 Edit 需要更新的欄位：<code>rpd_plan_title</code>、<code>rpd_plan_date_begin</code>、<code>rpd_plan_date_end</code>、<code>rpd_promotion_json</code>。</p>
+      <p style="margin-top:8px;"><b>好消息</b>：<code>RegularProductEntity</code>（BE 層）<b>早已具備</b>這幾個欄位（<code>RpdPlanTitle</code>／<code>RpdPlanDateBegin</code>／<code>RpdPlanDateEnd</code>／<code>RpdPromotionJson</code>，分別於工作項目 #647549／#651076 新增），只是 <code>UpdateAsync</code> 的 SQL <code>SET</code> 子句忘了加上去，<b>不需異動 Entity，僅需擴充 SQL</b>。</p>
+      <p style="margin-top:8px;"><b>決策：擴充既有 <code>UpdateAsync</code>，不新增專用 <code>UpdatePlanAsync</code>。</b></p>
+      <ul style="margin-top:8px;">
+        <li>現有 <code>EditProductAsync</code>（改運送設定）與新的 <code>EditProductByPlanAsync</code>（改方案內容）本質上都是「用完整 entity 覆寫同一列」，SQL 邏輯相同，差異只在呼叫端組出的 entity 內容</li>
+        <li>新增 <code>UpdatePlanAsync</code> 只是多一份幾乎一樣的 SQL，缺乏額外價值，且違反「不重複維護 SQL」原則（比照 <code>ExistsOverlappingPlanAsync</code> 加 Optional 參數的思路）</li>
+        <li>兩個 Service 方法各自組好完整的 <code>entity</code>（沿用 DB 舊值 + 套用新值）後呼叫同一支 <code>UpdateAsync</code>，行為清楚、易懂</li>
+      </ul>
+      <p style="margin-top:8px;"><b>擴充後 SQL 草案：</b></p>
+      <div class="code-block">UPDATE regular_product SET
+    rpd_category_id      = @RpdCategoryId,
+    rpd_sku              = @RpdSku,
+    rpd_shop_category_id = @RpdShopCategoryId,
+    rpd_page_id          = @RpdPageId,
+    rpd_title            = @RpdTitle,
+    rpd_plan_title       = @RpdPlanTitle,
+    rpd_pic_url          = @RpdPicUrl,
+    rpd_original_price   = @RpdOriginalPrice,
+    rpd_sale_price       = @RpdSalePrice,
+    rpd_cost_price       = @RpdCostPrice,
+    rpd_sale_qty         = @RpdSaleQty,
+    rpd_limit_qty        = @RpdLimitQty,
+    rpd_ship_period      = @RpdShipPeriod,
+    rpd_ship_limit_status = @RpdShipLimitStatus,
+    rpd_ship_limit_count  = @RpdShipLimitCount,
+    rpd_buy_setting      = @RpdBuySetting,
+    rpd_sale_date_begin  = @RpdSaleDateBegin,
+    rpd_sale_date_end    = @RpdSaleDateEnd,
+    rpd_plan_date_begin  = @RpdPlanDateBegin,
+    rpd_plan_date_end    = @RpdPlanDateEnd,
+    rpd_promotion_json   = @RpdPromotionJson,
+    rpd_update_time      = @RpdUpdateTime,
+    rpd_update_user      = @RpdUpdateUser
+WHERE rpd_pk     = @RpdPk
+  AND rpd_shop_id = @RpdShopId</div>
+      <div class="warn" style="margin-top:8px;"><b>修正說明：</b><code>rpd_page_id</code> <b>改為納入 UPDATE SET 子句</b>（原規劃排除，現依需求原文「尚未生效」狀態需開放換頁修正）。Service 層組裝 entity 時，<code>RpdPageId</code> 一律帶入「本次應寫入的值」——「尚未生效」狀態下若換頁則帶新值，其餘狀態則因狀態鎖定機制保證與 DB 現值相同，帶回原值即可，SQL 不需要額外的條件式判斷是否更新此欄位。<code>EditProductAsync</code>（舊路由）呼叫 <code>UpdateAsync</code> 時，因 entity 是從 DB 現值組出、僅覆寫運送設定欄位，<code>rpd_page_id</code>／<code>rpd_plan_title</code>／<code>rpd_plan_date_begin</code>／<code>rpd_plan_date_end</code>／<code>rpd_promotion_json</code> 會原值寫回，不影響舊路由行為。</div>
+    </div>
+
+    <h3>11.2 贈品規則 Id 保留邏輯 ✅ 已定案</h3>
+    <div class="ok">
+      <p>現況 <code>EnsurePromotionRuleIds</code>（<code>RegularProductService.cs</code> line ~600）僅在 <code>rule.Id</code> 為空時補 <code>Guid</code>。<b>Edit 情境下既有規則的 Id 必須保留原值</b>，因為訂單快照（歷史訂單回溯）依賴此 Id 對應到當初下單時的贈品規則。</p>
+      <p style="margin-top:8px;"><b>核心原則：Id 對 Id 更新</b>——同一筆規則的生命週期應延續同一個 <code>Id</code>，不應該無故產生新 Id。</p>
+      <p style="margin-top:10px;"><b>設計依據第 3 節欄位可編輯矩陣自然推導：</b></p>
+      <table style="margin-top:6px;">
+        <tr><th>欄位</th><th>尚未生效</th><th>生效中</th><th>已結束</th></tr>
+        <tr><td>贈送條件 <code>Interval</code>、贈品內容 <code>GiftItemList</code></td><td class="tag-editable">✅</td><td class="tag-locked">❌</td><td class="tag-locked">❌</td></tr>
+        <tr><td>贈品缺貨處理 <code>OutOfStockAction</code></td><td class="tag-editable">✅</td><td class="tag-editable">✅</td><td class="tag-locked">❌</td></tr>
+        <tr><td>贈品開關（有無這筆規則）</td><td class="tag-editable">✅</td><td class="tag-locked">❌</td><td class="tag-locked">❌</td></tr>
+      </table>
+      <p style="margin-top:10px;">由此可知：「生效中」狀態下，規則本身是否存在、<code>Interval</code>、<code>GiftItemList</code> 都被鎖死必須與 DB 現值相同，<b>唯一可能被改動的只有 <code>OutOfStockAction</code></b>——本質上是同一筆規則的欄位微調，不存在「換一筆規則」的可能性；「尚未生效」狀態下規則可整筆新增/移除/改動核心內容，此時方案尚未生效、不可能有訂單快照到這筆規則，即使產生新 Id 也沒有回溯風險。</p>
+      <p style="margin-top:10px;"><b>最終處理邏輯：</b></p>
+      <table style="margin-top:6px;">
+        <tr><th>方案狀態</th><th>Id 處理方式</th></tr>
+        <tr><td><b>生效中</b></td><td>Service 組裝最終 entity 時，規則 <code>Id</code> <b>一律強制沿用 DB 現值</b>，完全不採信前端傳入的 Id（因規則內容已被鎖定為與 DB 相同，等同同一物件）</td></tr>
+        <tr><td><b>尚未生效</b></td><td>寬鬆處理：前端有傳 Id 就沿用（Id 對 Id），沒傳或傳空則視為新規則，呼叫既有 <code>EnsurePromotionRuleIds</code> 產生新 Id</td></tr>
+        <tr><td><b>已結束</b></td><td>不適用，任何贈品欄位異動皆整筆驗證失敗，不會走到組裝階段</td></tr>
+      </table>
+      <p style="margin-top:10px;">此設計不需要額外設計「內容比對救援」邏輯（例如比對 Type/Interval/GiftItemList 是否相同來猜測是否為同一筆規則）——<b>「生效中」狀態下由狀態鎖定機制保證內容必然相同，因此直接以 DB 現值的 Id 覆寫即可，無需比對</b>，是最簡單且可靠的做法。</p>
+    </div>
+
+    <h3>11.3 快取清除範圍 ✅ 已定案（換頁需雙 Key 清除）</h3>
+    <div class="warn">
+      <p><b>修正說明：</b>原規劃假設 <code>RpdPageId</code> 恆鎖定、快取 Key 不會變，因此只需複製 <code>EditProductAsync</code> 的單一清除邏輯。現依需求原文，「尚未生效」狀態允許換頁，快取 Key（由 <code>ShopId + PageId</code> 組成）<b>會改變</b>，需同時清除<b>新、舊兩個 PageId</b> 對應的快取 Key，否則舊 Key 的快取會殘留過期資料（TTL 24h 內讀到舊的 <code>RegularSettingData</code>）。</p>
+    </div>
+    <div class="ok">
+      <p style="margin-top:8px;">查證全 repo 後確認，目前僅有 <code>RegularPurchaseCacheKey</code>（<code>GetRegularSettingAsync</code>，TTL 24h）<b>一組快取</b>，沒有其他以 <code>PlanId</code> 或方案列表為 Key 的快取存在。快取內容 <code>RegularSettingData</code>（<code>MaxDeliverCount</code>／<code>SalePageOption</code>／<code>DeliverPeriod</code>／<code>LimitationType</code>／<code>FixDeliverCount</code>）恰好對應本次 Edit 也會更新的配送相關欄位，<code>PlanTitle</code>／<code>PlanDateBegin</code>／<code>PlanDateEnd</code>／贈品規則不在快取回傳欄位內，不會有快取未同步風險。</p>
+      <p style="margin-top:8px;"><code>EditProductByPlanAsync</code> 寫入成功後：</p>
+      <div class="code-block"><span class="cm">// 未換頁：僅清除當前（也是唯一）PageId 的快取
+// 換頁：清除新、舊兩個 PageId 的快取，避免舊 Key 殘留過期資料</span>
+var pageIdsToClear = new List&lt;long&gt; { request.ProductNo };
+if (isPageChanged)
+{
+    pageIdsToClear.Add(originalEntity.RpdPageId);
+}
+
+foreach (var pageId in pageIdsToClear.Distinct())
+{
+    var cacheKey = RegularPurchaseCacheKey.Get(
+        RegularPurchaseCacheKey.CacheTypes.GetRegularSetting,
+        request.ShopId.ToString(),
+        pageId.ToString());
+    this._dataCacheService.RemoveCacheKey(request.ShopId, cacheKey.ServiceName, cacheKey.TypeName, cacheKey.Key);
+}</div>
+      <p style="margin-top:8px;">此清除動作與 3.1 節的「換頁防呆設計」（開關舊/新商品頁定期購標記）為同一步驟中相鄰的兩個獨立動作，皆遵循「失敗僅 LogWarning，不影響主流程/不回滾」的既有慣例。</p>
+    </div>
+
+    <h3>11.4 驗證順序建議</h3>
+    <div class="card teal">
+      <p>建議順序：① 純格式驗證（Validator）② 查 DB 現值＋狀態鎖定比對 ③ SCM 商品頁驗證 ④ 重疊檢查 ⑤ 寫入。將「不需外部 I/O」的驗證放最前面，可以在最早階段擋掉明顯錯誤請求，減少不必要的外部呼叫（SCM API／DB 查詢）。</p>
+    </div>
+  </section>
+
+  <section id="s12">
+    <h2>12. 錯誤訊息文案定案 ✅ 已定案</h2>
+    <div class="ok">
+      <p>彙整本次 Edit API 所有失敗情境的錯誤文案，<b>優先沿用既有 Add／Edit／GetDetail 已使用過的文案</b>（保持使用者體驗一致），僅「狀態鎖定失敗」為全新情境、新增專屬文案。</p>
+      <table style="margin-top:10px;">
+        <tr><th>#</th><th>情境</th><th>對應層</th><th>文案</th><th>來源</th></tr>
+        <tr><td>1</td><td><code>ShopId</code> 格式錯誤</td><td>Validator</td><td><code>shopId 無效</code></td><td>沿用 <code>ProductAddRequestValidator</code></td></tr>
+        <tr><td>2</td><td><code>ProductNo</code>／<code>PlanId</code> 格式錯誤</td><td>Validator</td><td><code>商品序號無效，請重新輸入</code></td><td>沿用既有慣用語</td></tr>
+        <tr><td>3</td><td><code>ProductShippingPeriod</code> 為空</td><td>Validator</td><td><code>請填寫週期設定</code></td><td>沿用</td></tr>
+        <tr><td>4</td><td><code>ProductShippingSet</code> 值域錯誤</td><td>Validator</td><td><code>請填寫正確的配送次數選項（1=無限制(Unlimited), 2=有限制(CustomerChoice), 3=固定次數(Fixed)）</code></td><td>沿用</td></tr>
+        <tr><td>5</td><td><code>ProductShippingMax</code>／<code>Fixed</code> 未填或超出範圍</td><td>Validator</td><td><code>請填寫正確的配送次數限制數量</code> / <code>配送次數限制數量請輸入{Min}~{Max}之數字</code></td><td>沿用</td></tr>
+        <tr><td>6</td><td><code>ProductPurchaseOption</code> 值域錯誤</td><td>Validator</td><td><code>請填寫正確的購買選項（1=僅定期購, 2=定期購+一次性）</code></td><td>沿用</td></tr>
+        <tr><td>7</td><td><code>PlanTitle</code> 超過字數上限</td><td>Validator</td><td><code>方案名稱字數超出上限（全半形混合{Max}字，純半形{Max}字）</code></td><td>沿用</td></tr>
+        <tr><td>8</td><td><code>PlanDateEnd</code> 早於 <code>PlanDateBegin</code></td><td>Validator</td><td><code>生效結束時間須晚於生效開始時間</code></td><td>沿用</td></tr>
+        <tr><td>9</td><td><code>RegularProductPromotionRules</code> 超過 1 筆</td><td>Validator</td><td><code>本次僅支援單一贈品活動規則</code></td><td>沿用</td></tr>
+        <tr><td>10</td><td>查無此方案（<code>LoadByPlanAsync</code> 回 null）</td><td>Service</td><td><code>此定期購方案不存在，請重新輸入</code></td><td>沿用 <code>GetDetail</code> 既有文案</td></tr>
+        <tr class="tag-locked"><td>11</td><td><b>狀態鎖定：欄位與 DB 現值不同</b></td><td>Service</td><td><code>此方案目前狀態下不可修改所選欄位，請重新確認後再進行儲存</code></td><td><b>新增</b>（本次確認）</td></tr>
+        <tr><td>12</td><td>商品序號無效（SCM 查無商品頁）</td><td>Service</td><td><code>商品序號無效，請重新輸入</code></td><td>沿用</td></tr>
+        <tr><td>13</td><td>交期非定期購</td><td>Service</td><td><code>此商品的「交期」需為定期購，才可進行設定，請先至商品頁重新確認</code></td><td>沿用</td></tr>
+        <tr><td>14</td><td>點數商品不支援</td><td>Service</td><td><code>定期購設定僅支援一般商品，請重新輸入</code></td><td>沿用</td></tr>
+        <tr><td>15</td><td>生效結束時間晚於商品銷售結束時間</td><td>Service</td><td><code>生效結束時間不得晚於商品銷售結束時間</code></td><td>沿用</td></tr>
+        <tr><td>16</td><td>生效期間與其他方案重疊</td><td>Service</td><td><code>此商品序號於指定生效期間已存在重疊方案，請重新輸入</code></td><td>沿用</td></tr>
+        <tr><td>17</td><td>DB 寫入失敗</td><td>Service</td><td><code>儲存失敗</code></td><td>沿用</td></tr>
+        <tr class="tag-editable"><td>18</td><td><b>成功</b></td><td>Service</td><td><code>成功儲存定期購方案</code></td><td><b>修正：改採需求原文用字</b>（原規劃沿用舊路由「儲存成功」，經核對 EPIC 需求原文後改為「成功儲存定期購方案」）</td></tr>
+      </table>
+      <p style="margin-top:10px;">註：情境 #11 為本次唯一全新錯誤情境，用於「尚未生效／生效中／已結束」任一狀態下，Request 傳入值與 DB 現值不同、但依矩陣該欄位已被鎖定時觸發，屬於 all-or-nothing 驗證失敗的統一文案（不需依欄位別分別給訊息，簡化前端錯誤處理）。「尚未生效」狀態下換頁（<code>RpdPageId</code> 不同）不觸發此情境，會進入正常換頁流程（見 3.1／11.1／11.3 節）。</p>
+    </div>
+  </section>
+
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { curve: 'basis' } });
+</script>
+</body>
+</html>

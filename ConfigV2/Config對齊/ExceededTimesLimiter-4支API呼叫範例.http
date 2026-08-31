@@ -1,0 +1,177 @@
+### ========================================================================
+### ExceededTimesLimiter 對應之 4 支 API － 呼叫範例（REST Client）
+### ========================================================================
+###
+### 本檔案涵蓋以下 4 支 API（皆掛載 [ExceededTimesLimiter] 限速屬性）：
+###   1. NineYi.Scm.Api    → POST /SalePage/GetMain      (SalePageLite.GetMain)
+###   2. NineYi.Scm.Api    → POST /SalePage/GetStock     (SalePageLite.GetStock)
+###   3. NineYi.Scm.ApiV2  → POST /SalesOrder/Get        (SalesOrderGetLite.Get)
+###   4. NineYi.Scm.ApiV2  → POST /ShippingOrder/Get     (ShippingOrder.Get)
+###
+### ⚠️ 認證機制說明（非本 Skill 標準的 Cookie / N1-* Header 驗證，而是自訂簽章驗證）
+### --------------------------------------------------------------------------
+### 這 4 支 API 皆非一般前台/內部 API，而是「供應商開放平台（OSM）」對外 API，
+### 使用 HMAC-SHA512 簽章驗證（ValidateTokenAttribute / ValidateTokenHandler），
+### 與一般 Cookie（webstore/sms）或 N1-* Header（nine1.*）驗證方式完全不同，
+### REST Client 無法自動運算簽章，「t / ts / s」必須由使用者自行預先計算後填入。
+###
+### 【驗證所需 3 個 Query String 參數】
+###   t  = Token          供應商識別代碼（對應 DB: SupplierApiProfile.Token）
+###   ts = Timestamp       非標準 Unix Epoch！算法為：
+###                        (DateTime.UtcNow.AddHours(8) - DateTime(1970,1,1)).TotalSeconds
+###                        即「以 UTC+8（台北）時間為基準」的秒數。
+###                        Server 端會檢查 |目前時間 - ts| 必須 <= 300 秒（5 分鐘），
+###                        超過會回傳 "Timestamp is expired"。
+###   s  = Signature       HMAC-SHA512 簽章，計算方式見下。
+###
+### 【簽章計算公式】（兩個 Repo 完全相同的核心公式，差異僅在 data 的來源）
+###   content   = "ts={ts}&data={data 全部轉小寫}&sk={SaltKey}"
+###   signature = HMAC-SHA512( key = SupplierApiProfile.Key, message = content )
+###               輸出為「小寫十六進位字串」
+###
+###   - SupplierApiProfile.Key / SaltKey / Token 皆為「供應商專屬密鑰」，
+###     存放於 ERPDB.SupplierApiProfile（或對應設定資料表），
+###     屬機敏資訊，不可憑空捏造，需向管理該供應商的窗口/DB 取得實際值。
+###
+### 【重要】GetMain / GetStock 皆為 POST，不是 GET！
+###   Controller 內部呼叫 this.Json(data) 為 MVC 預設多載，
+###   帶有 JsonRequestBehavior.DenyGet，只要是 GET 呼叫就會被直接擋下
+###   （拋出與 JsonResult 相同的例外），因此必須用 POST。
+###   又因為 JsonNetValueProviderFactory 只在
+###   Content-Type: application/json 且從 Request Body（InputStream）讀取，
+###   故 data 必須放在 POST Body 裡，而非 Query String。
+###
+### 【data 的組成方式：兩個 Repo 不同！】
+###   ■ NineYi.Scm.Api（v1, MVC － GetMain / GetStock）：
+###     Body JSON 需將實際參數以「JSON 字串」包在最外層的 "data" 欄位裡，
+###     例如 GetMain 的 Body = {"data":"{\"id\":1}"}
+###          GetStock 的 Body = {"data":"{\"id\":1,\"skuid\":2}"}
+###     JsonNetValueProviderFactory 會把外層 Body 解析一次，
+###     發現 "data" 是字串後，再對它解析第二次，
+###     並把內層的 id / skuId 一併合併進 MVC 的 ValueProvider，
+###     因此 Action 參數 (long id, long? skuId) 才能被正確 Model Binding。
+###     這個「內層 data 字串」同時也是：
+###       (a) 簽章驗證（ValidateTokenAttribute）用的 data
+###       (b) JSON Schema 驗證（ValidateRequestEntityAttribute）用的 data
+###
+###   ■ NineYi.Scm.ApiV2（v2, WebApi － SalesOrder/Get、ShippingOrder/Get）：
+###     data = 「整個 Request Body 原始字串」本身（未經任何包裝），
+###            也就是 Body 本身就是要送給 Controller 的 Entity JSON，
+###            不需要、也不可以再包一層 {"data": "..."}。
+###
+### 【下方範例的簽章計算示範】
+###   為了讓您理解「公式怎麼代入」，下方範例使用測試用固定假密鑰
+###   （Token=abc, Key=123, SaltKey=1，僅為公式示範用途，
+###     並非任何真實環境可用的密鑰，直接送出必定會驗證失敗），
+###   ts 固定使用 1699999999（僅示範用，非目前時間，正式測試請自行重新計算）。
+###   實際測試時，請將 @token / @timestamp / @signature 替換為
+###   真實供應商的值與正確運算後的簽章。
+###
+### 【N1-TRACE-ID（選填）】
+###   ExceededTimesLimiter 僅在 Request 帶有 N1-TRACE-ID Header
+###   （代表此請求是經過 API Gateway 進來的流量）時才會計數限速，
+###   若本機直接呼叫且未帶此 Header，限速邏輯不會被觸發（僅供測試參考，非必要驗證項目）。
+###
+### ========================================================================
+
+# ========================================================================
+# 環境設定
+# ========================================================================
+# --- NineYi.Scm.Api（v1，供 SalePage/GetMain、SalePage/GetStock 使用）---
+# 本機開發環境（預設）
+@baseUrlApi = http://localhost:5566
+
+# 其餘環境請依實際部署網域自行取消註解替換
+# （本機專案未找到 charts/*/values-*.yaml，以下為 AppSettings.config 中
+#   Dev.Domain.InstoreScmApi 設定值作為參考範例，正式環境請向維運確認）
+# @baseUrlApi = http://api.dev.91dev.tw/scm
+
+# --- NineYi.Scm.ApiV2（v2，供 SalesOrder/Get、ShippingOrder/Get 使用）---
+@baseUrlApiV2 = http://localhost:5567
+
+# @baseUrlApiV2 = https://scm-api-v2-internal.qa.91dev.tw   # 請依實際環境替換
+
+
+# ========================================================================
+# 認證參數（簽章驗證用，需自行運算後填入，見上方公式說明）
+# ========================================================================
+@token     = abc
+@timestamp = 1699999999
+@traceId   = local-test-trace-id
+
+
+# ========================================================================
+# 1. SalePageLite.GetMain － 商品頁內容查詢
+#    ExceededTimesLimiter Config Key:
+#      Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId
+#    方法：POST（this.Json() 預設 DenyGet，GET 會被擋下，故不可用 GET）
+#    簽章 data＝內層 JSON 字串 {"id":1}（與 Body 的 data 欄位內容相同）
+# ========================================================================
+@getMainSignature = 318da8b299c2b846ae24d60f3ec77a8750c6109f01f66b2aa06be24c6d42e3638d5daf9db81e58ce7002dae0e198c8bde56f4123b8fdc3f2f7c5f5c3ac1fb0ec
+
+POST {{baseUrlApi}}/SalePage/GetMain?t={{token}}&ts={{timestamp}}&s={{getMainSignature}}
+Content-Type: application/json
+N1-TRACE-ID: {{traceId}}
+
+{"data":"{\"id\":1}"}
+
+
+###
+
+# ========================================================================
+# 2. SalePageLite.GetStock － 商品即時庫存查詢
+#    ExceededTimesLimiter Config Key:
+#      Prod.ExceededTimesLimiter.SalePageLite.GetStock.SupplierId
+#    方法：POST（this.Json() 預設 DenyGet，GET 會被擋下，故不可用 GET）
+#    簽章 data＝內層 JSON 字串 {"id":1,"skuid":2}（與 Body 的 data 欄位內容相同）
+# ========================================================================
+@getStockSignature = 345b9b010255f63fba0449d9b2884606fa5c60cfdd196e7e8eb1e22c3989ad2f75474b4fd1b8221dfb902a1b3865959b54ef49dc9c62fb8f7f1c3c314952262d
+
+POST {{baseUrlApi}}/SalePage/GetStock?t={{token}}&ts={{timestamp}}&s={{getStockSignature}}
+Content-Type: application/json
+N1-TRACE-ID: {{traceId}}
+
+{"data":"{\"id\":1,\"skuid\":2}"}
+
+
+###
+
+# ========================================================================
+# 3. SalesOrderGetLite.Get － 訂單查詢
+#    ExceededTimesLimiter Config Key:
+#      Prod.ExceededTimesLimiter.SalesOrderGetLite.Get.SupplierId
+#    注意：v2 的簽章 data = 整個 Request Body 原始字串本身，
+#          Body 內容需與下方一致（不可增減空白字元，否則簽章對不上）。
+# ========================================================================
+@salesOrderShopId       = 12842
+@salesOrderTMCode       = TM202501010001
+@salesOrderGetSignature = f4a0b5881a413171e897813e6b8e74bad16cc746c94e771d80fb5ac1cdc7d1d4d1ed61ca82c3ab2de5e7894235b7c33afc66c7d2a5d95367ef6f1f014ad79991
+
+POST {{baseUrlApiV2}}/SalesOrder/Get?t={{token}}&ts={{timestamp}}&s={{salesOrderGetSignature}}
+Content-Type: application/json
+N1-TRACE-ID: {{traceId}}
+
+{"ShopId":12842,"TGCode":"","TMCode":"TM202501010001","TSCode":""}
+
+
+###
+
+# ========================================================================
+# 4. ShippingOrder.Get － 貨運單查詢
+#    ExceededTimesLimiter Config Key:
+#      Prod.ExceededTimesLimiter.ShippingOrder.Get.SupplierId
+#    注意：v2 的簽章 data = 整個 Request Body 原始字串本身，
+#          Body 內容需與下方一致（不可增減空白字元，否則簽章對不上）。
+# ========================================================================
+@shippingOrderShopId    = 12842
+@shippingOrderCode      = SO202501010001
+@shippingOrderGetSignature = 102252334d95b1edde31faf083e75648f6563b9ba7e1ddf60a190bba97401e0561f9e5435883c68b58ed46c38946e0a4a2486edd9b07a6d8b80e9daf02d1c187
+
+POST {{baseUrlApiV2}}/ShippingOrder/Get?t={{token}}&ts={{timestamp}}&s={{shippingOrderGetSignature}}
+Content-Type: application/json
+N1-TRACE-ID: {{traceId}}
+
+{"ShopId":12842,"ShippingOrderCode":"SO202501010001","TSCode":""}
+
+
+###

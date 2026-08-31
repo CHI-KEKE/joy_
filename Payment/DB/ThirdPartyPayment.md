@@ -24,3 +24,35 @@ declare @endTime DATETIME = '2025-05-01';
 		AND TradesOrderThirdPartyPayment_StatusUpdatedDateTime <= @endTime
 		AND TradesOrderThirdPartyPayment_ValidFlag = 1
 ```
+
+
+## 付款失敗 memberuid / 卡別國別
+
+```sql
+use WebStoreDB;
+
+with TopFailMembers as
+(
+    select top (10)
+        tog.TradesOrderGroup_MemberId,
+        count(*) as FailCount
+    from TradesOrderThirdPartyPayment as ttp with (nolock)
+    inner join TradesOrderGroup as tog with (nolock)
+        on ttp.TradesOrderThirdPartyPayment_TradesOrderGroupId = tog.TradesOrderGroup_Id
+    where ttp.TradesOrderThirdPartyPayment_ValidFlag = 1
+      and ttp.TradesOrderThirdPartyPayment_StatusDef = 'Fail'
+    group by tog.TradesOrderGroup_MemberId
+    order by count(*) desc
+)
+select
+    vmi.VipMemberInfo_ShopId,
+    tfm.TradesOrderGroup_MemberId,
+    vmi.VipMemberInfo_CountryCode,
+    vmi.VipMemberInfo_CellPhone,
+    vmi.VipMemberInfo_FullName,
+    tfm.FailCount
+from TopFailMembers as tfm
+inner join VipMemberInfo as vmi with (nolock)
+    on tfm.TradesOrderGroup_MemberId = vmi.VipMemberInfo_MemberId
+order by tfm.FailCount desc;
+```

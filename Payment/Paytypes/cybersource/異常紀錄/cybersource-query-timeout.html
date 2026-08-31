@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cybersource QueryPayment 慢速回應異常紀錄</title>
+  <style>
+    :root {
+      --red:    #e74c3c;
+      --orange: #e67e22;
+      --yellow: #f1c40f;
+      --green:  #27ae60;
+      --blue:   #2980b9;
+      --purple: #8e44ad;
+      --gray:   #7f8c8d;
+      --bg:     #f4f6f9;
+      --card:   #ffffff;
+      --border: #dce1e7;
+      --text:   #2c3e50;
+      --sub:    #606878;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 32px 24px;
+    }
+
+    /* ── 頁首 ── */
+    .page-header {
+      background: linear-gradient(135deg, #1a2a4a 0%, #2c3e6e 100%);
+      color: #fff;
+      border-radius: 12px;
+      padding: 32px 36px;
+      margin-bottom: 32px;
+    }
+    .page-header h1 { font-size: 1.7rem; font-weight: 700; margin-bottom: 8px; }
+    .page-header .meta { font-size: 0.85rem; opacity: 0.75; display: flex; gap: 24px; flex-wrap: wrap; }
+    .page-header .meta span::before { margin-right: 6px; }
+
+    /* ── 章節卡片 ── */
+    .section {
+      background: var(--card);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+    .section-header {
+      padding: 16px 24px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-body { padding: 24px; }
+
+    /* ── 色彩主題 ── */
+    .theme-red    { background: #fdf0ef; border-left: 5px solid var(--red); }
+    .theme-orange { background: #fef6ec; border-left: 5px solid var(--orange); }
+    .theme-blue   { background: #eaf4fd; border-left: 5px solid var(--blue); }
+    .theme-green  { background: #eafaf1; border-left: 5px solid var(--green); }
+    .theme-purple { background: #f5eef8; border-left: 5px solid var(--purple); }
+    .theme-gray   { background: #f8f9fa; border-left: 5px solid var(--gray); }
+
+    /* ── 流程圖 ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .flow-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+    .flow-item:last-child { border-bottom: none; }
+    .flow-step {
+      min-width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #fff;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-normal { background: var(--blue); }
+    .step-warn   { background: var(--orange); }
+    .step-error  { background: var(--red); }
+    .step-ok     { background: var(--green); }
+    .step-wait   { background: var(--gray); }
+
+    .flow-content .title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+    .flow-content .desc {
+      font-size: 0.85rem;
+      color: var(--sub);
+    }
+    .flow-content code {
+      background: #eef2f7;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+      font-size: 0.82rem;
+      color: #c0392b;
+    }
+
+    /* ── 路線對比 ── */
+    .route-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 720px) { .route-grid { grid-template-columns: 1fr; } }
+
+    .route-card {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .route-card-header {
+      padding: 12px 16px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: #fff;
+    }
+    .route-ok-header   { background: var(--green); }
+    .route-fail-header { background: var(--red); }
+    .route-card-body { padding: 16px; font-size: 0.88rem; line-height: 1.8; }
+    .route-card-body ol { padding-left: 20px; }
+    .route-card-body li { margin-bottom: 6px; }
+
+    /* ── 程式碼區塊 ── */
+    pre {
+      background: #1e2a3a;
+      color: #cdd6e0;
+      border-radius: 8px;
+      padding: 20px;
+      font-size: 0.82rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      overflow-x: auto;
+      line-height: 1.6;
+      margin: 12px 0;
+    }
+    .kw  { color: #569cd6; }
+    .cm  { color: #6a9955; }
+    .str { color: #ce9178; }
+    .num { color: #b5cea8; }
+    .ann { color: #9cdcfe; }
+
+    /* ── 影響表 ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    th {
+      background: #2c3e50;
+      color: #fff;
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f8fafc; }
+
+    /* ── 標籤 ── */
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tag-red    { background: #fde8e8; color: var(--red); }
+    .tag-orange { background: #fef3e2; color: var(--orange); }
+    .tag-green  { background: #e6f9ef; color: var(--green); }
+    .tag-blue   { background: #e4f3fd; color: var(--blue); }
+    .tag-gray   { background: #eef0f2; color: var(--gray); }
+
+    /* ── Callout ── */
+    .callout {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 0.9rem;
+    }
+    .callout-icon { font-size: 1.2rem; flex-shrink: 0; line-height: 1.4; }
+    .callout-red    { background: #fdf0ef; border-left: 4px solid var(--red); }
+    .callout-orange { background: #fef6ec; border-left: 4px solid var(--orange); }
+    .callout-blue   { background: #eaf4fd; border-left: 4px solid var(--blue); }
+    .callout-green  { background: #eafaf1; border-left: 4px solid var(--green); }
+
+    /* ── 分隔線 ── */
+    .divider {
+      text-align: center;
+      color: var(--sub);
+      font-size: 1.4rem;
+      padding: 4px 0;
+      line-height: 1;
+    }
+
+    /* ── Timeline ── */
+    .timeline { position: relative; padding-left: 32px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 12px; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+    .tl-item {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .tl-dot {
+      position: absolute;
+      left: -26px;
+      top: 4px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+    }
+    .tl-dot-red    { background: var(--red); }
+    .tl-dot-orange { background: var(--orange); }
+    .tl-dot-blue   { background: var(--blue); }
+    .tl-dot-green  { background: var(--green); }
+    .tl-dot-gray   { background: var(--gray); }
+
+    .tl-title { font-weight: 600; font-size: 0.92rem; margin-bottom: 4px; }
+    .tl-body  { font-size: 0.86rem; color: var(--sub); }
+
+    h3 { font-size: 0.97rem; font-weight: 700; margin: 20px 0 10px; color: var(--text); }
+    p  { font-size: 0.9rem; color: var(--sub); margin-bottom: 10px; }
+    ul.plain { list-style: disc; padding-left: 20px; font-size: 0.88rem; color: var(--sub); line-height: 1.9; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════ PAGE HEADER ══════════════════════ -->
+<div class="page-header">
+  <h1>⚠️ Cybersource QueryPayment 慢速回應異常紀錄</h1>
+  <div class="meta">
+    <span>📅 發現日期：2026-07-01</span>
+    <span>🏷 金流：Cybersource（透過 PaymentMiddleware）</span>
+    <span>🌐 市場：HK</span>
+    <span>📌 狀態：待優化</span>
+  </div>
+</div>
+
+<!-- ══════════════════════ 1. 問題描述 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-red">
+    🔴 <span>問題描述</span>
+  </div>
+  <div class="section-body">
+    <div class="callout callout-red">
+      <span class="callout-icon">🚨</span>
+      <div>
+        消費者完成 Cybersource 信用卡付款後被轉導回 mweb，mweb 向 PMW 查詢付款狀態時，
+        因 Cybersource API 回應極慢，導致 mweb 端的 HTTP 請求在 <strong>30 秒 timeout</strong> 前無法拿到結果，
+        整條 PayChannelReturn 鏈路斷掉，訂單無法即時完成。
+        只能等待 <strong>下一次 ReCheck Job（約 3 分鐘後）</strong> 重新補查，且同樣依賴 Cybersource 當下的回應速度。
+      </div>
+    </div>
+
+    <h3>現象</h3>
+    <ul class="plain">
+      <li>消費者按下付款 → Cybersource 頁面付款成功 → 被導回 mweb</li>
+      <li>mweb 的 <code>PayChannelReturn</code> action 回應時間超過 30 秒</li>
+      <li>使用者看到「訂單處理中」或被導向訂單列表，無法立即看到成功頁</li>
+      <li>訂單狀態停在 <code>WaitingToPay</code>，需等 ReCheck Job 補完</li>
+      <li>若 ReCheck 當下 Cybersource 同樣緩慢，需等更多輪才能完成</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══════════════════════ 2. 完整鏈路說明 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-blue">
+    🔗 <span>完整鏈路說明</span>
+  </div>
+  <div class="section-body">
+
+    <h3>路線一：正常付款回調（PayChannelReturn）</h3>
+    <div class="flow">
+
+      <div class="flow-item">
+        <div class="flow-step step-normal">1</div>
+        <div class="flow-content">
+          <div class="title">消費者在 Cybersource Hosted Page 完成付款</div>
+          <div class="desc">Cybersource 將 Form POST 導回 mweb 的中繼頁 <code>/V2/PayChannel/CreditCardOnce/Cybersource/{tgCode}</code></div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-normal">2</div>
+        <div class="flow-content">
+          <div class="title">mweb 解析 Form Data，取得 TGCode + UniqueKey</div>
+          <div class="desc"><code>CybersourcePayChannelService.ProcessResponseFormAfterPayment()</code><br/>
+          取得 <code>req_reference_number</code>（TGCode）及 <code>req_transaction_uuid</code>（UniqueKey）</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-normal">3</div>
+        <div class="flow-content">
+          <div class="title">導向 PayChannelReturn Action</div>
+          <div class="desc"><code>PayChannelController.PayChannelReturn()</code><br/>
+          呼叫 <code>TradesOrderPaymentService.FinishPayment(isFromWorker: false)</code></div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-warn">4</div>
+        <div class="flow-content">
+          <div class="title">呼叫 PMW 查詢付款狀態 ← 瓶頸點</div>
+          <div class="desc">
+            <code>PaymentMiddlewareService.QueryPayment()</code><br/>
+            → <code>PaymentMiddlewareHttpClient.Query()</code><br/>
+            → POST <code>PMW /api/v1.0/QueryPayment/CreditCardOnce_Cybersource</code><br/>
+            → PMW 呼叫 Cybersource API 查詢交易狀態<br/><br/>
+            <strong>⚠️ HttpClient.Timeout = 30 秒</strong>（ServiceModule.cs 設定）
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-error">5a</div>
+        <div class="flow-content">
+          <div class="title">【異常路徑】Cybersource 回應慢 → 30 秒 Timeout 觸發</div>
+          <div class="desc">
+            <code>HttpClient</code> 拋出 <code>TaskCanceledException</code><br/>
+            → <code>catch (Exception ex)</code> 捕捉後回傳 <code>PaymentStatusDefEnum.Fail</code><br/>
+            → <code>FinishPayment()</code> 拋出例外或回傳錯誤<br/>
+            → <code>PayChannelController</code> 的 <code>catch (Exception ex)</code> 處理<br/>
+            → 使用者被導向「訂單處理中」頁面<br/>
+            → <strong>訂單維持 WaitingToPay</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-ok">5b</div>
+        <div class="flow-content">
+          <div class="title">【正常路徑】PMW 在 30 秒內回傳結果</div>
+          <div class="desc">
+            依 <code>ReturnCode</code> 分流：<br/>
+            <code>Success</code> → 訂單完成，導向付款成功頁<br/>
+            <code>Failed</code> → 訂單取消<br/>
+            <code>Expired</code> → 訂單逾時取消<br/>
+            <code>WaitingToPay</code> → 訂單留 WaitingToPay，等 ReCheck
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <h3 style="margin-top:28px;">路線二：ReCheck Job 補查（isFromWorker: true）</h3>
+    <div class="flow">
+
+      <div class="flow-item">
+        <div class="flow-step step-gray">1</div>
+        <div class="flow-content">
+          <div class="title">SQL Job 每 3 分鐘觸發一次</div>
+          <div class="desc">撈取 <code>TradesOrderThirdPartyPayment.Status = WaitingToPay</code>（3 天內）<br/>
+          為每個 PayType 建立 NMQ Task</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-gray">2</div>
+        <div class="flow-content">
+          <div class="title">NMQ Job 執行 ThirdPartyPaymentReCheckProcess</div>
+          <div class="desc"><code>PaymentMiddlewareReCheckService.OrderReCheck(payment)</code><br/>
+          組裝 <code>InternalFinishPaymentRequestEntity</code> → POST <code>mweb /Internal/FinishPayment</code></div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-warn">3</div>
+        <div class="flow-content">
+          <div class="title">mweb 內部呼叫 FinishPayment（isFromWorker: true）← 同樣的瓶頸</div>
+          <div class="desc">
+            走相同路徑：<code>TradesOrderPaymentService.FinishPayment()</code><br/>
+            → <code>PaymentMiddlewareService.QueryPayment()</code><br/>
+            → PMW → Cybersource<br/><br/>
+            <strong>⚠️ 若 Cybersource 仍然緩慢，同樣會 Timeout</strong><br/>
+            只能等下一輪 ReCheck（再等 3 分鐘）
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-ok">4</div>
+        <div class="flow-content">
+          <div class="title">Cybersource 回應速度恢復正常時</div>
+          <div class="desc">
+            PMW 拿到 <code>Success</code> → ReCheck 路徑成功完成訂單<br/>
+            <code>Thread.Sleep(250ms)</code> 批次流控後繼續處理下一筆
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 3. Timeout 設定與程式碼 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-orange">
+    ⏱ <span>Timeout 設定與相關程式碼</span>
+  </div>
+  <div class="section-body">
+
+    <h3>HttpClient Timeout 設定（ServiceModule.cs）</h3>
+<pre><span class="cm">// WebStore\Frontend\BLV2\Modules\ServiceModule.cs:379</span>
+builder.RegisterType&lt;PaymentMiddlewareHttpClient&gt;()
+    .As&lt;IPaymentMiddlewareHttpClient&gt;()
+    .WithParameter((info, _) =&gt; info.Name == <span class="str">"httpClient"</span>, (_, ctx) =&gt;
+    {
+        HttpClient client = HttpClientFactory.Create();
+        client.BaseAddress = <span class="kw">new</span> Uri(pmwDomain);
+        client.Timeout = TimeSpan.FromSeconds(<span class="num">30</span>);  <span class="cm">// ← 30 秒 timeout</span>
+        <span class="kw">return</span> client;
+    });</pre>
+
+    <h3>PaymentMiddlewareService 的例外處理（PaymentMiddlewareService.cs）</h3>
+<pre><span class="cm">// QueryPayment / RequestPayment 共用 catch 區塊</span>
+<span class="kw">catch</span> (Exception ex)  <span class="cm">// TaskCanceledException 在此被吃掉</span>
+{
+    this._logger.Error(ex, <span class="str">"Exception occured when creating payment request: "</span> + ex.Message);
+
+    <span class="kw">return new</span> PaymentResultEntity
+    {
+        Status = PaymentStatusDefEnum.Fail,  <span class="cm">// ← 回傳 Fail，不拋例外</span>
+        Message = Translation...GetString(<span class="str">$"RequestPaymentError_{context.PayProfileType}"</span>, ex.Message)
+    };
+}</pre>
+
+    <h3>PayChannelController 的例外處理（PayChannelController.cs）</h3>
+<pre><span class="kw">catch</span> (Exception ex)
+{
+    this._logger.Error(ex, <span class="str">"Exception has occurred - Message: "</span> + ex.Message);
+    ViewBag.Error = Translation.Backend.V2.PayChannel.PaymentInConfirmation;
+    ViewBag.ErrorRedirectUrl = <span class="str">$"/V2/TradesOrder/TradesOrderList?shopId={shopId}&err=PaymentException"</span>;
+    <span class="cm">// 訂單維持 WaitingToPay，不取消</span>
+}</pre>
+
+    <h3>WebAPI PayChannelController 的例外處理（PayChannelController.cs）</h3>
+<pre><span class="cm">// WebAPI/Controllers/PayChannelController.cs</span>
+<span class="cm">// ← 完全沒有 try-catch</span>
+QueryPaymentResultEntity result = this._tradesOrderPaymentService.FinishPayment(
+    request.ShopId, request.MemberId, payType.PayChannel, payType.PayMethod,
+    request.TradesOrderGroupCode, request.UniqueKey, string.Empty,
+    isFromWorker: <span class="kw">true</span>
+);
+<span class="cm">// TaskCanceledException 在此之前拋出 → 這行永遠不執行 → HTTP 500</span>
+<span class="kw">return</span> this.Json(ApiResultEntity&lt;object&gt;.Success(...));</pre>
+
+    <h3>Log 斷點精確位置</h3>
+    <p>從 mweb WebAPI Log 可以觀察到以下順序，並確認斷點位置：</p>
+
+<pre><span class="cm">// ✅ 有 Log — WebAPI Controller 進入</span>
+<span class="ann">"Internal Finish Payment - IsFromCompany: True"</span>
+
+<span class="cm">// ✅ 有 Log — FinishPayment 進入</span>
+<span class="ann">"FinishPayment parameters - ShopId:{n}, MemberId:{n}, PayChannel:Cybersource, IsWorker: true"</span>
+
+<span class="cm">// ✅ 有 Log — QueryPayment 內部取得 RequestId</span>
+<span class="cm">//   GetRequestId() → GET /api/v1.0/requestId（另一個 HttpClient 呼叫，通常很快）</span>
+
+<span class="cm">// ⏳ 進入等待 — HttpClient.Query() 呼叫出去，等待 PMW → Cybersource 回應</span>
+<span class="cm">//   this._paymentMiddlewareHttpClient.Query(requestEntity, "CreditCardOnce_Cybersource", headers)</span>
+
+<span class="cm">// ❌ 以下全部不會出現（TaskCanceledException 在 30 秒後拋出，往上噴，無任何 catch 攔截）</span>
+<span class="ann">"QueryPayment - RequestId: ..., Code: ..., Message: ..."</span>  <span class="cm">// ← PaymentMiddlewareService.cs 第 200 行</span>
+<span class="ann">"開始處理付款成功的訂單..."</span>                              <span class="cm">// ← TradesOrderPaymentService.cs</span>
+<span class="ann">"Response Body from Payment Middleware: ..."</span>           <span class="cm">// ← PaymentMiddlewareHttpClient.cs</span>
+<span class="cm">// 例外也不會被 logger.Error 記錄 → Log 完全靜默斷掉</span>
+<span class="cm">// ASP.NET MVC framework 回傳 HTTP 500，應用層無任何 exception log</span></pre>
+
+    <div class="callout callout-red">
+      <span class="callout-icon">⚠️</span>
+      <div>
+        <strong>與 mweb 前台路徑的關鍵差異：</strong><br/>
+        前台 <code>PaymentMiddlewareService.RequestPayment()</code> 有 <code>catch (Exception ex)</code> 會寫 <code>logger.Error</code>，
+        WebAPI 的 <code>QueryPayment()</code> 路徑完全沒有對應的 exception 攔截與 log。
+        這使得 WebAPI 路徑的 timeout 是<strong>完全靜默的</strong>，
+        只能從 Log 在 <code>GetRequestId</code> 之後突然中斷來間接判斷。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 4. 影響分析 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-purple">
+    📊 <span>影響分析</span>
+  </div>
+  <div class="section-body">
+    <table>
+      <thead>
+        <tr>
+          <th>影響面</th>
+          <th>描述</th>
+          <th>嚴重度</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>使用者體驗</strong></td>
+          <td>付款成功後看不到成功頁，被導向訂單列表，誤以為付款失敗，可能重複嘗試</td>
+          <td><span class="tag tag-red">高</span></td>
+        </tr>
+        <tr>
+          <td><strong>訂單完成延遲</strong></td>
+          <td>最快需等 3 分鐘（一次 ReCheck），若 Cybersource 持續緩慢可能延遲更久</td>
+          <td><span class="tag tag-orange">中</span></td>
+        </tr>
+        <tr>
+          <td><strong>重複付款風險</strong></td>
+          <td>若使用者因看不到成功頁而重新下單，可能導致重複扣款（由 DuplicateRequest 機制保護，但仍有視窗期）</td>
+          <td><span class="tag tag-orange">中</span></td>
+        </tr>
+        <tr>
+          <td><strong>mweb Thread 佔用</strong></td>
+          <td>每個請求佔用 ASP.NET Thread 長達 30 秒，高峰期若大量並發可能造成 Thread Pool 壓力</td>
+          <td><span class="tag tag-orange">中</span></td>
+        </tr>
+        <tr>
+          <td><strong>ReCheck 堆積</strong></td>
+          <td>Cybersource 緩慢期間，WaitingToPay 訂單堆積，ReCheck 批次量增加</td>
+          <td><span class="tag tag-orange">中</span></td>
+        </tr>
+        <tr>
+          <td><strong>資料一致性</strong></td>
+          <td>Cybersource 端已扣款但 mweb 不知道，依賴 ReCheck 補齊；不存在資料不一致，只是延遲</td>
+          <td><span class="tag tag-green">低</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════ 5. 時序圖 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-gray">
+    🕐 <span>時序：正常 vs 異常</span>
+  </div>
+  <div class="section-body">
+    <div class="route-grid">
+
+      <div class="route-card">
+        <div class="route-card-header route-ok-header">✅ 正常路徑（Cybersource 回應快）</div>
+        <div class="route-card-body">
+          <ol>
+            <li>使用者完成付款 → 導回 mweb</li>
+            <li><code>PayChannelReturn</code> 接到 callback</li>
+            <li>POST PMW <code>/QueryPayment/CreditCardOnce_Cybersource</code></li>
+            <li>PMW 查 Cybersource → <strong>10 秒內回傳 Success</strong></li>
+            <li>訂單完成，導向付款成功頁</li>
+            <li>使用者立即看到成功畫面 🎉</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="route-card">
+        <div class="route-card-header route-fail-header">❌ 異常路徑（Cybersource 回應慢）</div>
+        <div class="route-card-body">
+          <ol>
+            <li>使用者完成付款 → 導回 mweb</li>
+            <li><code>PayChannelReturn</code> 接到 callback</li>
+            <li>POST PMW <code>/QueryPayment/CreditCardOnce_Cybersource</code></li>
+            <li>PMW 等待 Cybersource → <strong>超過 30 秒無回應</strong></li>
+            <li><code>TaskCanceledException</code> → 回傳 Fail</li>
+            <li>使用者被導向「訂單處理中」</li>
+            <li>等 3 分鐘 → ReCheck Job 觸發</li>
+            <li>再次 POST PMW Query → 若 Cybersource 仍慢 → 再等下一輪</li>
+            <li>Cybersource 恢復正常 → 訂單補完成</li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 6. 根本原因 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-red">
+    🔍 <span>根本原因分析</span>
+  </div>
+  <div class="section-body">
+    <div class="timeline">
+
+      <div class="tl-item">
+        <div class="tl-dot tl-dot-blue"></div>
+        <div class="tl-title">架構設計：同步等待第三方回應</div>
+        <div class="tl-body">
+          mweb 的 <code>PayChannelReturn</code> 是同步 HTTP 請求，必須在 Response 回傳前完成所有查詢與訂單處理。
+          這使得整條鏈路的等待時間受 Cybersource 回應速度直接影響。
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-dot tl-dot-orange"></div>
+        <div class="tl-title">HttpClient Timeout 固定 30 秒，無法針對 Cybersource 個別設定</div>
+        <div class="tl-body">
+          <code>PaymentMiddlewareHttpClient</code> 的 HttpClient 為所有 PayChannel 共用一個 30 秒 Timeout，
+          無法為 Cybersource 設定更長的等待時間（或更短以快速 fallback）。
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-dot tl-dot-red"></div>
+        <div class="tl-title">Cybersource 第三方 API 本身回應不穩定</div>
+        <div class="tl-body">
+          Cybersource 的查詢 API 在特定時段（高峰 / 維護 / 網路抖動）回應時間超過 30 秒，
+          PMW 無法在 mweb 的 timeout 窗口內拿到結果並回傳。
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-dot tl-dot-gray"></div>
+        <div class="tl-title">ReCheck 是唯一的救援路徑，且同樣依賴 Cybersource 速度</div>
+        <div class="tl-body">
+          ReCheck Job 走的是相同的 PMW Query 路徑。
+          Cybersource 若持續緩慢，需要多輪 ReCheck 才能完成，每輪間隔至少 3 分鐘。
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 7. 改善方向 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-green">
+    🛠 <span>改善方向（參考）</span>
+  </div>
+  <div class="section-body">
+
+    <div class="callout callout-blue">
+      <span class="callout-icon">📌</span>
+      <div>以下為可行的改善方向，尚未實作，供後續評估參考。</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>方向</th>
+          <th>說明</th>
+          <th>難度</th>
+          <th>效果</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>縮短 mweb → PMW Timeout，更快進入 ReCheck 流程</strong></td>
+          <td>
+            目前 30 秒才觸發 fallback。若改為 10 秒，能更快釋放 mweb Thread，
+            讓使用者更快看到「訂單處理中」畫面（雖然體驗不完美，但比 hang 30 秒更好）
+          </td>
+          <td><span class="tag tag-green">低</span></td>
+          <td><span class="tag tag-orange">部分改善體驗</span></td>
+        </tr>
+        <tr>
+          <td><strong>縮短 ReCheck 間隔（特定 PayType）</strong></td>
+          <td>
+            若採用「每個 PayType 獨立 CronJob」架構，可讓 Cybersource 的 ReCheck 每 1 分鐘跑一次，
+            縮短訂單完成延遲
+          </td>
+          <td><span class="tag tag-blue">中</span></td>
+          <td><span class="tag tag-orange">縮短延遲</span></td>
+        </tr>
+        <tr>
+          <td><strong>PayChannelReturn 改為非同步：先回應使用者，後台補查</strong></td>
+          <td>
+            Cybersource callback 進來後，立即導向「訂單確認中」頁，非同步呼叫 PMW Query，
+            不等第三方回應就先釋放使用者端。前端輪詢訂單狀態直到完成。
+          </td>
+          <td><span class="tag tag-red">高</span></td>
+          <td><span class="tag tag-green">根本改善體驗</span></td>
+        </tr>
+        <tr>
+          <td><strong>監控 Cybersource Query 回應時間</strong></td>
+          <td>
+            在 PMW 或 mweb 層加入 Cybersource Query API 的 P99 回應時間監控，
+            當超過閾值時主動告警，快速確認是 Cybersource 側問題還是網路問題
+          </td>
+          <td><span class="tag tag-green">低</span></td>
+          <td><span class="tag tag-blue">提升可觀測性</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════ 8. 排查方式 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-orange">
+    🔎 <span>排查方式 SOP</span>
+  </div>
+  <div class="section-body">
+
+    <div class="callout callout-blue">
+      <span class="callout-icon">📋</span>
+      <div>依照以下四個步驟依序排查，可快速確認是否為 Cybersource 慢速回應造成的問題，以及受影響的訂單範圍。</div>
+    </div>
+
+    <!-- Step 1 -->
+    <h3>Step 1 — Grafana：用耗時分析確認 API 是否異常緩慢</h3>
+    <p>在 Grafana 查詢 mweb → PMW 的 QueryPayment API 耗時分佈，確認是否有大量請求耗時超過 30 秒（timeout 邊界）。</p>
+
+    <div style="background:#1e2a3a; border-radius:8px; padding:20px; margin:12px 0;">
+      <div style="color:#9cdcfe; font-size:0.82rem; font-family:monospace; line-height:2;">
+        <div style="color:#6a9955;">// 查詢條件參考（依實際 Grafana 資料源調整）</div>
+        <div>service = <span style="color:#ce9178;">"mweb"</span></div>
+        <div>path CONTAINS <span style="color:#ce9178;">"/api/v1.0/QueryPayment/CreditCardOnce_Cybersource"</span></div>
+        <div>   OR path CONTAINS <span style="color:#ce9178;">"FinishPayment"</span></div>
+        <div>time_range = <span style="color:#b5cea8;">異常發生時段前後 30 分鐘</span></div>
+        <div style="margin-top:8px; color:#6a9955;">// 重點觀察指標</div>
+        <div>P95 / P99 response time</div>
+        <div>timeout count（response_time &gt;= 30000ms）</div>
+        <div>error rate（HTTP 5xx / exception）</div>
+      </div>
+    </div>
+
+    <div class="callout callout-orange">
+      <span class="callout-icon">🎯</span>
+      <div>
+        <strong>判斷依據：</strong>若 P99 耗時 ≥ 30 秒，且集中在特定時段，可判定為 Cybersource 第三方 API 在該時段回應異常緩慢，非 mweb / PMW 本身問題。<br/><br/>
+        <strong>輔助判斷：</strong>在 Grafana 搜尋 <code>"FinishPayment parameters"</code> 後的 Log，
+        若接著出現的是 <code>"Internal Finish Payment"</code> 的下一筆請求（即同一筆訂單沒有後續 Log），
+        且 <strong>沒有出現</strong> <code>"QueryPayment - RequestId"</code> 這行，
+        則可確認是 QueryPayment HttpClient 呼叫掛住後 timeout，Log 在此靜默斷掉。
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <h3>Step 2 — 確認 DB 目前資料更新狀況</h3>
+    <p>直接查 <code>TradesOrderThirdPartyPayment</code> 確認異常時段內有多少筆訂單卡在 <code>WaitingToPay</code>，以及是否有更新中的狀態。</p>
+
+<pre><span class="cm">-- 查詢異常時段內的 Cybersource WaitingToPay 訂單</span>
+<span class="kw">SELECT</span>
+    TradesOrderThirdPartyPayment_TradesOrderGroupId,
+    TradesOrderThirdPartyPayment_TypeDef,
+    TradesOrderThirdPartyPayment_StatusDef,
+    TradesOrderThirdPartyPayment_DateTime,          <span class="cm">-- 付款建立時間</span>
+    TradesOrderThirdPartyPayment_StatusUpdatedDateTime,  <span class="cm">-- 最後狀態更新時間</span>
+    DATEDIFF(MINUTE,
+        TradesOrderThirdPartyPayment_DateTime,
+        GETDATE()) <span class="kw">AS</span> MinutesSinceCreated
+<span class="kw">FROM</span> dbo.TradesOrderThirdPartyPayment <span class="kw">WITH</span> (NOLOCK)
+<span class="kw">WHERE</span> TradesOrderThirdPartyPayment_TypeDef <span class="kw">LIKE</span> <span class="str">'%Cybersource%'</span>
+  <span class="kw">AND</span> TradesOrderThirdPartyPayment_StatusDef = <span class="str">'WaitingToPay'</span>
+  <span class="kw">AND</span> TradesOrderThirdPartyPayment_DateTime &gt;= <span class="str">'2026-07-01 00:00:00'</span>  <span class="cm">-- 換成異常日期</span>
+  <span class="kw">AND</span> TradesOrderThirdPartyPayment_ValidFlag = <span class="num">1</span>
+<span class="kw">ORDER BY</span> TradesOrderThirdPartyPayment_DateTime <span class="kw">DESC</span>;</pre>
+
+    <table>
+      <thead>
+        <tr><th>觀察欄位</th><th>正常情況</th><th>異常情況</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>StatusDef = WaitingToPay</code> 筆數</td>
+          <td>近期幾乎為 0（ReCheck 應已補完）</td>
+          <td>多筆停留超過 5 分鐘以上</td>
+        </tr>
+        <tr>
+          <td><code>MinutesSinceCreated</code></td>
+          <td>多在 5 分鐘內被 ReCheck 處理完</td>
+          <td>有訂單停留 10+ 分鐘仍未更新</td>
+        </tr>
+        <tr>
+          <td><code>StatusUpdatedDateTime</code> 不動</td>
+          <td>ReCheck 有在更新</td>
+          <td>完全沒有更新 → ReCheck 也 timeout</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Step 3 -->
+    <h3>Step 3 — Grafana：用 RequestId 對應訂單的 Response 與 DB 狀況</h3>
+    <p>從 mweb Log 找到對應的 <code>ny-request-id</code>，追蹤單一訂單從 PayChannelReturn → PMW Query → DB 更新的完整鏈路。</p>
+
+    <div class="flow">
+
+      <div class="flow-item">
+        <div class="flow-step step-normal">A</div>
+        <div class="flow-content">
+          <div class="title">在 Grafana 搜尋 TGCode 對應的 RequestId</div>
+          <div class="desc">
+            搜尋條件：<code>log CONTAINS "TGCode={目標訂單編號}"</code> 且 service = mweb<br/>
+            找到 <code>ny-request-id</code>（mweb 打 PMW 時的 header）<br/>
+            也可搜尋 <code>FinishPayment parameters</code> 確認此訂單的進入時間點
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-normal">B</div>
+        <div class="flow-content">
+          <div class="title">用 RequestId 在 PMW Log 追蹤查詢耗時</div>
+          <div class="desc">
+            搜尋條件：<code>log CONTAINS "{ny-request-id}"</code> 且 service = PaymentMiddleware<br/>
+            確認 PMW 收到請求的時間 vs 回傳時間 → 計算 PMW 端耗時<br/>
+            若 PMW Log 顯示「等待 Cybersource 超過 X 秒」→ 確認為第三方問題
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-warn">C</div>
+        <div class="flow-content">
+          <div class="title">確認 mweb Response 與 DB 狀態的時間差</div>
+          <div class="desc">
+            mweb Log 中找 <code>Exception occured when creating payment request</code> 的時間點<br/>
+            對比 DB 中 <code>TradesOrderThirdPartyPayment_StatusUpdatedDateTime</code> 的時間點<br/>
+            <strong>若 mweb 在 T+30s 拋 exception，但 DB 狀態直到 ReCheck 才更新（T+3~6分鐘）→ 確認為 timeout 造成的延遲</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-step step-ok">D</div>
+        <div class="flow-content">
+          <div class="title">確認 ReCheck 何時補完這筆訂單</div>
+          <div class="desc">
+            搜尋 <code>log CONTAINS "TGCode={訂單編號}" AND log CONTAINS "isFromWorker: true"</code><br/>
+            找到 ReCheck 成功的時間點，計算從付款到訂單完成的總延遲時間
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Step 4 -->
+    <h3>Step 4 — 判斷規則：Query 耗時過長 → WaitingToPay 的對應關係</h3>
+    <p>根據鏈路設計，可以用以下規則快速判斷訂單的最終狀態：</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>PMW Query 耗時</th>
+          <th>mweb 端行為</th>
+          <th>訂單最終狀態</th>
+          <th>判斷</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>&lt; 30 秒</td>
+          <td>正常取得 ReturnCode</td>
+          <td>依 ReturnCode 決定（Success / Fail / Timeout）</td>
+          <td><span class="tag tag-green">正常</span></td>
+        </tr>
+        <tr>
+          <td>≥ 30 秒（timeout）</td>
+          <td><code>TaskCanceledException</code> → Fail 回傳</td>
+          <td><code>WaitingToPay</code>（等 ReCheck）</td>
+          <td><span class="tag tag-orange">等 ReCheck</span></td>
+        </tr>
+        <tr>
+          <td>≥ 30 秒（每輪 ReCheck 都 timeout）</td>
+          <td>每輪 ReCheck 都拋例外</td>
+          <td>持續 <code>WaitingToPay</code>，每次 ReCheck 都失敗</td>
+          <td><span class="tag tag-red">持續異常</span></td>
+        </tr>
+        <tr>
+          <td>某輪 ReCheck &lt; 30 秒</td>
+          <td>ReCheck 成功取得 Success</td>
+          <td>訂單補完成</td>
+          <td><span class="tag tag-green">ReCheck 補回</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-red">
+      <span class="callout-icon">⚠️</span>
+      <div>
+        <strong>重要結論：</strong>只要在 Grafana 看到某筆訂單的 PMW QueryPayment 耗時 ≥ 30 秒（或看到 <code>TaskCanceledException</code> Log），
+        可以直接判定該訂單在 PayChannelReturn 時沒有成功更新，
+        訂單狀態一定是 <code>WaitingToPay</code>，需等 ReCheck 或手動觸發補查。
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ 9. 優化方案 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-green">
+    🚀 <span>優化方案</span>
+  </div>
+  <div class="section-body">
+
+    <div class="callout callout-blue">
+      <span class="callout-icon">📌</span>
+      <div>
+        以下兩個方案已確認可行性，優先實作 <strong>Fix 1</strong>（只動 Controller，最小改動），後續視情況評估 <strong>Fix 2</strong>（Timeout 分路徑）。
+      </div>
+    </div>
+
+    <!-- 總覽表 -->
+    <table>
+      <thead>
+        <tr>
+          <th>方案</th>
+          <th>改動範圍</th>
+          <th>解決的問題</th>
+          <th>優先級</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Fix 1</strong><br/>InternalFinishPayment 加 try-catch</td>
+          <td>只動 WebAPI <code>PayChannelController.cs</code></td>
+          <td>ELMAH 不再爆 exception、有明確 Warn Log、NMQ 不再 Task 失敗</td>
+          <td><span class="tag tag-red">最優先</span></td>
+        </tr>
+        <tr>
+          <td><strong>Fix 2</strong><br/>Timeout 依路徑分離（60s for ReCheck）</td>
+          <td>需動 HttpClient 呼叫鏈（多個檔案）</td>
+          <td>ReCheck 路徑有更長等待窗口，Cybersource 有機會在 30~60s 間回傳成功</td>
+          <td><span class="tag tag-orange">後續評估</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <hr style="margin: 28px 0; border: none; border-top: 1px solid var(--border);"/>
+
+    <!-- Fix 1 -->
+    <h3>🔴 Fix 1：InternalFinishPayment 加 try-catch（只動 Controller）</h3>
+
+    <p>目前 <code>WebAPI/Controllers/PayChannelController.InternalFinishPayment</code> 完全沒有 try-catch，
+    <code>TaskCanceledException</code> 一路往上噴到 ASP.NET MVC framework，造成 HTTP 500 + ELMAH 記錄，應用層無任何 Log。</p>
+
+    <p style="margin-top:12px;"><strong>改法（只改這一個 Controller Action）：</strong></p>
+
+<pre><span class="cm">// WebStore\WebAPI\Controllers\PayChannelController.cs</span>
+
+[HttpPost]
+[Route(<span class="str">"PayChannel/InternalFinishPayment"</span>)]
+<span class="kw">public</span> ActionResult InternalFinishPayment([FromBody] InternalFinishPaymentRequestEntity request)
+{
+    <span class="kw">if</span> (!this.IsFromCompany())
+        <span class="kw">return</span> this.Json(ApiResultEntity&lt;<span class="kw">object</span>&gt;.Success(<span class="str">string.Empty</span>));
+
+    <span class="cm">// 解析 PayType（既有邏輯不動）</span>
+    <span class="kw">var</span> payType = this._payTypeResolver.Resolve(request.PayProfileType);
+
+    <span class="kw">try</span>
+    {
+        <span class="kw">var</span> result = this._tradesOrderPaymentService.FinishPayment(
+            request.ShopId, request.MemberId,
+            payType.PayChannel, payType.PayMethod,
+            request.TradesOrderGroupCode, request.UniqueKey,
+            <span class="str">string.Empty</span>, isFromWorker: <span class="kw">true</span>);
+
+        <span class="kw">return</span> this.Json(ApiResultEntity&lt;<span class="kw">object</span>&gt;.Success(result));
+    }
+    <span class="kw">catch</span> (TaskCanceledException ex)
+    {
+        <span class="cm">// PMW → Cybersource 超過 30 秒無回應，訂單維持 WaitingToPay 等 ReCheck</span>
+        this._logger.Warn(ex,
+            <span class="str">$"InternalFinishPayment Timeout - OrderCode:{request.TradesOrderGroupCode}, PayType:{request.PayProfileType}"</span>);
+
+        <span class="kw">return</span> this.Json(ApiResultEntity&lt;<span class="kw">object</span>&gt;.Fail(<span class="str">"TIMEOUT"</span>, <span class="str">"Payment query timeout"</span>));
+    }
+    <span class="kw">catch</span> (Exception ex)
+    {
+        this._logger.Error(ex,
+            <span class="str">$"InternalFinishPayment Error - OrderCode:{request.TradesOrderGroupCode}, PayType:{request.PayProfileType}"</span>);
+
+        <span class="kw">return</span> this.Json(ApiResultEntity&lt;<span class="kw">object</span>&gt;.Fail(<span class="str">"ERROR"</span>, ex.Message));
+    }
+}</pre>
+
+    <table>
+      <thead>
+        <tr><th>改善前</th><th>改善後</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>HTTP 500，ELMAH 爆 exception</td>
+          <td>HTTP 200 + <code>TIMEOUT</code> error code，ELMAH 不再記錄</td>
+        </tr>
+        <tr>
+          <td>應用層完全無 Log，靜默斷掉</td>
+          <td><code>logger.Warn</code> 明確記錄是哪張訂單、哪個 PayType timeout</td>
+        </tr>
+        <tr>
+          <td>NMQ 拿到 500 → errorList → Task 失敗</td>
+          <td>NMQ 拿到結構化 response，可區分 TIMEOUT 與真正的錯誤</td>
+        </tr>
+        <tr>
+          <td>前台路徑（PayChannelReturn）不受影響</td>
+          <td>前台路徑（PayChannelReturn）不受影響（不同 Controller）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <hr style="margin: 28px 0; border: none; border-top: 1px solid var(--border);"/>
+
+    <!-- Fix 2 -->
+    <h3>🟠 Fix 2：Timeout 依路徑分離（ReCheck 路徑給 60 秒）</h3>
+
+    <p><strong>為什麼不能只在 Controller 改 Timeout？</strong></p>
+
+    <div class="callout callout-red">
+      <span class="callout-icon">⚠️</span>
+      <div>
+        <code>PaymentMiddlewareHttpClient</code> 是 <strong>singleton</strong>，<code>HttpClient.Timeout</code> 是 instance 層級屬性，
+        在 singleton 上做 per-request 修改是 <strong>non-thread-safe</strong>。
+        若在 Controller 暫時改 Timeout 再改回，多執行緒環境下會有 race condition。
+      </div>
+    </div>
+
+    <p style="margin-top:12px;"><strong>需要的改動範圍：</strong></p>
+
+<pre><span class="cm">// 方法：用 CancellationTokenSource 做 per-request timeout</span>
+<span class="cm">// 需貫穿以下呼叫鏈，每個方法都要新增 CancellationToken 參數：</span>
+
+InternalFinishPayment(request)
+  → FinishPayment(..., <span class="ann">CancellationToken token</span>)            <span class="cm">// TradesOrderPaymentService.cs</span>
+    → QueryPayment(..., <span class="ann">CancellationToken token</span>)           <span class="cm">// PaymentMiddlewareService.cs</span>
+      → Query(..., <span class="ann">CancellationToken token</span>)               <span class="cm">// PaymentMiddlewareHttpClient.cs</span>
+        → SendHttpRequestWithJsonBody(..., <span class="ann">token</span>)          <span class="cm">// PaymentMiddlewareHttpClient.cs</span>
+          → httpClient.SendAsync(request, <span class="ann">token</span>)          <span class="cm">// 實際生效點</span>
+
+<span class="cm">// Controller 側傳入 60 秒的 token</span>
+<span class="kw">using var</span> cts = <span class="kw">new</span> CancellationTokenSource(TimeSpan.FromSeconds(<span class="num">60</span>));
+<span class="kw">var</span> result = this._tradesOrderPaymentService.FinishPayment(..., cts.Token);</pre>
+
+    <table>
+      <thead>
+        <tr>
+          <th>方案</th>
+          <th>Frontend PayChannelReturn</th>
+          <th>WebAPI InternalFinishPayment（ReCheck）</th>
+          <th>改動範圍</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>不改（現狀）</td>
+          <td>30 秒</td>
+          <td>30 秒</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>統一改 60 秒</td>
+          <td>60 秒（<span class="tag tag-red">使用者等更久</span>）</td>
+          <td>60 秒（✅ ReCheck 有更長窗口）</td>
+          <td>只改 ServiceModule.cs 1 行，但兩條路徑都受影響</td>
+        </tr>
+        <tr>
+          <td><strong>Fix 2（CancellationToken 分離）</strong></td>
+          <td>30 秒（不變）</td>
+          <td>60 秒（✅ ReCheck 有更長窗口）</td>
+          <td>需改 4~5 個檔案的方法簽章</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-orange">
+      <span class="callout-icon">💡</span>
+      <div>
+        <strong>評估前置條件：</strong>實作 Fix 2 前，建議先從 Grafana 確認 Cybersource 慢速時的實際回應時間落在哪個區間。
+        若 P99 普遍超過 60 秒，調整 Timeout 意義不大；若多數在 30~55 秒之間，Fix 2 能有效減少 ReCheck 失敗次數。
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ footer ══════════════════════ -->
+<div style="text-align:center; color: var(--sub); font-size: 0.8rem; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border);">
+  紀錄建立：2026-07-01　｜　mweb Cybersource 異常分析文件
+</div>
+
+</body>
+</html>

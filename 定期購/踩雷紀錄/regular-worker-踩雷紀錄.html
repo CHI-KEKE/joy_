@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>踩雷紀錄 — nine1.regularpurchase.v2.worker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d0f14; --bg2:#14171f; --panel:#191c25; --panel2:#1f2330;
+    --line:#2a2f3d; --line-soft:#22262f;
+    --amber:#ffb703; --amber-dim:#7a5a06;
+    --red:#ff5c5c; --red-dim:#3a1414;
+    --orange:#ff9142; --orange-dim:#3d260f;
+    --green:#3ddc97; --green-dim:#123326;
+    --text:#e7e9f0; --text-dim:#8b90a3; --text-faint:#565c72;
+    --mono:'IBM Plex Mono', monospace; --sans:'Manrope', sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:var(--sans); background:var(--bg); color:var(--text);
+    font-size:15px; line-height:1.6;
+    background-image:
+      radial-gradient(circle at 15% 8%, rgba(255,183,3,.06), transparent 45%),
+      radial-gradient(circle at 85% 92%, rgba(255,92,92,.06), transparent 40%);
+    background-attachment:fixed;
+  }
+
+  /* hazard tape top bar */
+  .tape{
+    height:10px; width:100%; position:sticky; top:0; z-index:200;
+    background:repeating-linear-gradient(135deg, var(--amber) 0 18px, #14171f 18px 36px);
+  }
+
+  /* ── layout ───────────────────────────── */
+  .sidebar{
+    position:fixed; top:10px; left:0; width:250px; height:calc(100vh - 10px);
+    background:var(--bg2); border-right:1px solid var(--line); overflow-y:auto;
+    padding:0 0 30px; z-index:100;
+  }
+  .sidebar::-webkit-scrollbar{width:6px;}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--line); border-radius:3px;}
+  .brand{padding:26px 22px 18px; border-bottom:1px solid var(--line);}
+  .brand .mark{
+    display:inline-flex; align-items:center; gap:8px; font-family:var(--mono);
+    font-size:11px; color:var(--amber); letter-spacing:1.5px; text-transform:uppercase;
+    border:1px solid var(--amber-dim); padding:3px 8px; border-radius:4px; margin-bottom:12px;
+  }
+  .brand h1{font-size:17px; font-weight:800; line-height:1.4; color:var(--text);}
+  .brand .sub{font-family:var(--mono); font-size:11px; color:var(--text-faint); margin-top:6px;}
+  .navgroup{padding:16px 0 4px;}
+  .navgroup h4{
+    font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:1.2px;
+    color:var(--text-faint); padding:6px 22px; margin-top:6px;
+  }
+  .navgroup a{
+    display:flex; align-items:center; gap:9px; padding:8px 22px; font-size:13px;
+    color:var(--text-dim); text-decoration:none; border-left:2px solid transparent; transition:.15s;
+  }
+  .navgroup a:hover{background:rgba(255,183,3,.06); color:var(--text); border-left-color:var(--amber);}
+  .navgroup a .sev{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+  .sev.r{background:var(--red); box-shadow:0 0 6px var(--red);}
+  .sev.o{background:var(--orange); box-shadow:0 0 6px var(--orange);}
+
+  .main{margin-left:250px; padding:48px 56px 100px; max-width:1080px;}
+
+  /* ── hero ─────────────────────────────── */
+  .hero{
+    position:relative; overflow:hidden; border-radius:16px; padding:44px 44px 36px;
+    background:linear-gradient(155deg,#1a1410 0%, #14171f 55%, #14171f 100%);
+    border:1px solid var(--line); margin-bottom:44px;
+  }
+  .hero::before{
+    content:'⚠'; position:absolute; right:-10px; top:-30px; font-size:220px;
+    color:rgba(255,183,3,.05); pointer-events:none; line-height:1;
+  }
+  .hero .eyebrow{font-family:var(--mono); font-size:12px; color:var(--amber); letter-spacing:2px; text-transform:uppercase;}
+  .hero h1{font-size:34px; font-weight:800; margin:10px 0 12px; letter-spacing:-.5px;}
+  .hero p.lead{color:var(--text-dim); max-width:620px; font-size:15px;}
+  .hero .stats{display:flex; gap:36px; margin-top:28px; flex-wrap:wrap;}
+  .hero .stat b{display:block; font-family:var(--mono); font-size:26px; color:var(--text);}
+  .hero .stat span{font-size:11.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px;}
+
+  /* ── sections ─────────────────────────── */
+  section{margin-bottom:64px; scroll-margin-top:30px;}
+  .sec-label{font-family:var(--mono); font-size:12px; color:var(--text-faint); letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;}
+  h2.sec-title{font-size:24px; font-weight:800; margin-bottom:22px;}
+
+  /* ── mine card ────────────────────────── */
+  .mine{
+    position:relative; background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; padding:30px 32px; margin-bottom:26px;
+  }
+  .mine.sev-red{border-top:3px solid var(--red);}
+  .mine.sev-orange{border-top:3px solid var(--orange);}
+  .mine-head{display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:6px; flex-wrap:wrap;}
+  .mine-id{font-family:var(--mono); font-size:12px; color:var(--text-faint); letter-spacing:1px;}
+  .mine-title{font-size:19px; font-weight:800; margin-top:4px; color:var(--text);}
+  .badge{
+    font-family:var(--mono); font-size:11px; font-weight:600; padding:4px 10px; border-radius:5px;
+    text-transform:uppercase; letter-spacing:.5px; white-space:nowrap;
+  }
+  .badge.red{background:var(--red-dim); color:var(--red); border:1px solid rgba(255,92,92,.35);}
+  .badge.orange{background:var(--orange-dim); color:var(--orange); border:1px solid rgba(255,145,66,.35);}
+  .badge.gray{background:#20242f; color:var(--text-dim); border:1px solid var(--line);}
+
+  .mine h3{font-size:13px; color:var(--amber); font-family:var(--mono); text-transform:uppercase; letter-spacing:1px; margin:22px 0 10px; display:flex; align-items:center; gap:8px;}
+  .mine h3::before{content:''; width:14px; height:2px; background:var(--amber); display:inline-block;}
+  .mine p{color:var(--text-dim); margin-bottom:8px;}
+  .mine p strong{color:var(--text);}
+
+  pre{
+    background:#0a0b10; border:1px solid var(--line-soft); border-radius:9px; padding:16px 18px;
+    overflow-x:auto; font-family:var(--mono); font-size:12.5px; line-height:1.7; margin:10px 0 6px;
+  }
+  code{font-family:var(--mono); font-size:12.5px; background:#20242f; color:#ffd479; padding:1px 6px; border-radius:4px;}
+  pre code{background:none; padding:0; color:#c3c9dd;}
+  .kw{color:#ff7edb;} .cm{color:#565c72;} .st{color:#3ddc97;} .num{color:#ffb703;}
+
+  .filepath{font-family:var(--mono); font-size:11.5px; color:var(--text-faint); margin:2px 0 14px;}
+
+  /* callout */
+  .callout{border-radius:9px; padding:14px 18px; margin:14px 0; font-size:13.5px; border:1px solid; display:flex; gap:10px;}
+  .callout .ic{font-size:16px; flex-shrink:0;}
+  .callout.warn{background:rgba(255,183,3,.06); border-color:rgba(255,183,3,.28); color:#f4d996;}
+  .callout.danger{background:rgba(255,92,92,.07); border-color:rgba(255,92,92,.3); color:#ffb3b3;}
+
+  /* timeline */
+  .tl{margin:16px 0 6px; border-left:2px solid var(--line); padding-left:0;}
+  .tl-row{display:flex; gap:16px; position:relative; padding:0 0 22px 0;}
+  .tl-row:last-child{padding-bottom:2px;}
+  .tl-day{
+    width:96px; flex-shrink:0; text-align:right; font-family:var(--mono); font-size:12px;
+    color:var(--text-dim); padding-top:1px; position:relative;
+  }
+  .tl-dot{
+    position:absolute; left:-2px; top:2px; width:9px; height:9px; border-radius:50%;
+    background:var(--bg); border:2px solid var(--amber); transform:translateX(-50%);
+  }
+  .tl-row.dot-red .tl-dot{border-color:var(--red);}
+  .tl-row.dot-green .tl-dot{border-color:var(--green);}
+  .tl-body{flex:1; margin-left:6px; padding-left:16px; border-left:2px solid transparent;}
+  .tl-title{font-weight:700; font-size:13.5px; color:var(--text); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .tl-desc{font-size:12.5px; color:var(--text-dim); margin-top:3px; line-height:1.6;}
+  .tl-tag{font-family:var(--mono); font-size:10.5px; padding:1px 7px; border-radius:4px;}
+  .tl-tag.fail{background:var(--red-dim); color:var(--red);}
+  .tl-tag.ok{background:var(--green-dim); color:var(--green);}
+  .tl-tag.pend{background:var(--orange-dim); color:var(--orange);}
+  .tl-tag.skip{background:#20242f; color:var(--text-faint);}
+
+  /* table */
+  table{width:100%; border-collapse:collapse; font-size:13px; margin:8px 0;}
+  th{font-family:var(--mono); text-align:left; padding:9px 12px; color:var(--text-faint); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--line);}
+  td{padding:10px 12px; border-bottom:1px solid var(--line-soft); color:var(--text-dim); vertical-align:top;}
+  tr:hover td{background:rgba(255,255,255,.015);}
+  td strong{color:var(--text);}
+
+  /* fix box */
+  .fix{background:var(--green-dim); border:1px solid rgba(61,220,151,.28); border-radius:9px; padding:16px 18px; margin-top:8px;}
+  .fix h4{font-family:var(--mono); font-size:12px; color:var(--green); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;}
+  .fix p{color:#bfe9d6; margin-bottom:0;}
+  .fix ul{margin:6px 0 0 18px; color:#bfe9d6; font-size:13.5px;}
+  .fix li{margin-bottom:5px;}
+
+  /* summary board */
+  .board{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:8px; overflow:hidden;}
+  .board table{margin:0;}
+  .board th, .board td{padding:14px 16px;}
+  .board tr:not(:last-child) td{border-bottom:1px solid var(--line-soft);}
+
+  .checklist{list-style:none; display:flex; flex-direction:column; gap:10px; margin-top:10px;}
+  .checklist li{display:flex; gap:12px; align-items:flex-start; font-size:13.5px; color:var(--text-dim);}
+  .checklist li::before{content:'▢'; color:var(--amber); font-size:16px; line-height:1.4; flex-shrink:0;}
+
+  footer{margin-left:250px; padding:26px 56px 60px; font-family:var(--mono); font-size:11.5px; color:var(--text-faint); border-top:1px solid var(--line);}
+
+  @media (max-width:920px){
+    .sidebar{display:none;} .main{margin-left:0; padding:32px 20px 80px;} footer{margin-left:0;}
+  }
+</style>
+</head>
+<body>
+
+<div class="tape"></div>
+
+<nav class="sidebar">
+  <div class="brand">
+    <span class="mark">⚠ Incident Log</span>
+    <h1>定期購 Worker<br>踩雷紀錄</h1>
+    <div class="sub">nine1.regularpurchase.v2.worker</div>
+  </div>
+  <div class="navgroup">
+    <h4>總覽</h4>
+    <a href="#overview">摘要 / 影響範圍</a>
+  </div>
+  <div class="navgroup">
+    <h4>地雷清單</h4>
+    <a href="#mine-01"><span class="sev o"></span>#01 時區手動換算 + Kind 誤標</a>
+    <a href="#mine-02"><span class="sev o"></span>#02 D-2/D-1 重試死角</a>
+    <a href="#mine-03"><span class="sev r"></span>#03 Pending 永久卡死主計畫</a>
+  </div>
+  <div class="navgroup">
+    <h4>總結</h4>
+    <a href="#action">建議修正清單</a>
+  </div>
+</nav>
+
+<div class="main">
+
+  <div class="hero">
+    <div class="eyebrow">Code Review Findings · 2026-07-30</div>
+    <h1>定期購建單機制 踩雷紀錄</h1>
+    <p class="lead">針對 <code style="background:rgba(255,183,3,.12); color:#ffd479;">nine1.regularpurchase.v2.worker</code> 建單／重試／Pending 付款確認流程的走讀，整理出 3 個實際會造成資料卡死或時間誤判的地雷，記錄現象、根因、引爆條件與建議修法。</p>
+    <div class="stats">
+      <div class="stat"><b>3</b><span>已確認地雷</span></div>
+      <div class="stat"><b>1</b><span>嚴重（資料永久卡死）</span></div>
+      <div class="stat"><b>TW / HK / MY</b><span>影響市場</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ OVERVIEW ══════════════════════════ -->
+  <section id="overview">
+    <div class="sec-label">Overview</div>
+    <h2 class="sec-title">摘要</h2>
+    <div class="board">
+      <table>
+        <tr>
+          <th style="width:60px">編號</th>
+          <th>地雷</th>
+          <th style="width:110px">嚴重度</th>
+          <th>核心症狀</th>
+        </tr>
+        <tr>
+          <td><span class="mine-id">#01</span></td>
+          <td><strong>時區手動換算 + DateTimeKind 誤標</strong></td>
+          <td><span class="badge orange">中</span></td>
+          <td>15＋ 處 <code>DateTime.UtcNow.AddHours(8)</code>，Kind 仍為 Utc，未來接 timestamptz / 跨市場時區時有二次轉換風險</td>
+        </tr>
+        <tr>
+          <td><span class="mine-id">#02</span></td>
+          <td><strong>出貨日當天不重試，D+1 才廢棄</strong></td>
+          <td><span class="badge orange">中高</span></td>
+          <td>D-2、D-1 失敗後，出貨日 D 當天完全不會再嘗試建單，也還沒被判定過期</td>
+        </tr>
+        <tr>
+          <td><span class="mine-id">#03</span></td>
+          <td><strong>Pending 卡死，主計畫永久停滯</strong></td>
+          <td><span class="badge red">嚴重</span></td>
+          <td>Pending 未被解決時，<code>rgo_in_schedule</code> 永遠不解鎖，該會員定期購從此不再建立任何一期新訂單</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ MINE 01 ══════════════════════════ -->
+  <section id="mine-01">
+    <div class="mine sev-orange">
+      <div class="mine-head">
+        <div>
+          <div class="mine-id">MINE #01</div>
+          <div class="mine-title">時區手動換算（AddHours(8)）+ DateTimeKind 誤標</div>
+        </div>
+        <span class="badge orange">嚴重度：中</span>
+      </div>
+      <div class="filepath">RegularCreateOrderJob.cs · RegularOrderFailedNotifyJob.cs · RegularOrderStockNotifyJob.cs · RegularOrderDetailRepository.cs · RegularOrderRepository.cs（共 15＋ 處）</div>
+
+      <h3>現象</h3>
+      <p>全專案唯一的「取得台灣時間」方式是 <code>DateTime.UtcNow.AddHours(8)</code>，只有 <code>RegularOrderInitJob.cs</code> 一處例外使用了正規的 <code>TimeZoneInfo.ConvertTimeFromUtc</code>。</p>
+
+      <pre><code><span class="cm">// 典型寫法，散落在 15+ 處</span>
+<span class="kw">var</span> today = TryParseExecuteDate(data) ?? DateOnly.FromDateTime(DateTime.UtcNow.AddHours(<span class="num">8</span>));
+rod.RodCreateTime = DateTime.UtcNow.AddHours(<span class="num">8</span>);
+queue.NqSendTime  = DateTime.UtcNow.AddHours(<span class="num">8</span>);</code></pre>
+
+      <h3>根因</h3>
+      <p><code>AddHours(8)</code> 只改變數值，<strong>不會改變 <code>DateTime.Kind</code></strong>。結果是「數值看起來像台灣時間，但 <code>Kind == Utc</code>」——一個自相矛盾的資料狀態。</p>
+
+      <div class="callout warn">
+        <span class="ic">⚠</span>
+        <div>若日後這個值被 EF Core / Npgsql 寫入 <code>timestamptz</code> 欄位，或被任何程式呼叫 <code>.ToUniversalTime()</code>／<code>.ToLocalTime()</code>，框架會依 <code>Kind==Utc</code> 判斷「這已經是 UTC」，導致<strong>再轉換一次、多／少 8 小時</strong>。這正是「後台顯示的訂單時間跟客服看到的對不上」這類靈異 bug 的典型成因。</div>
+      </div>
+
+      <h3>引爆條件</h3>
+      <p>目前尚未爆發（因為下游系統也一致地把這個值當作「台灣時間」使用），但只要：① 換 DB provider 或欄位型別、② 有新同事依 <code>Kind</code> 寫轉換邏輯、③ 未來新增非 UTC+8 市場，三者任一發生就會引爆。</p>
+
+      <div class="fix">
+        <h4>建議修法</h4>
+        <ul>
+          <li>抽出 <code>IClock</code> / <code>IMarketTimeZoneResolver</code> 服務，統一用 <code>TimeZoneInfo.ConvertTimeFromUtc</code> 取代所有 <code>AddHours(8)</code></li>
+          <li>轉換後明確 <code>DateTime.SpecifyKind(value, DateTimeKind.Unspecified)</code> 再寫入 DB，避免被誤判</li>
+          <li>統一 15＋ 處呼叫點，消除與 <code>RegularOrderInitJob.cs</code> 兩套邏輯並存的不一致</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ MINE 02 ══════════════════════════ -->
+  <section id="mine-02">
+    <div class="mine sev-orange">
+      <div class="mine-head">
+        <div>
+          <div class="mine-id">MINE #02</div>
+          <div class="mine-title">出貨日當天完全不重試，隔天才判定過期</div>
+        </div>
+        <span class="badge orange">嚴重度：中高</span>
+      </div>
+      <div class="filepath">RegularOrderDetailRepository.cs → GetDetailsForApiCallAsync / AbandonExpiredDetailsAsync</div>
+
+      <h3>現象</h3>
+      <p>建單重試視窗使用「嚴格大於」today，出貨當天不在窗口內：</p>
+      <pre><code><span class="cm">// Step④ 重試查詢條件</span>
+rod.RodShipDate > today && rod.RodShipDate <= today.AddDays(<span class="num">2</span>)
+
+<span class="cm">// Step② 過期廢棄條件（隔天才成立）</span>
+rgo.RgoNextShipDate < today</code></pre>
+
+      <h3>案例走讀（出貨日 D = 8/1）</h3>
+      <div class="tl">
+        <div class="tl-row dot-red">
+          <div class="tl-day">7/30 (D-2)</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">Step④ 嘗試建單 <span class="tl-tag fail">FAIL</span></div>
+            <div class="tl-desc">條件 <code>8/1 &gt; 7/30 && 8/1 ≤ 8/1</code> 成立 → 呼叫 API，假設失敗，<code>rod_create_order_status = 2</code></div>
+          </div>
+        </div>
+        <div class="tl-row dot-red">
+          <div class="tl-day">7/31 (D-1)</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">Step④ 再次嘗試 <span class="tl-tag fail">FAIL</span></div>
+            <div class="tl-desc">條件 <code>8/1 &gt; 7/31 && 8/1 ≤ 8/2</code> 成立 → 再次呼叫 API，假設又失敗</div>
+          </div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-day">8/1 (D)<br><span style="color:var(--red)">出貨日</span></div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">Step④ 不會嘗試 <span class="tl-tag skip">SKIPPED</span></div>
+            <div class="tl-desc">條件 <code>8/1 &gt; 8/1</code> 為 False → 不在查詢範圍。Step② 條件 <code>8/1 &lt; 8/1</code> 也是 False → 還沒被判過期。<strong>這天完全沒有任何動作</strong>。</div>
+          </div>
+        </div>
+        <div class="tl-row dot-green">
+          <div class="tl-day">8/2 (D+1)</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">Step② 判定過期並廢棄 <span class="tl-tag ok">RESOLVED</span></div>
+            <div class="tl-desc">條件 <code>8/1 &lt; 8/2</code> 成立 → <code>rod_status=2</code>（廢棄），<code>rgo_next_ship_date += ship_period</code> 推進下一期</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout danger">
+        <span class="ic">⛔</span>
+        <div>使用者在「應出貨當天」不會收到最後一次補救嘗試，也不會立即收到失敗通知——通知與廢棄動作要等 <strong>D+1</strong> 才處理，等於出貨日當天是個空窗期。</div>
+      </div>
+
+      <div class="fix">
+        <h4>建議修法</h4>
+        <ul>
+          <li>若業務上希望出貨日當天仍嘗試最後一次，重試視窗應改為 <code>rod.RodShipDate >= today</code></li>
+          <li>若維持現行設計，至少應在 D 當天發出「即將於今日出貨但尚未成功」的即時告警，不要等到 D+1</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ MINE 03 ══════════════════════════ -->
+  <section id="mine-03">
+    <div class="mine sev-red">
+      <div class="mine-head">
+        <div>
+          <div class="mine-id">MINE #03</div>
+          <div class="mine-title">Pending 未解決 → 主計畫永久卡死，不再進下一期</div>
+        </div>
+        <span class="badge red">嚴重度：嚴重</span>
+      </div>
+      <div class="filepath">RegularCreateOrderJob.cs → TakeOrderApiAsync · RegularOrderRepository.cs → SetInScheduleAsync / UpdateAfterApiSuccessAsync / UpdateExpiredFailAsync · RegularCheckPendingPaymentJob.cs</div>
+
+      <h3>現象</h3>
+      <p>API 回傳 <code>OrderSlaveFlowStatus == "WaitingToPay"</code> 時，只更新了 <code>detail (rod)</code>，<strong>完全沒有更新主計畫 (rgo)</strong>：</p>
+      <pre><code><span class="kw">else if</span> (isPending)
+{
+    <span class="kw">await</span> _detailRepo.UpdateAfterApiPendingAsync(...);
+    <span class="cm">// ⚠️ 沒有呼叫 _orderRepo，rgo_in_schedule 沒有被解鎖</span>
+}</code></pre>
+
+      <h3>根因</h3>
+      <p>Step③ 建 detail 前會鎖住主計畫排程：</p>
+      <pre><code>rgo.RgoInSchedule = <span class="kw">true</span>; <span class="cm">// SetInScheduleAsync，Step③ 建 detail 前呼叫</span></code></pre>
+      <p>而這把鎖只有兩處會解開，Pending 兩者都不符合：</p>
+      <table>
+        <tr><th>解鎖時機</th><th>觸發條件</th><th>Pending 符合？</th></tr>
+        <tr><td><code>UpdateAfterApiSuccessAsync</code></td><td>API 真正回傳成功</td><td><span class="badge red">✗ 不符合</span></td></tr>
+        <tr><td><code>UpdateExpiredFailAsync</code>（Step②，D+1）</td><td><code>rgo_create_order_status == 2</code>（失敗）</td><td><span class="badge red">✗ 不符合</span></td></tr>
+      </table>
+      <p>而 Step③ 產生下一期 detail 的查詢條件要求 <code>rgo_in_schedule == false</code>——鎖永遠打不開，下一期就永遠不會被建立。</p>
+
+      <h3>案例走讀（MY 商店，出貨日 D = 8/1）</h3>
+      <div class="tl">
+        <div class="tl-row">
+          <div class="tl-day">7/30 10:15<br>(D-2)</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">Step④ 呼叫 API <span class="tl-tag pend">PENDING</span></div>
+            <div class="tl-desc">回傳 <code>WaitingToPay</code> → <code>rod_status=3</code>，<code>rgo_in_schedule</code> 維持 <code>true</code>（鎖住）</div>
+          </div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-day">7/30 10:45 / 11:15</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">CheckPendingPaymentJob 檢查兩次 <span class="tl-tag fail">未解決</span></div>
+            <div class="tl-desc">SCM 查無結果或超時，假設兩次都沒有 resolve</div>
+          </div>
+        </div>
+        <div class="tl-row dot-red">
+          <div class="tl-day">7/31 起</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">永遠查不到這筆 <span class="tl-tag skip">STUCK</span></div>
+            <div class="tl-desc"><code>GetPendingDetailsAsync</code> 只抓「<strong>今天</strong>」標記為 Pending 的資料（<code>RodDaemonActiveTime</code> 停在 7/30，不會每天更新），隔天起條件永遠對不上</div>
+          </div>
+        </div>
+        <div class="tl-row dot-red">
+          <div class="tl-day">此後每一期</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">主計畫完全停滯 <span class="tl-tag skip">DEAD</span></div>
+            <div class="tl-desc">Step③ 因 <code>rgo_in_schedule=true</code> 永遠跳過此計畫；Step② 因 <code>rgo_create_order_status≠2</code> 也不會廢棄。<strong>該會員的定期購從此不會再建立任何一期新訂單</strong>，且無任何告警</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout danger">
+        <span class="ic">⛔</span>
+        <div><strong>市場風險放大：</strong>Pending 確認 Job（<code>regular-order-pending-job-daily-1/2</code>）目前只部署在 <strong>MY</strong> 市場（<code>values-my-*.yaml</code>），<strong>TW / HK 完全沒有這組 CronJob</strong>。若 TW / HK 商店的付款流程曾經走到 <code>WaitingToPay</code> 分支（程式邏輯是共用的，理論上可能發生），該筆訂單會<strong>立即且永久卡死</strong>，因為連「當天兩次檢查」的補救機會都不存在。</div>
+      </div>
+
+      <div class="fix">
+        <h4>建議修法</h4>
+        <ul>
+          <li>Pending 分支也要像失敗一樣有「N 天後仍未解決 → 視同失敗，解鎖 <code>rgo_in_schedule</code> 並推進/終止週期」的兜底邏輯</li>
+          <li><code>GetPendingDetailsAsync</code> 不應只查「今天」，應改為查詢「所有仍為 <code>rod_status=3</code>」的明細，不限定當天，避免超過檢查視窗就永久遺失</li>
+          <li>確認 TW / HK 是否真的不會產生 <code>WaitingToPay</code>；若可能發生，需比照 MY 補上 <code>RegularCheckPendingPaymentJob</code> CronJob</li>
+          <li>新增監控：統計 <code>rod_status=3</code> 且建立時間超過 N 天的筆數並告警</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ ACTION ══════════════════════════ -->
+  <section id="action">
+    <div class="sec-label">Next Steps</div>
+    <h2 class="sec-title">建議修正清單</h2>
+    <ul class="checklist">
+      <li>抽出 <code>IClock</code> + <code>IMarketTimeZoneResolver</code>，取代所有 <code>DateTime.UtcNow.AddHours(8)</code>，並明確 <code>SpecifyKind</code>（對應 #01）</li>
+      <li>檢討出貨日 D 當天是否需要納入重試視窗，或至少加上當日告警（對應 #02）</li>
+      <li><strong>優先處理</strong>：Pending 兜底邏輯 + 移除「僅查今日」限制，避免主計畫永久卡死（對應 #03）</li>
+      <li>盤點 TW / HK 是否需要補上 Pending 確認 CronJob（對應 #03）</li>
+      <li>建立「Pending 卡超過 N 天」與「rgo_in_schedule 鎖超過 N 天未解」的監控告警</li>
+    </ul>
+  </section>
+
+</div>
+
+<footer>
+  Generated 2026-07-30 · Source: nine1.regularpurchase.v2.worker (RegularCreateOrderJob / RegularCheckPendingPaymentJob / Repository layer walkthrough)
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>SalePageMultilingualExportService 邏輯分析與鏈路圖</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+    :root {
+        --primary: #2b6cb0;
+        --bg: #f7f9fb;
+        --card-bg: #ffffff;
+        --border: #e2e8f0;
+        --code-bg: #1e293b;
+    }
+    body {
+        font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+        background: var(--bg);
+        color: #1a202c;
+        margin: 0;
+        padding: 0;
+        line-height: 1.7;
+    }
+    header {
+        background: linear-gradient(135deg, #2b6cb0, #1a365d);
+        color: #fff;
+        padding: 32px 40px;
+    }
+    header h1 {
+        margin: 0 0 8px 0;
+        font-size: 26px;
+    }
+    header p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 14px;
+    }
+    .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 30px 24px 80px;
+    }
+    .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    h2 {
+        color: var(--primary);
+        border-left: 5px solid var(--primary);
+        padding-left: 12px;
+        font-size: 20px;
+        margin-top: 0;
+    }
+    h3 {
+        color: #234e70;
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 12px 0;
+        font-size: 14px;
+    }
+    th, td {
+        border: 1px solid var(--border);
+        padding: 8px 12px;
+        text-align: left;
+        vertical-align: top;
+    }
+    th {
+        background: #edf2f7;
+        color: #2d3748;
+    }
+    code, .inline-code {
+        background: #edf2f7;
+        color: #b83280;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 13px;
+    }
+    pre {
+        background: var(--code-bg);
+        color: #e2e8f0;
+        padding: 16px 20px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .badge {
+        display: inline-block;
+        background: #ebf8ff;
+        color: #2b6cb0;
+        border: 1px solid #bee3f8;
+        border-radius: 12px;
+        padding: 2px 10px;
+        font-size: 12px;
+        margin-right: 6px;
+    }
+    .mermaid {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        overflow-x: auto;
+    }
+    ul {
+        margin: 8px 0;
+        padding-left: 22px;
+    }
+    li {
+        margin-bottom: 6px;
+    }
+    .note {
+        background: #fffaf0;
+        border-left: 4px solid #dd6b20;
+        padding: 10px 16px;
+        border-radius: 4px;
+        font-size: 13.5px;
+        margin: 10px 0;
+    }
+    .file-path {
+        color: #718096;
+        font-size: 12px;
+        font-family: Consolas, monospace;
+    }
+    footer {
+        text-align: center;
+        color: #a0aec0;
+        font-size: 12px;
+        padding: 20px;
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>SalePageMultilingualExportService 邏輯分析與鏈路圖</h1>
+    <p>商品頁多語系資料匯出服務 (BatchUpload) — 程式邏輯拆解、資料來源與端到端執行鏈路</p>
+</header>
+
+<div class="container">
+
+    <!-- 1. 概觀 -->
+    <div class="card">
+        <h2>1. 服務概觀</h2>
+        <p><span class="badge">類別</span>
+            <code>NineYi.SCM.Frontend.BLV2.BatchUpload.SalePageMultilingualExportService</code>
+        </p>
+        <p class="file-path">SCM\Frontend\BLV2\BatchUpload\SalePageMultilingualExportService.cs</p>
+        <p>
+            此服務實作 <code>IBatchUploadService</code>，是 NMQV2 批次上傳架構下的「商品頁多語系匯出」功能，
+            負責將指定商店 (Shop) 底下的商品頁基本資料（預設語系）與非預設語系翻譯內容，
+            合併輸出成一份 Excel 或 CSV 檔案，提供廠商 / 營運人員下載使用。
+        </p>
+        <h3>核心職責</h3>
+        <ul>
+            <li><b>LoadData</b>：解析批次匯出查詢條件，建立 <code>BatchUploadDataEntity</code> 待處理資料列。</li>
+            <li><b>DoProcess</b>：實際執行匯出流程 — 查詢資料、轉 DataTable、補齊多語系欄位、輸出檔案、更新批次狀態。</li>
+            <li><b>DoValidate / DoProcessByList</b>：此匯出服務不需要驗證與多筆批次處理，皆為空實作。</li>
+        </ul>
+    </div>
+
+    <!-- 2. 執行鏈路圖 -->
+    <div class="card">
+        <h2>2. 端到端執行鏈路圖</h2>
+        <div class="mermaid">
+flowchart TD
+    A["使用者於後台\n設定匯出條件並送出"] --> B["BatchUpload 建立作業\nBatchUploadNMQDataEntity"]
+    B --> C["LoadData()\n反序列化 SalePageExportSearchEntity\n建立 BatchUploadDataList"]
+    C --> D["NMQ 排程 / TaskProcess\n觸發 DoProcess(batchUploadData)"]
+    D --> E["DeserializeBatchUploadData\n還原查詢條件 SalePageExportSearchEntity"]
+    E --> F["ISalePageService\n.ExportSalePageMultilingualData(entity)"]
+    F --> F1["ISalePageRepository\n.GetSalePageExportList(entity)"]
+    F1 --> F2[("SQL Server\nEXEC csp_GetSalePageExportList")]
+    F2 --> F3["List&lt;SalePageMultilingualExportEntity&gt;\n(預設語系欄位: 商品名稱/銷售重點/\n商品特色/詳細說明/SEO三欄)"]
+    F3 --> G["ConverToDataTable()\nIExcelService.ConvertToDataTable&lt;T&gt;\n依 [ExportExcel] Attribute 產生欄位"]
+    G --> H["SetSalePageMultilingual(shopId, salePageIds, table)"]
+    H --> H1["IShopDefaultAgentService\n.GetShopLanguageSetting(shopId)\n取得商店啟用語系清單"]
+    H1 --> H2{"是否有\n非預設語系?"}
+    H2 -- 否 --> H9["不新增語系欄位，維持原表"]
+    H2 -- 是 --> H3["預設語系欄位改名為\n欄位名稱(ShortDisplay)\n例: 商品名稱(TW)"]
+    H3 --> H4["為每個非預設語系\n新增欄位: 欄位名稱(US)/(JP)/(CN)…"]
+    H4 --> H5["MultilingualService\n.GetMultilingualItemListByIdList\n(module=SalePage, ids, langArray)"]
+    H4 --> H6["MultilingualService\n.GetMultilingualItemListByIdList\n(module=SaleProductDesc, ids, langArray)"]
+    H5 --> H7[("AWS DynamoDB\n{Execmode}.AWS.DynamoDB.Multilingual.TableName\n例: HK_Prod_WebStore_Multilingual_Content")]
+    H6 --> H7
+    H7 --> H8["逐列依 salePageId + LangId\n寫入對應語系欄位值\n(Title / SubDescript / ShortContent /\nContent / SEOTitle / SEOKeywords / SEODescription)"]
+    H8 --> I["RemoveExcelOverLimitRows\n移除超過 32767 字元上限的商品列"]
+    I --> J{"匯出格式?"}
+    J -- CSV --> K1["ICsvService.Save()\n輸出 .csv"]
+    J -- Excel --> K2["IExcelService.SaveToXlsx()\n輸出 .xlsx"]
+    K1 --> L["是否啟用壓縮?"]
+    K2 --> L
+    L -- 是 --> L1["ZipHelper.CompressFiles\n產生 .zip 並刪除原檔"]
+    L -- 否 --> M["更新 BatchUploadEntity\n(TotalCount/SuccessCount/FailCount/\nFileName/DownloadPath)"]
+    L1 --> M
+    M --> N["BatchUploadRepositoryService\n.UpdateBatchUpload()"]
+    N --> O["使用者於後台\n下載匯出檔案"]
+        </div>
+    </div>
+
+    <!-- 3. 兩大資料來源 -->
+    <div class="card">
+        <h2>3. 兩大資料來源比較</h2>
+        <table>
+            <tr>
+                <th>資料類型</th>
+                <th>預設語系基本資料</th>
+                <th>非預設語系翻譯內容</th>
+            </tr>
+            <tr>
+                <td>儲存位置</td>
+                <td>SQL Server（WebStoreDB）</td>
+                <td>AWS DynamoDB（多語系內容表）</td>
+            </tr>
+            <tr>
+                <td>存取入口</td>
+                <td><code>ISalePageService.ExportSalePageMultilingualData</code><br>
+                    → <code>ISalePageRepository.GetSalePageExportList</code></td>
+                <td><code>MultilingualService.GetMultilingualItemListByIdList&lt;T&gt;</code></td>
+            </tr>
+            <tr>
+                <td>底層實作</td>
+                <td><code>EXEC [dbo].[csp_GetSalePageExportList]</code>（Stored Procedure）</td>
+                <td><code>IMultilingualAdmin</code>（<code>DynamoMultilingualAdmin</code>，
+                    套件 <code>NineYi.Msa.Multilingual.DynamoDB.Compatiable</code>）</td>
+            </tr>
+            <tr>
+                <td>對應 Table / Module</td>
+                <td>WebStoreDB 相關商品頁 View/Table</td>
+                <td><code>MultilingualTableNameEnum.SalePage</code>（標題/SEO）<br>
+                    <code>MultilingualTableNameEnum.SaleProductDesc</code>（銷售重點/特色/詳述）</td>
+                </td>
+            </tr>
+            <tr>
+                <td>Key 結構</td>
+                <td>SalePageId</td>
+                <td>Partition Key = <code>module + salePageId</code>，
+                    再依 <code>LangId</code>（如 en-US、ja-JP）取值</td>
+            </tr>
+            <tr>
+                <td>輸出欄位範例</td>
+                <td>商品名稱 → 改名為 <code>商品名稱(TW)</code>（預設語系）</td>
+                <td>新增欄位 <code>Product Name(US)</code>、<code>Product Name(JP)</code> 等</td>
+            </tr>
+        </table>
+        <div class="note">
+            <b>重點：</b>Excel 中看到的「欄位名稱(語系代碼)」是<b>兩套資料來源合併結果</b>：
+            預設語系直接沿用 SQL 查詢出的欄位並改名加上語系後綴；
+            非預設語系則是額外向 DynamoDB 查詢後動態新增欄位並逐列填值。
+        </div>
+    </div>
+
+    <!-- 4. 欄位對照表 -->
+    <div class="card">
+        <h2>4. 匯出欄位與程式屬性對照（SalePageMultilingualExportEntity）</h2>
+        <table>
+            <tr>
+                <th>Excel 欄位（預設語系顯示）</th>
+                <th>Entity 屬性</th>
+                <th>ExportExcel Key</th>
+                <th>資料來源</th>
+            </tr>
+            <tr><td>商品頁序號</td><td><code>Id</code></td><td>sale_page_id</td><td>SQL: SalePageSummary_SalePageId</td></tr>
+            <tr><td>商品名稱</td><td><code>Title</code></td><td>title_ml</td><td>SQL: SalePageSummary_SalePageTitle（預設語系）／DynamoDB: SalePage module（非預設語系）</td></tr>
+            <tr><td>銷售重點</td><td><code>SubDescript</code></td><td>sales_focus</td><td>SQL: SaleProductDesc_SubDescript（預設）／DynamoDB: SaleProductDesc module（非預設）</td></tr>
+            <tr><td>商品特色</td><td><code>ShortContent</code></td><td>product_features</td><td>SQL: SaleProductDesc_ShortContent（預設）／DynamoDB: SaleProductDesc module（非預設）</td></tr>
+            <tr><td>詳細說明</td><td><code>Content</code></td><td>detailed_description</td><td>SQL: SaleProductDesc_Content（預設）／DynamoDB: SaleProductDesc module（非預設）</td></tr>
+            <tr><td>SEOTitle</td><td><code>SEOTitle</code></td><td>s_e_o_title</td><td>SQL: SEOTitle（預設）／DynamoDB: SalePage module（非預設）</td></tr>
+            <tr><td>SEOKeywords</td><td><code>SEOKeywords</code></td><td>s_e_o_keywords</td><td>SQL（預設）／DynamoDB: SalePage module（非預設）</td></tr>
+            <tr><td>SEODescription</td><td><code>SEODescription</code></td><td>s_e_o_description</td><td>SQL（預設）／DynamoDB: SalePage module（非預設）</td></tr>
+        </table>
+    </div>
+
+    <!-- 5. 關鍵程式片段 -->
+    <div class="card">
+        <h2>5. 關鍵程式片段解析</h2>
+
+        <h3>5.1 DoProcess 主流程</h3>
+        <pre>var exportData = salePageService.ExportSalePageMultilingualData(salePageExportSearchEntity); // SQL 查詢
+var result = this.ConverToDataTable(exportData);                                              // 轉 DataTable
+var salePageIds = exportData.Select(i => i.Id).ToList();
+this.SetSalePageMultilingual(shopId, salePageIds, result);                                    // 補多語系欄位
+// → 依 ExportFileType 輸出 CSV 或 Excel
+// → 視設定進行壓縮 Zip
+// → 更新 BatchUploadEntity 狀態與下載路徑</pre>
+
+        <h3>5.2 語系欄位命名（SetSalePageMultilingual）</h3>
+        <pre>var languageSetting = this._shopDefaultAgentService.GetShopLanguageSetting(shopId);
+var defaultLanguage = languageSetting.AvailableLanguages.First(i => i.Default && i.Visible);
+var nonDefaultLanguages = languageSetting.AvailableLanguages.Where(i => i.Default == false).ToList();
+
+// 預設語系：直接改欄位名稱
+result.Columns[TitleMl].ColumnName = $"{TitleMl}({defaultLanguage.ShortDisplay})"; // 例：商品名稱(TW)
+
+// 非預設語系：動態新增欄位
+foreach (var language in nonDefaultLanguages)
+{
+    result.Columns.Add($"{TitleMl}({language.ShortDisplay})", typeof(string));    // 例：Product Name(US)
+    ...
+}</pre>
+
+        <h3>5.3 DynamoDB 多語系資料查詢</h3>
+        <pre>var salePageMlItems = this._multilingualService
+    .GetMultilingualItemListByIdList&lt;SalePageMultilingualEditItemEntity&gt;(
+        MultilingualTableNameEnum.SalePage, salePageIds, langArray);
+
+var saleProductDescMLItems = this._multilingualService
+    .GetMultilingualItemListByIdList&lt;SaleProductDescMLEditItemEntity&gt;(
+        MultilingualTableNameEnum.SaleProductDesc, salePageIds, langArray);
+
+// 逐列填值
+row[$"{TitleMl}({language.ShortDisplay})"] = salePageMl.Title;
+row[$"{SalesFocus}({language.ShortDisplay})"] = saleProductDescMl.SubDescript;</pre>
+
+        <h3>5.4 語系代碼對照（ShortDisplay）</h3>
+        <p class="file-path">SCM\Frontend\BLV2\ShopDefaults\ShopDefaultAgentService.cs</p>
+        <table>
+            <tr><th>Lang</th><th>ShortDisplay</th></tr>
+            <tr><td>en-US</td><td>US</td></tr>
+            <tr><td>zh-TW</td><td>TW</td></tr>
+            <tr><td>zh-HK</td><td>HK</td></tr>
+            <tr><td>ms-MY</td><td>MY</td></tr>
+            <tr><td>zh-CN</td><td>CN</td></tr>
+            <tr><td>ja-JP</td><td>JP</td></tr>
+            <tr><td>th-TH</td><td>TH</td></tr>
+        </table>
+    </div>
+
+    <!-- 6. 動態欄位過濾邏輯 -->
+    <div class="card">
+        <h2>6. 動態欄位過濾邏輯（FilterDataTable）</h2>
+        <p>根據商店設定與環境條件，部分欄位會於匯出前被動態移除：</p>
+        <table>
+            <tr><th>判斷條件</th><th>移除欄位</th><th>對應設定來源</th></tr>
+            <tr><td>非全家溫層暫解商店</td><td>ShippingEndDate（出貨截止日）</td><td>AppSetting: Family.Temperature.LiteVersion.SupplierIds</td></tr>
+            <tr><td>商店未開啟「依數量拆單」</td><td>IsSeparated</td><td>ShopDefault: IsOrdersSplitByQty</td></tr>
+            <tr><td>商店未開啟「門市分批取貨」</td><td>PickUpPeriodDays</td><td>ShopDefault: IsEnablePartialPickup</td></tr>
+            <tr><td>非 PX 市場環境</td><td>IsRetailStore（門市商品）</td><td>AppSetting: Default.Market</td></tr>
+            <tr><td>商店未開放商品免稅設定</td><td>TaxTypeDefDesc（商品課稅別）</td><td>ShopDefault: EnableDutyFree</td></tr>
+        </table>
+        <div class="note">此方法目前於程式中定義但未在 <code>DoProcess</code> 主流程中被呼叫，屬於保留 / 待啟用的過濾邏輯，實際是否生效需另行確認呼叫點。</div>
+    </div>
+
+    <!-- 7. 例外與邊界處理 -->
+    <div class="card">
+        <h2>7. 例外與邊界處理</h2>
+        <ul>
+            <li><b>儲存格內容超限：</b>Excel 單一儲存格上限 32767 字元，超過者由 <code>RemoveExcelOverLimitRows</code> 移除該列，並寫入 <code>BatchUploadMessageEntity</code> 失敗訊息。</li>
+            <li><b>ShopId 為空：</b>直接記錄 Log 並中止匯出（<code>return</code>）。</li>
+            <li><b>無非預設語系：</b><code>SetSalePageMultilingual</code> 提前 return，不新增任何語系欄位。</li>
+            <li><b>CSV Injection 防護：</b>依 <code>ISupplierCustomSettingService</code> 設定 <code>EnableAntiCsvInjection</code>，過濾儲存格開頭 <code>= + - @</code> 字元。</li>
+            <li><b>檔案壓縮：</b>由 AppSetting <code>BatchUpload.ExportDataCompression.IsEnable</code> 控制，啟用時輸出 zip 並刪除原始檔。</li>
+        </ul>
+    </div>
+
+    <!-- 8. 依賴服務總覽 -->
+    <div class="card">
+        <h2>8. 依賴服務總覽</h2>
+        <table>
+            <tr><th>介面</th><th>用途</th></tr>
+            <tr><td><code>ISalePageService</code></td><td>查詢商品頁預設語系匯出資料（SQL）</td></tr>
+            <tr><td><code>MultilingualService</code></td><td>查詢/寫入 DynamoDB 多語系內容</td></tr>
+            <tr><td><code>IShopDefaultAgentService</code></td><td>取得商店啟用語系設定 (AvailableLanguages)</td></tr>
+            <tr><td><code>IShopDefaultService</code></td><td>取得商店其他功能開關設定（拆單/分批取貨/免稅等）</td></tr>
+            <tr><td><code>IExcelService</code></td><td>DataTable ⇄ Excel 轉換與輸出</td></tr>
+            <tr><td><code>ICsvService</code></td><td>DataTable 輸出為 CSV</td></tr>
+            <tr><td><code>ISupplierRepository</code></td><td>取得廠商統編等資訊，用於檔名組成</td></tr>
+            <tr><td><code>ISupplierCustomSettingService</code></td><td>取得 AntiCsvInjection 開關設定</td></tr>
+            <tr><td><code>IConfigService</code></td><td>讀取 AppSetting（環境變數、市場別等）</td></tr>
+            <tr><td><code>IBatchUploadRepositoryService</code></td><td>更新批次上傳作業狀態</td></tr>
+        </table>
+    </div>
+
+</div>
+
+<footer>
+    產生時間：2026-07-07　|　來源檔案：SalePageMultilingualExportService.cs（NineYi.SCM.Frontend.BLV2.BatchUpload）
+</footer>
+
+<script>
+    mermaid.initialize({ startOnLoad: true, theme: "default", flowchart: { curve: "basis" } });
+</script>
+
+</body>
+</html>

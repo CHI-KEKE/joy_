@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CustomOfflinePayment 付款流程文件</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3349;
+      --accent: #7b8cde;
+      --accent2: #a78bfa;
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --blue: #60a5fa;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --code-bg: #12141e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      line-height: 1.7;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .page-header {
+      border-left: 4px solid var(--accent);
+      padding: 1.2rem 1.5rem;
+      background: var(--surface);
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 2.5rem;
+    }
+    .page-header h1 {
+      font-size: 1.75rem;
+      color: var(--accent);
+      margin-bottom: 0.3rem;
+    }
+    .page-header .subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+    .badge-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); }
+    .badge-blue   { background: rgba(96,165,250,0.15);  color: var(--blue); }
+    .badge-green  { background: rgba(74,222,128,0.15);  color: var(--green); }
+
+    /* Section */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent2);
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent2);
+    }
+
+    /* Comparison table */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .compare-table th {
+      background: var(--surface2);
+      color: var(--muted);
+      padding: 0.6rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-table td {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table tr:hover td { background: rgba(255,255,255,0.02); }
+    code {
+      background: var(--code-bg);
+      color: var(--accent);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: 0.85em;
+    }
+
+    /* Flow */
+    .flow-chain {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .flow-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      position: relative;
+    }
+    .flow-item:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 32px;
+      bottom: -8px;
+      width: 2px;
+      background: var(--border);
+    }
+    .flow-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .flow-icon.highlight {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      background: rgba(167,139,250,0.1);
+    }
+    .flow-content {
+      margin-left: 12px;
+      margin-bottom: 16px;
+      flex: 1;
+    }
+    .flow-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+    .flow-name.highlight { color: var(--accent2); }
+    .flow-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+    }
+    .flow-note {
+      margin-top: 0.4rem;
+      font-size: 0.8rem;
+      background: var(--code-bg);
+      border-left: 3px solid var(--accent);
+      padding: 0.4rem 0.7rem;
+      border-radius: 0 4px 4px 0;
+      color: var(--blue);
+    }
+
+    /* Call chain */
+    .call-chain {
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: 0.85rem;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      line-height: 2;
+      overflow-x: auto;
+    }
+    .call-chain .fn { color: var(--accent); }
+    .call-chain .cls { color: var(--yellow); }
+    .call-chain .arrow { color: var(--muted); }
+    .call-chain .note { color: #6b7280; font-style: italic; }
+
+    /* Status table */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+    .status-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+    }
+    .status-card .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+    .status-card .value {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .value-yellow { color: var(--yellow); }
+    .value-blue   { color: var(--blue); }
+    .value-green  { color: var(--green); }
+
+    /* Info box */
+    .info-box {
+      border: 1px solid rgba(96,165,250,0.3);
+      background: rgba(96,165,250,0.05);
+      border-radius: 8px;
+      padding: 0.9rem 1.1rem;
+      font-size: 0.875rem;
+      color: var(--text);
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      margin-top: 1rem;
+    }
+    .info-box .icon { color: var(--blue); font-size: 1.1rem; flex-shrink: 0; }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="page-header">
+    <h1>CustomOfflinePayment
+      <span class="badge badge-yellow">其他轉帳方式</span>
+      <span class="badge badge-blue">= 1048576</span>
+    </h1>
+    <div class="subtitle">付款流程文件 · 從 CompleteForNewCartV2 往下的完整路徑分析</div>
+  </div>
+
+  <!-- 1. 定義 -->
+  <div class="section">
+    <div class="section-title">定義與型別比較</div>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>PayProfileType</th>
+          <th>Enum 值</th>
+          <th>說明</th>
+          <th>虛擬帳號</th>
+          <th>由誰管理</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>ATM</code></td>
+          <td><code>16</code></td>
+          <td>系統內建 ATM 付款</td>
+          <td><span class="badge badge-green">有</span></td>
+          <td>系統自動產生</td>
+        </tr>
+        <tr>
+          <td><code>CustomOfflinePayment</code></td>
+          <td><code>1048576</code></td>
+          <td>其他轉帳方式（商店自訂說明）</td>
+          <td><span class="badge badge-yellow">無</span>（欄位留空）</td>
+          <td>商店後台設定</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="info-box">
+      <span class="icon">ℹ</span>
+      <span><strong>CustomOfflinePayment ≠ ATM</strong>。ATM 會透過金流商產生虛擬帳號；CustomOfflinePayment 是商家自行在後台填寫轉帳資訊，訂單建立後直接顯示給消費者，無須金流 API 介接。</span>
+    </div>
+  </div>
+
+  <!-- 2. 入口 Call Chain -->
+  <div class="section">
+    <div class="section-title">呼叫入口 Call Chain</div>
+    <div class="call-chain">
+<span class="cls">TradesOrderLiteController</span>.<span class="fn">CompleteForNewCartV2</span>()
+  <span class="arrow">└─</span> <span class="fn">CreateTradesOrder</span>(context)  <span class="note">// private ActionResult</span>
+       <span class="arrow">└─</span> <span class="cls">PayProcessService</span>.<span class="fn">CreateTradesOrder</span>(context)
+            <span class="arrow">└─</span> <span class="fn">ExecuteProcess</span>(context, <span class="fn">"CustomOfflinePaymentProcess"</span>)
+                 <span class="arrow">└─</span> <span class="note">// 依序執行下列 26 個 Processor</span>
+    </div>
+    <div class="info-box" style="margin-top:1rem;">
+      <span class="icon">📌</span>
+      <span><code>PayProcessFlowType</code> 在 <code>GetPayProcessDataProcessor</code> 中被設為 <code>CustomOfflinePaymentProcess</code>，驅動 Autofac Keyed 注入找到對應的 Processor 清單。</span>
+    </div>
+  </div>
+
+  <!-- 3. Processor Flow -->
+  <div class="section">
+    <div class="section-title">Processor 執行序列（CustomOfflinePaymentProcess）</div>
+    <div class="flow-chain">
+
+      <div class="flow-item">
+        <div class="flow-icon">1</div>
+        <div class="flow-content">
+          <div class="flow-name">XSSFilterProcessor</div>
+          <div class="flow-desc">檢查 XSS 危險字元</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">2</div>
+        <div class="flow-content">
+          <div class="flow-name">ArrangeDataProcessor</div>
+          <div class="flow-desc">資料整理，補齊 context 基本欄位</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">3</div>
+        <div class="flow-content">
+          <div class="flow-name">ValidateProcessDataProcessor</div>
+          <div class="flow-desc">檢查付費流程資料合法性</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">4</div>
+        <div class="flow-content">
+          <div class="flow-name">ReserveFirstPurchaseProcessor</div>
+          <div class="flow-desc">首購資格預扣</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">5</div>
+        <div class="flow-content">
+          <div class="flow-name">CheckValidTemperatureDeliveryTicketProcess</div>
+          <div class="flow-desc">檢查溫層商品配送保留編號</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">6</div>
+        <div class="flow-content">
+          <div class="flow-name">CalculateShoppingCartProcessor</div>
+          <div class="flow-desc">計算購物車金額</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">7</div>
+        <div class="flow-content">
+          <div class="flow-name">CloneSalePageGroupListProcessor</div>
+          <div class="flow-desc">複製購物車原商品資料（snapshot）</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">8</div>
+        <div class="flow-content">
+          <div class="flow-name">SplitOrderByQtyProcessor</div>
+          <div class="flow-desc">商品拆單處理</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">9</div>
+        <div class="flow-content">
+          <div class="flow-name">SplitGiftECouponOrderByQtyProcessor</div>
+          <div class="flow-desc">贈品券商品拆單處理</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">10</div>
+        <div class="flow-content">
+          <div class="flow-name">ArrangeActivityCodeProcessor</div>
+          <div class="flow-desc">讀取外部代碼（Cookie / Redis）</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">11</div>
+        <div class="flow-content">
+          <div class="flow-name">ArrangeFRCodeProcessor</div>
+          <div class="flow-desc">讀取 FRCode（後蓋前，需在 ArrangeActivityCodeProcessor 之後）</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">12</div>
+        <div class="flow-content">
+          <div class="flow-name">ValidatePromotionEngineSelectedGiftListProcessor</div>
+          <div class="flow-desc">驗證促購引擎贈品有效性</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">13</div>
+        <div class="flow-content">
+          <div class="flow-name">MapPromotionFreeGiftSalePageProcessor</div>
+          <div class="flow-desc">滿額贈活動贈品 → 實際商品資料</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">14</div>
+        <div class="flow-content">
+          <div class="flow-name">MapSalePageGiftProcessor</div>
+          <div class="flow-desc">買就送商品贈品 → 實際商品資料</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">15</div>
+        <div class="flow-content">
+          <div class="flow-name">MapToTradesOrderProcessor</div>
+          <div class="flow-desc">將購物車資料轉換為訂單資料結構</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">16</div>
+        <div class="flow-content">
+          <div class="flow-name">ValidateTradesOrderDataProcessor</div>
+          <div class="flow-desc">檢查訂單資料</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">17</div>
+        <div class="flow-content">
+          <div class="flow-name">CheckPayProcessCodeProcessor</div>
+          <div class="flow-desc">檢查付費流程 token 有效性</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">18</div>
+        <div class="flow-content">
+          <div class="flow-name">RedeemCouponProcessor</div>
+          <div class="flow-desc">核銷優惠券</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon highlight">19</div>
+        <div class="flow-content">
+          <div class="flow-name highlight">CreateTradesOrderProcessor ⭐</div>
+          <div class="flow-desc">新增訂單到資料庫（TradesOrder / TradesOrderSlave / OrderSlaveFlow）</div>
+          <div class="flow-note">
+            CustomOfflinePayment 專屬：呼叫 <code>AddAtmAccountForCustomOfflinePayment()</code><br/>
+            → 建立 <code>AtmAccount</code> 記錄，<code>BankCode</code> / <code>VirtualAccount</code> 留空，有效期 <strong>N + 7 天</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">20</div>
+        <div class="flow-content">
+          <div class="flow-name">CreateTradesOrderEventProcessor</div>
+          <div class="flow-desc">成立訂單後發出 Event（NMQ）</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon highlight">21</div>
+        <div class="flow-content">
+          <div class="flow-name highlight">ConfigureShopCustomOfflinePaymentInfoProcessor ⭐</div>
+          <div class="flow-desc">讀取商店自訂轉帳設定（含多語系內容）</div>
+          <div class="flow-note">
+            呼叫 <code>GetCustomOfflinePaymentSetting(shopId)</code> + <code>GetShopCustomOfflinePaymentSettingWithMultilingualContentCache()</code><br/>
+            → 寫入 <code>context.CustomOfflinePaymentInfo</code>（顯示給消費者的銀行名稱、帳號、說明等）
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">22</div>
+        <div class="flow-content">
+          <div class="flow-name">RedeemPromotionQuotaProcessor</div>
+          <div class="flow-desc">處理活動名額</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">23</div>
+        <div class="flow-content">
+          <div class="flow-name">RedeemLoyaltyPointProcessor</div>
+          <div class="flow-desc">串接積點系統扣點</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">24</div>
+        <div class="flow-content">
+          <div class="flow-name">StoreCreditProcessor</div>
+          <div class="flow-desc">購物金付款</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon highlight">25</div>
+        <div class="flow-content">
+          <div class="flow-name highlight">TransferOrderProcessor ⭐</div>
+          <div class="flow-desc">轉單到 ERP</div>
+          <div class="flow-note">CustomOffline 在建單時即直接轉單，無需等待付款確認（與 LinePay / JKO 等需等回調不同）</div>
+        </div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-icon">26</div>
+        <div class="flow-content">
+          <div class="flow-name">AfterOrderProcessor</div>
+          <div class="flow-desc">成立訂單後動作（發 Email、推播等）</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. OrderSlaveFlow 初始狀態 -->
+  <div class="section">
+    <div class="section-title">OrderSlaveFlow 初始狀態（在 CreateTradesOrderProcessor 設定）</div>
+    <div class="status-grid">
+      <div class="status-card">
+        <div class="label">StatusDef（系統主狀態）</div>
+        <div class="value value-blue">WaitingToTrans</div>
+        <div class="flow-desc" style="margin-top:0.3rem; font-size:0.75rem;">預設值，未被 switch 覆蓋</div>
+      </div>
+      <div class="status-card">
+        <div class="label">StatusForUserDef（前台顯示）</div>
+        <div class="value value-yellow">WaitingToPay</div>
+      </div>
+      <div class="status-card">
+        <div class="label">StatusForSCMDef（後台顯示）</div>
+        <div class="value value-yellow">WaitingToPay</div>
+      </div>
+    </div>
+    <div class="info-box" style="margin-top:1rem;">
+      <span class="icon">⚠</span>
+      <span>與 <code>ATM</code>（只設 <code>StatusForUserDef = WaitingToPay</code>）相比，CustomOffline 同時也設定了 <code>StatusForSCMDef = WaitingToPay</code>，讓後台也顯示為待付款狀態。</span>
+    </div>
+  </div>
+
+  <!-- 5. 與其他付款方式比較 -->
+  <div class="section">
+    <div class="section-title">與其他付款方式的流程差異比較</div>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>付款方式</th>
+          <th>有 ThirdPartyPayApiProcessor</th>
+          <th>有 AuthProcessor</th>
+          <th>建單即轉單</th>
+          <th>StatusDef 初始值</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>CustomOfflinePayment</code></td>
+          <td>❌ 無</td>
+          <td>❌ 無</td>
+          <td>✅ 是</td>
+          <td><code>WaitingToTrans</code></td>
+        </tr>
+        <tr>
+          <td><code>ATM</code></td>
+          <td>❌ 無</td>
+          <td>❌ 無</td>
+          <td>✅ 是</td>
+          <td><code>WaitingToTrans</code></td>
+        </tr>
+        <tr>
+          <td><code>LinePay / JKOPay</code></td>
+          <td>✅ 有</td>
+          <td>❌ 無</td>
+          <td>❌ 待付款後回調才轉單</td>
+          <td><code>WaitingToPay</code></td>
+        </tr>
+        <tr>
+          <td><code>CreditCardOnce (Stripe)</code></td>
+          <td>✅ 有</td>
+          <td>✅ 有</td>
+          <td>❌ 授權後轉單</td>
+          <td><code>WaitingToAuth</code></td>
+        </tr>
+        <tr>
+          <td><code>JKOPay</code></td>
+          <td>✅ 有</td>
+          <td>❌ 無</td>
+          <td>❌ 馬上轉單（ThirdPartyTrans）</td>
+          <td><code>WaitingToThirdPartyTrans</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 6. Controller 回應 -->
+  <div class="section">
+    <div class="section-title">Controller 回應行為</div>
+    <p style="font-size:0.9rem; color:var(--muted); margin-bottom:1rem;">
+      CustomOfflinePayment 不在 <code>CompleteForNewCartV2</code> 的任何特殊分支（LinePay、Stripe、GlobalPay 等）中，
+      因此會走到最後的預設回應：
+    </p>
+    <div class="call-chain">
+<span class="note">// 建單成功後，回傳訂單完成結果給前端</span>
+<span class="fn">return</span> Json(<span class="fn">new</span> <span class="cls">ApiResultEntity</span>&lt;object&gt; {
+    ReturnCode = <span class="fn">"Success"</span>,
+    Data = context,         <span class="note">// 含 CustomOfflinePaymentInfo（銀行名稱、帳號等）</span>
+    Message = <span class="fn">"SendTradesOrderSuccess"</span>
+});
+    </div>
+  </div>
+
+  <div class="footer">
+    生成時間：2026-06-25 · 來源：nineyi.webstore.mobilewebmall codebase 分析
+  </div>
+</div>
+</body>
+</html>

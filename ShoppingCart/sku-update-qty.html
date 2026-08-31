@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>Shopping API｜/api/carts/sku-update-qty 路徑與行為分析</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #171a23;
+    --card2: #1e2230;
+    --border: #2a2f3f;
+    --accent: #5b8cff;
+    --accent2: #ffb454;
+    --accent3: #4fd18b;
+    --danger: #ff6b6b;
+    --text: #e6e8ee;
+    --muted: #9aa0b4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    line-height: 1.6;
+    padding: 32px 48px 80px;
+  }
+  h1 {
+    font-size: 26px;
+    margin-bottom: 4px;
+  }
+  h1 code {
+    color: var(--accent);
+  }
+  .subtitle {
+    color: var(--muted);
+    margin-bottom: 28px;
+    font-size: 14px;
+  }
+  h2 {
+    font-size: 19px;
+    margin-top: 44px;
+    margin-bottom: 14px;
+    border-left: 4px solid var(--accent);
+    padding-left: 10px;
+  }
+  h3 {
+    font-size: 15px;
+    color: var(--accent2);
+    margin: 18px 0 8px;
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .meta-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .meta-card .label {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  .meta-card .value {
+    font-size: 14px;
+    font-family: Consolas, monospace;
+    word-break: break-all;
+  }
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 14px 18px;
+    position: relative;
+  }
+  .step.branch {
+    border-left-color: var(--accent2);
+    margin-left: 24px;
+  }
+  .step.sub {
+    background: var(--card2);
+    margin-left: 40px;
+    border-left-color: var(--accent3);
+    font-size: 13.5px;
+  }
+  .step.error {
+    border-left-color: var(--danger);
+  }
+  .step .idx {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    padding: 1px 7px;
+    margin-right: 8px;
+  }
+  .step .idx.branch-idx { background: var(--accent2); color: #1a1300; }
+  .step .idx.sub-idx { background: var(--accent3); color: #062915; }
+  .step .idx.error-idx { background: var(--danger); color: #2a0000; }
+  .step .title {
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+  .step .desc {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .step .code-ref {
+    display: inline-block;
+    margin-top: 6px;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    color: var(--accent3);
+    background: #0d2018;
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+  .arrow {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin: -4px 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 13.5px;
+  }
+  th, td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--card2);
+    color: var(--accent2);
+    font-size: 12.5px;
+  }
+  tr:last-child td { border-bottom: none; }
+  code {
+    font-family: Consolas, monospace;
+    background: #0d0f16;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: #ffd479;
+    font-size: 12.5px;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 1px 8px;
+    border-radius: 10px;
+    margin-left: 6px;
+  }
+  .tag.get { background: #16324a; color: #7fc7ff; }
+  .tag.post { background: #123822; color: #7ee2a8; }
+  .tag.internal { background: #3a2a12; color: #ffcf7a; }
+  .tag.warn { background: #3a1414; color: #ff9a9a; }
+  .note {
+    background: #1c1400;
+    border: 1px solid #4a3a00;
+    border-left: 4px solid var(--accent2);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13.5px;
+  }
+  .footer {
+    margin-top: 60px;
+    color: var(--muted);
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+  ul { margin: 4px 0; padding-left: 20px; }
+  li { margin-bottom: 4px; font-size: 13.5px; }
+</style>
+</head>
+<body>
+
+<h1>Shopping 站台 <code>/api/carts/sku-update-qty</code> 路徑與行為分析</h1>
+<div class="subtitle">分析來源：C:\91APP\Shopping（Nine1.Shopping.Web.Api） ｜ 分析日期：2026-07-15</div>
+
+<div class="meta-grid">
+  <div class="meta-card"><div class="label">Controller / Action</div><div class="value">CartsController.SkuUpdateQty</div></div>
+  <div class="meta-card"><div class="label">Route</div><div class="value">POST /api/carts/sku-update-qty</div></div>
+  <div class="meta-card"><div class="label">Auth</div><div class="value">[Authorize]（Scope: shopping.carts.user:write，支援 P1 未登入免登白名單）</div></div>
+  <div class="meta-card"><div class="label">Request Model</div><div class="value">SkuUpdateRequestEntity</div></div>
+  <div class="meta-card"><div class="label">Response Model</div><div class="value">ApiResponseEntity&lt;CartEntity&gt;</div></div>
+  <div class="meta-card"><div class="label">程式位置</div><div class="value">src/Web/.../Controllers/CartsController.cs:191-214</div></div>
+</div>
+
+<h2>一、整體流程總覽</h2>
+<div class="flow">
+
+  <div class="step">
+    <span class="idx">1</span><span class="title">進站 Log：CheckoutHistoryLogInfo</span>
+    <div class="desc">記錄 ShopId、MemberId、RequestPath、行為說明「異動購物車商品數量」，用於追蹤會員結帳歷程。</div>
+    <span class="code-ref">CartsController.cs:197</span>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step">
+    <span class="idx">2</span><span class="title">免登 / 登入狀態判斷</span>
+    <div class="desc">若會員未登入，檢查是否命中 P1 免登白名單 API，記錄「未登入狀態，允許P1免登, unloginId:...」。</div>
+    <span class="code-ref">LoginService.cs:194-197</span>, <span class="code-ref">NineYiCookieAuthenticationValidator.cs</span>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step">
+    <span class="idx">3</span><span class="title">CartService.UpdateQtyAsync</span>
+    <div class="desc">實際業務邏輯入口，依序執行：頻率限制檢查 → 呼叫 Cart Domain API → 重新計算購物車 → 處理贈品自動預選。</div>
+    <span class="code-ref">CartService.cs:367-401</span>
+  </div>
+
+  <div class="step branch">
+    <span class="idx branch-idx">3.1</span><span class="title">限次器檢查 ExamineTryOverTimesLockApiAsync</span>
+    <div class="desc">ServiceName=ShoppingCart，ActionName=CartsSkuUpdateQty，以 MemberId 為 Key 做防呆／防洗頻率限制；超過次數會丟出 <code>ExceededTimesLimiterException</code>（回傳 400）。</div>
+  </div>
+
+  <div class="step branch">
+    <span class="idx branch-idx">3.2</span><span class="title">呼叫 Cart Domain：POST /api/carts/sku-update-qty</span>
+    <span class="tag internal">內部服務呼叫</span>
+    <div class="desc">透過 <code>DomainApiHelper.PostAsJsonAsync</code>（HttpclientCartDomain）呼叫 cart-domain 服務真正異動購物車商品數量。呼叫前後各記錄一行「Request body ...」與「Response statusCode ..., response data : ...」；失敗時依錯誤內容丟出 <code>SkuUpdateException</code>。</div>
+    <span class="code-ref">CartService.cs:378-394</span> ・ <span class="code-ref">DomainApiHelper.cs:129,140</span>
+  </div>
+
+  <div class="step branch">
+    <span class="idx branch-idx">3.3</span><span class="title">CalculateAsync(cartUniqueKey) — 重新計算購物車</span>
+    <div class="desc">商品數量異動完成後，觸發購物車重算，走 <b>Calculate Processor Flow</b>（詳見下節），把促銷 / 折扣 / 顯示文案全部重新整理一次。</div>
+    <span class="code-ref">CartService.cs:316-341</span>
+  </div>
+
+  <div class="step branch">
+    <span class="idx branch-idx">3.4</span><span class="title">ProcessAutoFillPromotionGift — 贈品自動預選</span>
+    <div class="desc">篩選「滿件送贈品 / 滿額送贈品」且已符合條件的活動；讀取商店設定 <code>EnablePreSelectedMutipleGift</code>；排除多階、可複選、多贈品選項、已手動選擇過贈品等情境後，自動填入贈品。</div>
+    <span class="code-ref">CartService.cs:1302-1360</span>
+  </div>
+
+  <div class="arrow">↓</div>
+  <div class="step">
+    <span class="idx">4</span><span class="title">回傳結果</span>
+    <div class="desc">成功：<code>ApiResponseEntity&lt;CartEntity&gt;.Create("更新購物車成功", cartData)</code>。<br>失敗：捕捉 <code>CartCalculateException</code> / <code>SkuUpdateException</code> / <code>ExceededTimesLimiterException</code>，統一透過 <code>BadRequestInner</code> 轉為標準錯誤格式回應（含多語系訊息）。</div>
+    <span class="code-ref">CartsController.cs:200-213</span>
+  </div>
+</div>
+
+<h2>二、Calculate Processor Flow（重算購物車的內部管線）</h2>
+<p style="color:var(--muted); font-size:13.5px;">由 <code>ProcessorFlowManager</code> 依 <code>ProcessorDefinitionCenter.CalculateProcessorLayers</code> 定義的順序執行，每個 Layer 內的 Processor 若為同一層則平行執行，執行完畢後統一記錄一行 <code>FlowType : Calculate, ProcessorLog : [...]</code> 匯總所有子步驟的耗時與結果。</p>
+
+<div class="flow">
+  <div class="step sub">
+    <span class="idx sub-idx">Layer 1</span><b>CalculateProcessor</b>
+    <div class="desc">呼叫 Cart Domain：<code>POST /api/carts/calculate</code>，取得重算後的購物車主體資料（金額、商品清單、符合的促銷資訊 PromotionInfoList 等）。</div>
+  </div>
+  <div class="step sub">
+    <span class="idx sub-idx">Layer 2</span><b>ArrangePromotionRuleInfoProcessor</b>
+    <div class="desc">整理活動資訊，記錄「取得活動給券資訊開始」；呼叫 Promotion Frontend API：<code>POST /api/promotion-rules/list-by-ids</code> 取得給券活動規則，再記錄「符合的給券活動數量：N」。</div>
+  </div>
+  <div class="step sub">
+    <span class="idx sub-idx">Layer 3</span><b>GetSalepagePromotionDisplayTextProcessor</b>
+    <div class="desc">再次呼叫 <code>POST /api/promotion-rules/list-by-ids</code>（用途為商品卡折扣活動提示文案），將商品與活動 mapping 結果記錄為「商品與活動 mapping Result : [...]」，決定顯示順序：已符合活動 → 未符合活動 → APP 獨享提示 → 無法參與活動 → 各種不適用文案。</div>
+  </div>
+  <div class="step sub">
+    <span class="idx sub-idx">Layer 4（平行執行）</span><b>9 個顯示文案 Processor</b>
+    <div class="desc">
+      <ul>
+        <li>GetSalepageDiscountDisplayTextProcessor — 商品卡折扣顯示文案</li>
+        <li>UpdateLoyaltyPointDisplayStatusProcessor — 更新點數顯示於前台的文案／狀態</li>
+        <li>GetInsufficientPointsSalepageDisplayTextProcessor — P1 點數不足點加金商品卡提示文案</li>
+        <li>GetPurchaseExtraDisplayTextProcessor — 商品卡加價購顯示文案</li>
+        <li>GetDesignatePaymentPromotionDisplayTextProcessor&lt;CartEntity&gt; — 指定金流活動顯示文案</li>
+        <li>GetLoyaltyPointExcludedDisplayTextProcessor — 點數折抵排除商品顯示文案</li>
+        <li>GetUnmatchSalepageBundleDisplayTextProcessor — 不符合組合商品規則之重新選購文案</li>
+        <li>GetInStoreOnlySalepageDisplayTextProcessor — 門市限定商品提示文案</li>
+        <li>UnreachCartExtraPurchaseDisplayTextProcessor — 購物車滿額滿件加價購活動提示文案</li>
+      </ul>
+    </div>
+  </div>
+  <div class="step sub">
+    <span class="idx sub-idx">Layer 5</span><b>ArrangeHighlightTagProcessor</b>
+    <div class="desc">整理購物車商品的 HighlightTag（如優惠標籤）資訊，作為前端顯示用。</div>
+  </div>
+  <div class="step sub">
+    <span class="idx sub-idx">結尾</span><b>CheckSelectedCheckoutPayTypeGroup</b>
+    <div class="desc">重算完成後，檢查目前已選擇的付款方式分組是否仍然有效。</div>
+  </div>
+</div>
+
+<h2>三、截圖 Log 逐行對照表</h2>
+<table>
+  <tr><th>Log 內容（節錄）</th><th>對應程式位置</th><th>說明</th></tr>
+  <tr><td>CheckoutHistory_ShopId:50, MemberId:0, /api/carts/sku-update-qty, 異動購物車商品數量</td><td><code>CartsController.cs:197</code></td><td>Action 進站紀錄</td></tr>
+  <tr><td>未登入狀態，允許P1免登, unloginId:...</td><td><code>LoginService.cs:197</code></td><td>P1 免登白名單判斷</td></tr>
+  <tr><td>Request body {"CartUniqueKey":...} （RequestPath=/api/carts/sku-update-qty）</td><td><code>DomainApiHelper.cs:129</code></td><td>呼叫 Cart Domain 前記錄送出的 Request Body</td></tr>
+  <tr><td>Request completed for POST .../api/carts/sku-update-qty ... status code OK after 16144ms</td><td>共用 <code>HttpLoggerMiddleware</code>（Program.cs:132）</td><td>本次進站請求整體完成耗時（<span class="tag warn">本次異常偏高</span>）</td></tr>
+  <tr><td>Response statusCode OK, response data : {"code":"Success",...}</td><td><code>DomainApiHelper.cs:140</code></td><td>Cart Domain 回應內容</td></tr>
+  <tr><td>Request body ... （path=/api/carts/calculate）</td><td><code>CalculateProcessor.cs:45</code> → <code>DomainApiHelper.cs:129</code></td><td>重算購物車呼叫</td></tr>
+  <tr><td>Request completed for POST .../api/carts/calculate ... after 156ms</td><td>HttpLoggerMiddleware</td><td>calculate 呼叫耗時（正常）</td></tr>
+  <tr><td>Request body {"idList":[...]} （promotion-rules/list-by-ids）</td><td><code>ArrangePromotionRuleInfoProcessor.cs</code></td><td>取得給券活動規則</td></tr>
+  <tr><td>取得活動給券資訊開始 / 符合的給券活動數量：0</td><td><code>ArrangePromotionRuleInfoProcessor.cs:190,205</code></td><td>整理活動給券資訊</td></tr>
+  <tr><td>Request body {"idList":[...]} （第二次 promotion-rules/list-by-ids）</td><td><code>GetSalepagePromotionDisplayTextProcessor.cs</code></td><td>取得商品卡活動顯示文案所需的活動規則</td></tr>
+  <tr><td>商品與活動 mapping Result : [...]</td><td><code>GetSalepagePromotionDisplayTextProcessor.cs:357</code></td><td>商品與活動配對結果</td></tr>
+  <tr><td>FlowType : Calculate, ProcessorLog : [呼叫CartService重新計算購物車...共花費160ms,整理活動資訊...,...]</td><td><code>ProcessorFlowManager.cs:108</code></td><td>Calculate Flow 全部 Processor 的耗時彙總</td></tr>
+</table>
+
+<h2>四、涉及的內部 / 外部服務呼叫</h2>
+<table>
+  <tr><th>目標服務</th><th>Endpoint</th><th>呼叫者</th><th>用途</th></tr>
+  <tr><td>cart-api-internal</td><td><code>POST /api/carts/sku-update-qty</code></td><td>CartService.UpdateQtyAsync</td><td>實際異動購物車商品數量</td></tr>
+  <tr><td>cart-api-internal</td><td><code>POST /api/carts/calculate</code></td><td>CalculateProcessor</td><td>重新計算購物車金額與促銷符合狀態</td></tr>
+  <tr><td>promotion-api-frontend-internal</td><td><code>POST /api/promotion-rules/list-by-ids</code></td><td>ArrangePromotionRuleInfoProcessor</td><td>取得給券活動規則明細</td></tr>
+  <tr><td>promotion-api-frontend-internal</td><td><code>POST /api/promotion-rules/list-by-ids</code></td><td>GetSalepagePromotionDisplayTextProcessor</td><td>取得商品卡折扣活動顯示文案所需規則</td></tr>
+  <tr><td>ShopStaticSetting</td><td>內部快取/DB 查詢</td><td>ProcessAutoFillPromotionGift</td><td>取得 <code>EnablePreSelectedMutipleGift</code> 設定，決定是否自動預選贈品</td></tr>
+</table>
+
+<h2>五、例外處理與回應格式</h2>
+<table>
+  <tr><th>例外</th><th>觸發時機</th><th>處理方式</th></tr>
+  <tr><td><code>ExceededTimesLimiterException</code></td><td>同一會員短時間內呼叫本 API 次數超過限制</td><td><code>BadRequestInner</code> → 400，標準錯誤格式</td></tr>
+  <tr><td><code>SkuUpdateException</code></td><td>Cart Domain 回應更新失敗（如商品下架、庫存不足、購物車不存在等）</td><td><code>BadRequestInner</code> → 400</td></tr>
+  <tr><td><code>CartCalculateException</code></td><td>重新計算購物車時 Cart Domain 回應失敗</td><td><code>BadRequestInner</code> → 400</td></tr>
+</table>
+
+<h2>六、觀察與建議</h2>
+<div class="note">
+  截圖中第一段請求 <code>Request completed for POST .../api/carts/sku-update-qty ... after <b>16144.2544ms</b></code>，相較於後續 <code>calculate</code>（156ms）與 <code>promotion-rules/list-by-ids</code>（&lt;10ms）明顯異常緩慢。由於整體 Log 內容與程式碼邏輯完全吻合（登入判斷 → 呼叫 Cart Domain 更新 → 重算 → 促銷/顯示文案整理 → 贈品自動預選皆有執行），此耗時應非邏輯錯誤造成，而是該次請求中 <b>呼叫 Cart Domain <code>/api/carts/sku-update-qty</code> 本身</b>（Layer 3.2）或其上游（DB / Redis / 限次器服務）出現延遲，建議後續針對該次 RequestId <code>0HNN1A9TG4G17:00000008</code> 往 cart-domain 服務端的 Log 追查實際延遲發生點。
+</div>
+
+<div class="footer">
+  本文件由程式碼靜態分析產生（Nine1.Shopping.Web.Api / Nine1.Shopping.BL.Services），對照截圖 Log 逐行核對後撰寫，僅反映目前 repo 上的程式邏輯。
+</div>
+
+</body>
+</html>

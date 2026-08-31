@@ -1,14 +1,10 @@
 
-select *
-from ShoppingCart(nolock)
-where ShoppingCart_ValidFlag = 1
-
-
-
-select *
-from ShoppingCart(nolock)
-where ShoppingCart_ValidFlag = 1
-and ShoppingCart_MemberId = 747292
+```sql
+SELECT *
+FROM ShoppingCart(NOLOCK)
+WHERE ShoppingCart_MemberId = 3828207
+--and ShoppingCart_DateTime between '2026-05-10' and '2026-05-12'
+and ShoppingCart_UnloginId ='5454ca7d-0ee2-400c-b6c2-4aa912dd2bb4'
 
 
 
@@ -65,3 +61,6 @@ VALUES
     231422,
     'CartReachPieceExtraPurchase'
 );
+```
+
+

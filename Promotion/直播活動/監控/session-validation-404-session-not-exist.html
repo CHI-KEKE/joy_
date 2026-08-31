@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>liveapi Session 驗證失敗（SessionNotExistException）分析紀錄</title>
+  <style>
+    :root {
+      --red:    #e74c3c;
+      --orange: #e67e22;
+      --yellow: #f1c40f;
+      --green:  #27ae60;
+      --blue:   #2980b9;
+      --purple: #8e44ad;
+      --gray:   #7f8c8d;
+      --bg:     #f4f6f9;
+      --card:   #ffffff;
+      --border: #dce1e7;
+      --text:   #2c3e50;
+      --sub:    #606878;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 32px 24px;
+    }
+
+    /* ── 頁首 ── */
+    .page-header {
+      background: linear-gradient(135deg, #1a2a4a 0%, #2c3e6e 100%);
+      color: #fff;
+      border-radius: 12px;
+      padding: 32px 36px;
+      margin-bottom: 32px;
+    }
+    .page-header h1 { font-size: 1.7rem; font-weight: 700; margin-bottom: 8px; }
+    .page-header .meta { font-size: 0.85rem; opacity: 0.75; display: flex; gap: 24px; flex-wrap: wrap; }
+    .page-header .meta span::before { margin-right: 6px; }
+
+    /* ── 章節卡片 ── */
+    .section {
+      background: var(--card);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+    .section-header {
+      padding: 16px 24px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-body { padding: 24px; }
+
+    /* ── 色彩主題 ── */
+    .theme-red    { background: #fdf0ef; border-left: 5px solid var(--red); }
+    .theme-orange { background: #fef6ec; border-left: 5px solid var(--orange); }
+    .theme-blue   { background: #eaf4fd; border-left: 5px solid var(--blue); }
+    .theme-green  { background: #eafaf1; border-left: 5px solid var(--green); }
+    .theme-purple { background: #f5eef8; border-left: 5px solid var(--purple); }
+    .theme-gray   { background: #f8f9fa; border-left: 5px solid var(--gray); }
+
+    /* ── 流程圖 ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .flow-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+    .flow-item:last-child { border-bottom: none; }
+    .flow-step {
+      min-width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #fff;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-normal { background: var(--blue); }
+    .step-warn   { background: var(--orange); }
+    .step-error  { background: var(--red); }
+    .step-ok     { background: var(--green); }
+    .step-wait   { background: var(--gray); }
+
+    .flow-content .title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+    .flow-content .desc {
+      font-size: 0.85rem;
+      color: var(--sub);
+    }
+    .flow-content code {
+      background: #eef2f7;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+      font-size: 0.82rem;
+      color: #c0392b;
+    }
+
+    /* ── 程式碼區塊 ── */
+    pre {
+      background: #1e2a3a;
+      color: #cdd6e0;
+      border-radius: 8px;
+      padding: 20px;
+      font-size: 0.82rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      overflow-x: auto;
+      line-height: 1.6;
+      margin: 12px 0;
+    }
+    .kw  { color: #569cd6; }
+    .cm  { color: #6a9955; }
+    .str { color: #ce9178; }
+    .num { color: #b5cea8; }
+    .ann { color: #9cdcfe; }
+
+    /* ── 表格 ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    th {
+      background: #2c3e50;
+      color: #fff;
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f8fafc; }
+
+    /* ── 標籤 ── */
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tag-red    { background: #fde8e8; color: var(--red); }
+    .tag-orange { background: #fef3e2; color: var(--orange); }
+    .tag-green  { background: #e6f9ef; color: var(--green); }
+    .tag-blue   { background: #e4f3fd; color: var(--blue); }
+    .tag-gray   { background: #eef0f2; color: var(--gray); }
+
+    /* ── Callout ── */
+    .callout {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 0.9rem;
+    }
+    .callout-icon { font-size: 1.2rem; flex-shrink: 0; line-height: 1.4; }
+    .callout-red    { background: #fdf0ef; border-left: 4px solid var(--red); }
+    .callout-orange { background: #fef6ec; border-left: 4px solid var(--orange); }
+    .callout-blue   { background: #eaf4fd; border-left: 4px solid var(--blue); }
+    .callout-green  { background: #eafaf1; border-left: 4px solid var(--green); }
+
+    /* ── 分隔線 ── */
+    .divider {
+      text-align: center;
+      color: var(--sub);
+      font-size: 1.4rem;
+      padding: 4px 0;
+      line-height: 1;
+    }
+
+    /* ── Timeline ── */
+    .timeline { position: relative; padding-left: 32px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 12px; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+    .tl-item {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .tl-dot {
+      position: absolute;
+      left: -26px;
+      top: 4px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+    }
+    .tl-dot-red    { background: var(--red); }
+    .tl-dot-orange { background: var(--orange); }
+    .tl-dot-blue   { background: var(--blue); }
+    .tl-dot-green  { background: var(--green); }
+    .tl-dot-gray   { background: var(--gray); }
+
+    .tl-title { font-weight: 600; font-size: 0.92rem; margin-bottom: 4px; }
+    .tl-body  { font-size: 0.86rem; color: var(--sub); }
+
+    h3 { font-size: 0.97rem; font-weight: 700; margin: 20px 0 10px; color: var(--text); }
+    p  { font-size: 0.9rem; color: var(--sub); margin-bottom: 10px; }
+    ul.plain { list-style: disc; padding-left: 20px; font-size: 0.88rem; color: var(--sub); line-height: 1.9; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════ PAGE HEADER ══════════════════════ -->
+<div class="page-header">
+  <h1>⚠️ liveapi Session 驗證失敗分析紀錄（SessionNotExistException）</h1>
+  <div class="meta">
+    <span>📅 分析日期：2026-07-09</span>
+    <span>🏷 站台：Live Buy WebAPI（liveapi，nine1.live.buy）</span>
+    <span>🌐 環境：prod-91app-live</span>
+    <span>📌 狀態：已釐清根因</span>
+  </div>
+</div>
+
+<!-- ══════════════════════ 1. 問題描述 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-red">
+    🔴 <span>問題描述</span>
+  </div>
+  <div class="section-body">
+    <div class="callout callout-red">
+      <span class="callout-icon">🚨</span>
+      <div>
+        使用者呼叫 <code>GET /api/live/comments/room</code> 時，前端最終收到
+        <span class="tag tag-red">401 Unauthorized</span>，Log 中出現：
+        <code>Session validation failed for session "351b706cadbd4865bd51431c07e3dd71" ip="60.250.142.219"</code>。
+        在初步查詢 Loki 時，同一時間點卻看到 <code>/api/live/comments/room</code> 這條路徑被標記為
+        <span class="tag tag-orange">404</span>，造成「到底是 401 還是 404」的混淆，需要進一步追查。
+      </div>
+    </div>
+
+    <h3>現象</h3>
+    <ul class="plain">
+      <li>Session ID：<code>351b706cadbd4865bd51431c07e3dd71</code>，userId=<code>108204</code>，isImpersonated=True</li>
+      <li>來源 IP：<code>60.250.142.219</code></li>
+      <li>Loki 查詢 <code>_props_RequestPath = /api/live/comments/room</code> 時，<code>_props_StatusCode</code> 顯示為 404，耗時僅 21ms</li>
+      <li>但程式碼中 SSO Middleware 對驗證失敗的處理是回 <strong>401</strong>，並沒有任何邏輯會讓這條路由回 404</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══════════════════════ 2. 完整鏈路說明 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-blue">
+    🔗 <span>完整鏈路說明</span>
+  </div>
+  <div class="section-body">
+
+    <h3>檔案位置</h3>
+    <p>
+      <code>C:\91APP\AI_Devs\liveby\nine1.live.buy\src\Web\Nine1.Livebuy.Web.Api\Sso\Middleware\SsoAuthenticationMiddleware.cs</code>
+    </p>
+
+    <h3>Middleware Pipeline（Program.cs）</h3>
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-step step-normal">1</div>
+        <div class="flow-content">
+          <div class="title">app.UseRouting()</div>
+          <div class="desc">解析出 <code>LiveCommentsController.GetLiveRoomComments</code>（<code>[HttpGet("room")]</code>，路由 <code>api/live/comments/room</code>）</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-step step-normal">2</div>
+        <div class="flow-content">
+          <div class="title">app.UseWhen(path startsWith "/api", ...)</div>
+          <div class="desc">依序套用 <code>ApiFailureRedirectMiddleware</code> → <code>SsoAuthenticationMiddleware</code> → <code>TokenRefreshMiddleware</code> → <code>AuditLogMiddleware</code></div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-step step-warn">3</div>
+        <div class="flow-content">
+          <div class="title">SsoAuthenticationMiddleware 讀取 Redis 中的 authData / userData</div>
+          <div class="desc">再呼叫 <code>ValidateSessionAsync</code> 向 <strong>Session Management Service</strong> 驗證 sessionToken + 目前 IP</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>路線一：Session Token 已過期 → 嘗試續期（本次事件路徑）</h3>
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-step step-normal">1</div>
+        <div class="flow-content">
+          <div class="title">Validating session "351b706..." userId="108204" isImpersonated=True</div>
+          <div class="desc">SsoAuthenticationMiddleware 呼叫 <code>sessionClient.ValidateAsync(...)</code></div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-step step-warn">2</div>
+        <div class="flow-content">
+          <div class="title">收到 TokenExpiredException（推測）→ 進入 TryRenewSessionAsync</div>
+          <div class="desc">向 Session Management Service 發起續期：<code>POST https://session-mgmt-osm-api-internal.91app.io/session/renew</code></div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-step step-error">3</div>
+        <div class="flow-content">
+          <div class="title">Session Mgmt 服務回應 404 ← 這才是真正的 404 來源</div>
+          <div class="desc">
+            <code>Received HTTP response headers after 21.3ms - 404</code><br/>
+            <code>End processing HTTP request after 21.5ms - 404</code><br/>
+            這 4 行 log（Start/Sending/Received/End processing HTTP request）是 <strong>.NET HttpClientFactory 內建的 outbound 呼叫日誌</strong>，
+            對象是 session-mgmt 的 <code>/session/renew</code>，跟耗時 21ms 完全吻合，並非 <code>/api/live/comments/room</code> 本身的路由結果。
+          </div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-step step-error">4</div>
+        <div class="flow-content">
+          <div class="title">TryRenewSessionAsync: SessionNotExistException for session "351b706..." userId="108204"</div>
+          <div class="desc">Session Client SDK 將 404 回應轉譯為 <code>SessionNotExistException</code>，代表 Session Mgmt 服務端已經找不到這個 session/token</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-step step-error">5</div>
+        <div class="flow-content">
+          <div class="title">Session validation failed for session "351b706..." ip="60.250.142.219"</div>
+          <div class="desc"><code>SsoAuthenticationMiddleware.cs:206</code> 設定 <code>context.Response.StatusCode = 401</code>，最終回給前端的是 <strong>401</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 3. 為何會誤判成 404 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-orange">
+    🧩 <span>為何 Loki 查詢時會誤判成 /api/live/comments/room 回 404</span>
+  </div>
+  <div class="section-body">
+    <div class="callout callout-orange">
+      <span class="callout-icon">💡</span>
+      <div>
+        outbound 呼叫 <code>/session/renew</code> 的這 4 行 log，是在同一個 incoming request
+        （<code>/api/live/comments/room</code>）的 <strong>logging scope</strong> 內產生的。
+        Middleware/Enricher 會把外層 incoming request 的 <code>RequestPath</code> 帶入這個 scope 下所有的 log，
+        因此 Loki 的結構化欄位 <code>_props_RequestPath</code> 會被 enrich 成 <code>/api/live/comments/room</code>，
+        <code>_props_StatusCode</code> 也順帶帶成了這筆 outbound 呼叫本身的 404，
+        造成「表面上看起來像是這條路由回 404」的錯覺。
+      </div>
+    </div>
+
+    <table>
+      <tr>
+        <th>層級</th>
+        <th>實際回應</th>
+        <th>說明</th>
+      </tr>
+      <tr>
+        <td>liveapi → 前端（incoming request）</td>
+        <td><span class="tag tag-red">401 Unauthorized</span></td>
+        <td>SsoAuthenticationMiddleware 判定 session 無效後設定的真實回應碼</td>
+      </tr>
+      <tr>
+        <td>liveapi → Session Mgmt Service（outbound /session/renew）</td>
+        <td><span class="tag tag-orange">404 Not Found</span></td>
+        <td>Session Mgmt 服務端找不到該 session/token，是 log 中 404 的真正來源</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════ 4. 根因結論 ══════════════════════ -->
+<div class="section">
+  <div class="section-header theme-green">
+    ✅ <span>根因結論</span>
+  </div>
+  <div class="section-body">
+    <div class="callout callout-green">
+      <span class="callout-icon">🎯</span>
+      <div>
+        真正的根因是：<strong>Session Management 服務端已經找不到這個 session/token（SessionNotExistException）</strong>，
+        導致 Token 過期後的自動續期（Renew）失敗，SsoAuthenticationMiddleware 判定該次會話無效，最終回應 401 給客戶端。
+        Loki 上看到的 404 只是同一個 request scope 內、outbound 呼叫 <code>/session/renew</code> 的日誌被 enrich 混淆所致，
+        並非 <code>/api/live/comments/room</code> 這條路由本身發生 404。
+      </div>
+    </div>
+
+    <h3>可能造成 SessionNotExistException 的情境</h3>
+    <ul class="plain">
+      <li>Session 已在 Session Mgmt 服務端過 TTL 被清除，但本地 Redis 的 authData/userData 尚未同步失效</li>
+      <li>該 session 在其他流程被主動登出 / 下線（例如單一裝置登入踢除、後台強制登出）</li>
+      <li>Impersonation（isImpersonated=True）情境下的 session 生命週期與一般使用者不同，可能提早被回收</li>
+    </ul>
+
+    <h3>後續可追查方向</h3>
+    <ul class="plain">
+      <li>向 Session Management 服務team 確認該 userId=108204 的 session 何時、為何被清除</li>
+      <li>確認 Impersonation session 的 TTL 設定是否與一般 session 不同，是否造成提早失效</li>
+      <li>評估是否需要在 Renew 失敗、判定為 SessionNotExistException 時，於回應中補充更明確的錯誤碼，避免前端/監控誤判為單純路由 404</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

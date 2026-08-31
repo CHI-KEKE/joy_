@@ -8,12 +8,14 @@ TypeLite.Net4.tt
 
 
 #### PayProfileStatisticsTypeEnum
-export enum PayProfileStatisticsTypeEnum {
+export enum PayProfileStatisticsTypeEnum
 PayNow_Razer = 1125899906842624,
 
 #### PayProfile
-module NineYi.Sms.BL.BE.PayProfile {
-	export enum PayProfileTypeEnum {
+
+
+module NineYi.Sms.BL.BE.PayProfile
+	export enum PayProfileTypeEnum
 
 
 PayNow_Razer = 18014398509481984,

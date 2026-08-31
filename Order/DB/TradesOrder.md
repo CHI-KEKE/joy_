@@ -98,3 +98,110 @@ WHERE TradesOrderGroup_ValidFlag = 1
     AND TradesOrderGroup_TrackSourceTypeDef IN ('AndriodApp','iOSApp')  -- 行動裝置來源
     -- AND TradesOrderGroup_CreatedDateTime >= '2025-08-08 11:00'  -- 可選：時間篩選
 ```
+
+
+
+## UNION 撈
+
+
+```sql
+use WebStoreDB
+
+select TradesOrderSlave_TradesOrderId,*
+from TradesOrderCustomInfo(nolock)
+inner join TradesOrderSlave(nolock)
+on TradesOrderSlave_Code = TradesOrderCustomInfo_SourceCode
+inner join TradesOrder(nolock)
+on TradesOrderSlave_TradesOrderId = TradesOrder_Id
+where TradesOrderCustomInfo_ValidFlag = 1
+and TradesOrderCustomInfo_SourceType = 'ExternalStoreCredit'
+and TradesOrderCustomInfo_SourceCode = 'TS260119S000123'
+--and TradesOrder_Code = ''
+
+USE WebStoreDB;
+SELECT
+    TradesOrderGroup_TrackSourceTypeDef AS TrackSource,
+    TradesOrderGroup_Code               AS TG_Code,
+    TradesOrder_Code                    AS TM_Code,
+    TradesOrderSlave_Code               AS TS_Code,
+	TradesOrder_CreatedDateTime,
+		TradesOrder_ShopId,*
+FROM TradesOrder WITH (NOLOCK)
+INNER JOIN TradesOrderSlave WITH (NOLOCK)
+    ON TradesOrderSlave_TradesOrderId = TradesOrder_Id
+INNER JOIN TradesOrderGroup WITH (NOLOCK)
+    ON TradesOrder_TradesOrderGroupId = TradesOrderGroup_Id
+WHERE TradesOrder_ValidFlag = 1
+  AND TradesOrder_Code = 'TM260814YA0009'
+
+UNION
+
+SELECT
+    TradesOrderGroup_TrackSourceTypeDef AS TrackSource,
+    TradesOrderGroup_Code               AS TG_Code,
+    TradesOrder_Code                    AS TM_Code,
+    TradesOrderSlave_Code               AS TS_Code,
+	TradesOrder_CreatedDateTime,
+		TradesOrder_ShopId,*
+FROM TradesOrder WITH (NOLOCK)
+INNER JOIN TradesOrderSlave WITH (NOLOCK)
+    ON TradesOrderSlave_TradesOrderId = TradesOrder_Id
+INNER JOIN TradesOrderGroup WITH (NOLOCK)
+    ON TradesOrder_TradesOrderGroupId = TradesOrderGroup_Id
+WHERE TradesOrder_ValidFlag = 1
+  AND TradesOrder_TradesOrderGroupId IN (2891985, 2895601, 2890501)
+
+UNION
+
+SELECT
+    TradesOrderGroup_TrackSourceTypeDef AS TrackSource,
+    TradesOrderGroup_Code               AS TG_Code,
+    TradesOrder_Code                    AS TM_Code,
+    TradesOrderSlave_Code               AS TS_Code,
+	TradesOrder_CreatedDateTime,
+		TradesOrder_ShopId,*
+FROM TradesOrder WITH (NOLOCK)
+INNER JOIN TradesOrderSlave WITH (NOLOCK)
+    ON TradesOrderSlave_TradesOrderId = TradesOrder_Id
+INNER JOIN TradesOrderGroup WITH (NOLOCK)
+    ON TradesOrder_TradesOrderGroupId = TradesOrderGroup_Id
+WHERE TradesOrder_ValidFlag = 1
+  AND TradesOrderSlave_Id = 9424683
+
+UNION
+
+SELECT
+    TradesOrderGroup_TrackSourceTypeDef AS TrackSource,
+    TradesOrderGroup_Code               AS TG_Code,
+    TradesOrder_Code                    AS TM_Code,
+    TradesOrderSlave_Code               AS TS_Code,
+	TradesOrder_CreatedDateTime,
+		TradesOrder_ShopId,*
+FROM TradesOrder WITH (NOLOCK)
+INNER JOIN TradesOrderSlave WITH (NOLOCK)
+    ON TradesOrderSlave_TradesOrderId = TradesOrder_Id
+INNER JOIN TradesOrderGroup WITH (NOLOCK)
+    ON TradesOrder_TradesOrderGroupId = TradesOrderGroup_Id
+WHERE TradesOrder_ValidFlag = 1
+  AND TradesOrderSlave_Code = 'TS260814YA0005J'
+```
+
+
+## 依 memberid 分組
+
+
+```bash
+topk(15,
+  sum by (memberId) (
+    count_over_time(
+      {service="prod-coupon-service", container="coupon-web-api"}
+      |= "coupon-items/redeem" |= "request："
+      | regexp `memberId.{3}(?P<memberId>\d+)`
+      [7d]
+    )
+  )
+)
+```
+
+
+## 

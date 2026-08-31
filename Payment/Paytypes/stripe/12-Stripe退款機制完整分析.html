@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stripe 退款機制完整分析 | nineyi.scm.nmqv2</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root{
+    --stripe-purple:#635bff;
+    --stripe-dark:#0a2540;
+    --bg:#f6f8fb;
+    --card:#ffffff;
+    --border:#e3e8f0;
+    --text:#1a1f36;
+    --muted:#697386;
+    --danger:#c0392b;
+    --danger-bg:#fdecea;
+    --ok:#0d8a4f;
+    --ok-bg:#e6f7ee;
+    --code-bg:#0a2540;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.75; font-size:15.5px;
+  }
+  .layout{ display:flex; max-width:1400px; margin:0 auto; }
+  nav.toc{
+    width:270px; flex-shrink:0; position:sticky; top:0; height:100vh; overflow-y:auto;
+    padding:28px 18px; border-right:1px solid var(--border); background:var(--card);
+  }
+  nav.toc h3{ font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 14px 4px;}
+  nav.toc a{
+    display:block; padding:7px 10px; border-radius:8px; color:var(--text); text-decoration:none;
+    font-size:14px; margin-bottom:2px; transition:.15s;
+  }
+  nav.toc a:hover{ background:#eef0ff; color:var(--stripe-purple); }
+  main{ flex:1; padding:44px 56px 90px; max-width:980px; }
+
+  header.hero{
+    background:linear-gradient(135deg,var(--stripe-dark) 0%, #12306b 55%, var(--stripe-purple) 100%);
+    color:#fff; border-radius:18px; padding:44px 46px; margin-bottom:40px;
+    box-shadow:0 20px 40px -18px rgba(10,37,64,.45);
+  }
+  header.hero .tag{
+    display:inline-block; background:rgba(255,255,255,.15); padding:4px 12px; border-radius:999px;
+    font-size:12.5px; letter-spacing:.05em; margin-bottom:16px;
+  }
+  header.hero h1{ margin:0 0 12px; font-size:32px; }
+  header.hero p{ margin:0; opacity:.88; max-width:640px; }
+  header.hero .meta{ margin-top:22px; display:flex; gap:28px; flex-wrap:wrap; font-size:13px; opacity:.85;}
+  header.hero .meta b{ display:block; font-size:14px; opacity:1;}
+
+  section{ margin-bottom:52px; scroll-margin-top:20px; }
+  h2{
+    font-size:23px; margin:0 0 20px; padding-bottom:10px; border-bottom:2px solid var(--stripe-purple);
+    color:var(--stripe-dark); display:flex; align-items:center; gap:10px;
+  }
+  h2 .num{
+    background:var(--stripe-purple); color:#fff; width:30px; height:30px; border-radius:8px;
+    display:inline-flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;
+  }
+  h3{ font-size:18px; color:var(--stripe-dark); margin:28px 0 12px; }
+  p{ margin:0 0 14px; }
+  a{ color:var(--stripe-purple); }
+
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:14px; padding:22px 26px;
+    margin-bottom:18px; box-shadow:0 2px 10px rgba(20,30,60,.03);
+  }
+
+  table{ width:100%; border-collapse:collapse; margin:14px 0 22px; font-size:14.5px; background:var(--card);
+    border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(20,30,60,.05);}
+  th,td{ padding:10px 14px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
+  th{ background:#eef0ff; color:var(--stripe-dark); font-weight:600; }
+  tr:last-child td{ border-bottom:none; }
+  tr:hover td{ background:#f9faff; }
+  td code, p code, li code{
+    background:#eef1ff; color:#4b3fd6; padding:2px 6px; border-radius:5px; font-size:13px;
+    font-family:Consolas,"Cascadia Code",monospace;
+  }
+
+  pre{
+    background:var(--code-bg); color:#e6ecff; padding:18px 20px; border-radius:12px; overflow-x:auto;
+    font-size:13.5px; line-height:1.65; margin:14px 0 22px;
+  }
+  pre code{ background:none; color:inherit; padding:0; font-family:Consolas,"Cascadia Code",monospace; }
+
+  .formula{
+    background:#fff7e6; border:1px solid #f1d38a; border-left:5px solid #e0a800; border-radius:10px;
+    padding:16px 20px; margin:16px 0; font-family:Consolas,monospace; font-size:14px; white-space:pre-wrap;
+  }
+  .example{
+    background:var(--ok-bg); border-left:5px solid var(--ok); border-radius:10px; padding:18px 22px; margin:18px 0;
+  }
+  .example h4{ margin:0 0 10px; color:var(--ok); font-size:15px;}
+
+  .callout{ border-radius:12px; padding:16px 20px; margin:16px 0; border-left:5px solid; }
+  .callout.warn{ background:var(--danger-bg); border-color:var(--danger); color:#7a2118;}
+  .callout.info{ background:#eaf1ff; border-color:#2f6fed; color:#123a7a;}
+  .callout b{ display:block; margin-bottom:4px; }
+
+  .badge{ display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+  .badge.a{ background:#e6f7ee; color:#0d8a4f; }
+  .badge.b{ background:#fff3e0; color:#b26a00; }
+  .badge.c{ background:#f0e9ff; color:#6b3fd6; }
+
+  .file-path{ font-family:Consolas,monospace; font-size:12.5px; color:var(--muted); }
+
+  .mermaid{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; margin:16px 0; overflow-x:auto;}
+
+  .risk-list{ counter-reset:risk; list-style:none; padding:0; margin:0;}
+  .risk-list li{ counter-increment:risk; position:relative; padding:14px 18px 14px 52px; margin-bottom:12px;
+    background:var(--card); border:1px solid var(--border); border-radius:12px; }
+  .risk-list li::before{
+    content: counter(risk); position:absolute; left:14px; top:14px; width:26px; height:26px; border-radius:50%;
+    background:var(--danger); color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  }
+
+  footer{ text-align:center; color:var(--muted); font-size:13px; padding:30px 0 10px; border-top:1px solid var(--border); }
+
+  @media (max-width: 900px){
+    nav.toc{ display:none; }
+    main{ padding:28px 20px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="toc">
+    <h3>目錄</h3>
+    <a href="#s1">1. 架構總覽</a>
+    <a href="#s2">2. 情境 A：部分退款</a>
+    <a href="#s3">3. 情境 B：補收單</a>
+    <a href="#s4">4. 情境 C：Application Fee</a>
+    <a href="#s5">5. 帳號模式與 API Key</a>
+    <a href="#s6">6. 狀態機與失敗重試</a>
+    <a href="#s7">7. 對帳報表</a>
+    <a href="#s8">8. Email 通知</a>
+    <a href="#s9">9. 程式碼索引表</a>
+    <a href="#s10">10. 風險與待確認</a>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <span class="tag">NINEYI.SCM.NMQV2 · 程式碼實作分析</span>
+      <h1>💳 Stripe 退款機制完整分析</h1>
+      <p>涵蓋部分退款、補收單（多退少補）、Application Fee 平台手續費退還、對帳報表與通知信機制的端到端程式碼解析。</p>
+      <div class="meta">
+        <div><b>涵蓋情境</b>部分退款 / 補收單 / Application Fee</div>
+        <div><b>核心服務</b>StripePayChannelService / PaymentMiddleWareRefundRequestService</div>
+        <div><b>資料來源</b>Repository 原始碼靜態分析</div>
+      </div>
+    </header>
+
+    <section id="s1">
+      <h2><span class="num">1</span>架構總覽</h2>
+      <p>Stripe 退款是透過一層 <b>PaymentMiddleware</b>（第三方支付中介服務）代理。ERP 端負責「業務邏輯運算」（退款金額、手續費、是否退 Application Fee），PaymentMiddleware 負責「實際打 Stripe API」。</p>
+
+      <div class="mermaid">
+flowchart LR
+    subgraph ERP後台
+        A[取消/退貨作業] --> B[RefundRequest 產生]
+        B --> C[PaymentMiddleWareRefundRequestService]
+        C --> D["StripePayChannelService 組裝 ExtendInfo"]
+    end
+    D --> E[("PaymentMiddleware POST /Refund/Stripe/tg")]
+    E --> F[["Stripe API Refund / ApplicationFeeRefund"]]
+    F --> E
+    E --> G[UpdateRefundRequest 回寫狀態]
+    G --> H[OrderSlaveFlow 更新]
+    G --> I[ExpenseOrder / 對帳報表]
+    G --> J[RefundRequestFinishV2MailService 通知信]
+      </div>
+
+      <table>
+        <tr><th>層級</th><th>檔案</th><th>職責</th></tr>
+        <tr><td>退款單產生</td><td class="file-path">ThirdPartyRefundRequestService / RefundRequestService</td><td>依取消單/退貨單計算退款金額，建立 RefundRequest</td></tr>
+        <tr><td>退款派送骨架</td><td class="file-path">AbstractPayChannelService</td><td>定義各金流共通的 Header 組裝、ExtendInfo 抽象方法</td></tr>
+        <tr><td>Stripe 專屬邏輯</td><td class="file-path">StripePayChannelService</td><td>組裝 application_fee_amount、payment_flow、stripe_account、Stripe API Key Header</td></tr>
+        <tr><td>中介呼叫</td><td class="file-path">PaymentMiddleWareRefundRequestService</td><td>呼叫 PaymentMiddleware、回寫退款單狀態、觸發後續任務</td></tr>
+        <tr><td>費用轉費用單</td><td class="file-path">PaymentProcessingFeeExpenseOrderSlaveCreateEntityFactory</td><td>手續費轉為 ExpenseOrderSlave</td></tr>
+        <tr><td>對帳報表</td><td class="file-path">StripeExpenseOrderReportExportService 等</td><td>呈現退款/手續費彙總、下載 Stripe Payout 對帳報告</td></tr>
+        <tr><td>通知</td><td class="file-path">RefundRequestFinishV2MailService</td><td>退款完成寄信通知</td></tr>
+      </table>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span><span class="badge a">情境 A</span> 部分退款（Partial Refund）</h2>
+
+      <h3>2.1 觸發來源</h3>
+      <p>由 <b>取消子單（CancelOrderSlave）</b>或<b>退貨子單（ReturnGoodsOrderSlave）</b>觸發，對應 <code>RefundRequestService.InsertRefundRequestByCancelOrderSlave</code> 與 <code>ThirdPartyRefundRequestService</code>。</p>
+
+      <h3>2.2 退款金額計算公式</h3>
+      <p><b>單一取消子單（無多付款方式攤提）</b></p>
+      <div class="formula">canceledQty = isCancelAllQty ? SalesOrderSlave_Qty : CancelOrderSlave_Qty
+amount = (SalesOrderSlave_Price × canceledQty) + totalDiscount</div>
+
+      <div class="callout info">
+        <b>「單一取消子單」的計算單位</b>對應 <code>RefundRequestService.InsertRefundRequestByCancelOrderSlave(tradesOrderSlaveId, ...)</code>，此方法每次只處理<b>一個 OrderSlave（銷售子單，即訂單中的一個商品項目行）</b>，而非以 qty 或整張訂單為單位。<br>
+        該 slave 內部再依 <code>CancelOrderSlave_Qty</code> 與 <code>SalesOrderSlave_Qty</code> 比較，判斷是「整個 slave 全數取消」還是「slave 內部分數量取消」：
+        <pre><code>var isCancelAllQty = cancelOrderSlave.CancelOrderSlave_Qty >= salesOrderSlave.SalesOrderSlave_Qty;
+var canceledQty  = isCancelAllQty ? salesOrderSlave.SalesOrderSlave_Qty : cancelOrderSlave.CancelOrderSlave_Qty;
+var totalDiscount = isCancelAllQty ? salesOrderSlave.SalesOrderSlave_TotalDiscount : cancelOrderSlave.CancelOrderSlave_TotalDiscount;</code></pre>
+        <ul>
+          <li><code>isCancelAllQty = true</code>：該 slave 購買數量全部取消（含取消數 &gt; 購買數的異常保護），折扣採 <code>SalesOrderSlave_TotalDiscount</code>（整單攤提折扣）。</li>
+          <li><code>isCancelAllQty = false</code>：僅取消該 slave 部分數量，折扣採 <code>CancelOrderSlave_TotalDiscount</code>（已依取消比例攤提的折扣）。</li>
+        </ul>
+        程式碼位置：<span class="file-path">ERP\Backend\BLV2\RefundRequests\RefundRequestService.cs</span>（<code>InsertRefundRequestByCancelOrderSlave</code>，約行 630–797）。此分支僅處理單一付款方式、無補收單攤提的情境；若涉及退貨補收單或多付款方式攤提，則走下方另兩個公式。
+      </div>
+
+      <p><b>含補收單金額之取消（退貨情境）</b></p>
+      <div class="formula">amount = (CancelOrderSlave_Price × CancelOrderSlave_Qty)
+       + CancelOrderSlave_Discount
+       + CancelOrderSlave_RechargeReceiptAmount</div>
+
+      <p><b>多付款方式攤提</b>：先為其他付款方式建立各自的退款單並扣除攤提金額，剩餘才歸屬 Stripe：</p>
+      <div class="formula">amount -= Σ(otherPayTypeAmount.Amount)</div>
+      <p>涉及運費（SalesOrderFee）時會<b>獨立建立一張運費退款單</b>，同樣依付款方式攤提。</p>
+
+      <div class="callout info"><b>0 元退款特殊處理</b>若計算後 amount == 0，退款單直接標記為 Finish 且 IsClosed = true，<b>不會實際呼叫 Stripe API</b>（常見於多付款情境下該付款方式攤提為 0）。</div>
+
+      <h3>2.3 端到端流程</h3>
+      <div class="mermaid">
+sequenceDiagram
+    participant ERP as ERP後台/取消流程
+    participant RRS as RefundRequestService
+    participant PM as PaymentMiddleWareRefundRequestService
+    participant SPC as StripePayChannelService
+    participant MW as PaymentMiddleware
+    participant STRIPE as Stripe API
+    participant OSF as OrderSlaveFlow
+
+    ERP->>RRS: 取消/退貨子單建立
+    RRS->>RRS: 計算退款金額（攤提/運費/補收）
+    RRS->>RRS: 建立 RefundRequest（RefundRequestProcessing）
+    Note over RRS: amount=0 直接 Finish，不呼叫 API
+    PM->>PM: CreateRefundRequestFinish() 撈待處理退款單
+    PM->>SPC: GetRefundExtendInfo(...)
+    SPC-->>PM: application_fee_amount / is_refund_application_fee
+    PM->>MW: POST /Refund/Stripe/TgCode
+    MW->>STRIPE: Refund + Application Fee Refund
+    STRIPE-->>MW: 退款結果
+    MW-->>PM: ReturnCode / TransactionId
+    PM->>PM: UpdateRefundRequest 狀態轉換
+    PM->>OSF: RefundFinish / RefundFail
+    PM->>ERP: 寄送退款完成通知信
+      </div>
+
+      <h3>2.4 運費（SalesOrderFee）退款規則</h3>
+      <p><b>重要區分：「取消訂單」與「退貨」是兩套完全獨立的運費退款機制</b>，一個是系統自動判斷，一個必須人工手動觸發，不可混為一談。</p>
+
+      <div class="callout warn">
+        <b>機制 A：取消訂單（CancelOrderSlave）流程 —— 系統自動判斷</b><br>
+        邏輯位於 <span class="file-path">ERP\Backend\BLV2\RefundRequests\ThirdPartyRefundRequestService.cs</span> 的 <code>CreateRefundRequestByCancelFlow</code>（line 263-298），<b>只被各付款方式的 <code>*CancelOrderService.cs</code>（如 <code>AtmCancelOrderService</code>、<code>LinePayCancelOrderService</code> 等）呼叫</b>，是「取消訂單」流程專屬邏輯，跟「退貨」完全無關。
+      </div>
+
+      <div class="callout info">
+        <b>第一道關卡：必須整張母單（SalesOrder）所有子單都取消</b>
+        <pre><code>if (isAllCanceled == false)
+{
+    return Tuple.Create(0, salesOrderFee);   // 直接不處理運費退款
+}</code></pre>
+        訂單裡只要還有其他商品沒取消（部分取消），運費完全不退——因為運費是綁在整張母單上，只要還有東西要出貨，這筆運費就算「有在用」。
+      </div>
+
+      <div class="callout info">
+        <b>第二道關卡：只有以下兩種情況，才會真的建立一張獨立的運費 RefundRequest（RefundRequest_SourceDef = SalesOrderFee）</b>
+        <ul>
+          <li><b>運費單完全沒被使用</b>（<code>SalesOrderFee_TradesOrderSlaveId == null</code>）：消費者根本還沒出貨就把整張訂單取消了，運費本來就沒發生物流成本，全額退還。</li>
+          <li><b>出貨後「超商驗收失敗」</b>（<code>VerifyFailAbnormalPackage / VerifyFailErrorCode / VerifyFailInvalidCode / VerifyFailLost / VerifyFailRenovation</code> 共 5 種狀態）：貨物寄到超商但沒有真正送達消費者手上（超商拒收、遺失、包裝異常等），等同出貨沒有成功完成，同樣退運費。</li>
+        </ul>
+        以上兩道關卡皆通過，系統才會在<b>取消訂單處理當下</b>自動建立這筆運費退款單，商家不需要另外操作。
+      </div>
+
+      <div class="callout warn">
+        <b>機制 B：退貨（ReturnGoodsOrderSlave）流程 —— 必須人工手動觸發，系統不會自動退運費</b><br>
+        追蹤 <span class="file-path">SCMAPIV2\BusinessLogic\Services\ReturnGoodsOrders\ReturnGoodsOrderFinishService.cs</span>（退貨結案邏輯）後確認：<b>整段退貨結案流程完全沒有任何自動建立 SalesOrderFee 退款的程式碼</b>。運費退款要靠獨立的 API：
+        <pre><code>POST /RefundRequest/ReturnSalesOrderFee   // RefundRequestController.cs line 37-42
+→ RefundRequestService.ReturnSalesOrderFee(entity)   // line 178，用 this._userService.GetUserName() 記錄操作人</code></pre>
+        這代表<b>商家／客服必須在 SCM 賣家後台手動點擊「退運費」按鈕</b>才會呼叫這支 API 建立運費退款單，退貨單結案本身<b>不會</b>自動連動觸發，兩者是脫鉤的。若商家忘記手動點退運費，消費者就不會收到運費退款。
+      </div>
+
+      <div class="example">
+        <h4>📐 情境比較</h4>
+        <table>
+          <tr><th>情境</th><th>觸發流程</th><th>運費是否退還</th><th>是否需人工操作</th></tr>
+          <tr><td>消費者下單後隔天反悔，商品尚未出貨就整單取消</td><td>取消訂單（機制 A）</td><td>✅ 全額退還運費</td><td>否，系統自動判斷並建立</td></tr>
+          <tr><td>商品已出貨到超商，但超商驗收時發現包裝異常拒收，貨退回倉庫，消費者順勢取消訂單</td><td>取消訂單（機制 A）</td><td>✅ 退還運費（等同貨未送達）</td><td>否，系統自動判斷並建立</td></tr>
+          <tr><td>消費者已收到貨，使用一週後申請退貨（正常完成配送）</td><td>退貨（機制 B）</td><td>視商家是否手動處理而定</td><td><b>是</b>，須客服／商家在 SCM 後台手動點「退運費」</td></tr>
+        </table>
+        <p><b>結論</b>：「取消訂單」的運費退款是系統自動判斷（依出貨/驗收狀態）；「退貨」的運費退款則必須商家手動操作，系統本身不會因為退貨結案就自動退運費——若商家未手動處理，消費者已收到貨後申請退貨時，運費預設不會退還，等於商家吸收<b>出貨</b>運費成本，除非客服主動決定手動退運費補償消費者。至於「消費者把商品寄回商家」的<b>退貨逆物流運費</b>，並不在這套 <code>RefundRequest</code> 機制內處理——它是物流/客服另外決定是否提供免運寄件標籤的營運成本，不會反映在 Stripe 退款金額或 <code>RefundRequest</code> 資料表裡。</p>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span><span class="badge b">情境 B</span> 補收單（多退少補）機制</h2>
+
+      <h3>3.1 業務情境</h3>
+      <p>「多退少補」發生在換貨/退貨導致商品差額時：若換貨後應付金額<b>大於</b>原付款金額，系統會開立一張<b>補收單（RechargeReceipt）</b>向消費者收取差額；退款金額若涉及此差額，Stripe 手續費計算不能單純以退款金額為基礎，須排除已透過補收單收回的手續費成本。</p>
+
+      <h3>3.2 補收單五種類型與情境範例</h3>
+      <p>補收單（<code>RechargeReceipt</code>）是一個通用機制，涵蓋「退貨/換貨過程中需要向消費者額外收費」或「出貨前客服手動退費」兩大用途，由 <code>RechargeTypeDefEnum</code> 分成 5 種（<span class="file-path">SCMAPIV2\...\RechargeReceipts\Enums\RechargeTypeDefEnum.cs</span>）：</p>
+      <table>
+        <tr><th>類型</th><th>建立時機</th><th>金額方向</th><th>情境範例</th></tr>
+        <tr><td><code>ActionOrDiscountSpreads</code><br>活動/折扣差價</td><td>退貨進行中</td><td>正值（向消費者追收）</td><td>消費者買 3 件湊到「滿 3000 折 300」，退貨 1 件後剩下商品只值 2000 元、不再滿足門檻，需追回當初多折的 300 元優惠。</td></tr>
+        <tr><td><code>PackageOrRenewFee</code><br>包裝/整新費</td><td>退貨進行中</td><td>正值</td><td>消費者退回的商品已拆封使用，需要清潔/整新才能重新上架，收取 200 元整新處理費。</td></tr>
+        <tr><td><code>SaleProductGift</code><br>贈品</td><td>退貨進行中</td><td>正值</td><td>訂單買一送一，消費者只退回主商品、贈品未退回（弄丟/已使用），以贈品市價折抵扣款。</td></tr>
+        <tr><td><code>SalesOrderFee</code><br>運費</td><td>退貨進行中</td><td>正值</td><td>原訂單滿 1000 免運，退貨後剩餘商品金額掉到 800、不再達免運門檻，向消費者收取運費差額。</td></tr>
+        <tr><td><code>OrderSpreads</code><br>(負向) 訂單差價</td><td>出貨前，訂單<b>不取消</b>由客服手動退費（<code>RechargeReceiptService.CreatePartialAmount</code>）</td><td><b>負值</b>（代表已退給消費者）</td><td>商品有小瑕疵，客服決定退 200 元給消費者但商品照樣出貨（不取消訂單），系統存 <code>RechargeReceipt_RechargeAmount = -200</code>。</td></tr>
+      </table>
+      <div class="callout info">
+        <b>為什麼 <code>OrderSpreads</code> 一定要存負值？</b>因為這筆錢是「已經退給消費者、但訂單還沒被取消」的紀錄。若日後這筆訂單子單又整張被取消，退款金額公式 <code>amount = Price×Qty + Discount + RechargeReceiptAmount</code> 必須把先前已退的 200 元扣掉（<code>1000 + 0 + (-200) = 800</code>），否則消費者會拿到 <code>1000 + 200 = 1200</code>，造成<b>重複退款</b>。<br>
+        前 4 種類型則相反：一律為<b>正值</b>，且必須綁在「進行中的退貨子單（<code>ReturnGoodsOrderSlave</code>）」上才能建立（<code>RechargeReceiptService.Create()</code> 會檢查 <code>GetProcessingReturnGoodsInfoForRechargeReceipt</code>），用途是退貨當下就先向消費者扣抵這些額外費用，避免退款金額退多了。
+      </div>
+
+      <h3>3.3 相關資料結構</h3>
+      <table>
+        <tr><th>Entity / Enum</th><th>說明</th></tr>
+        <tr><td><code>RechargeReceiptStatusEnum</code></td><td>Created（已建立）/ Finished（已結案）/ Void（已作廢）</td></tr>
+        <tr><td><code>RechargeReceipt_RechargeAmount</code></td><td>補收單整筆金額（單一付款方式訂單使用）</td></tr>
+        <tr><td><code>RechargeReceiptPayProfileType</code>（分攤表）</td><td>多付款方式訂單時，記錄每個付款方式各自分攤的補收金額</td></tr>
+        <tr><td><code>GetRechargePayTypeAmountByReceiptIdAndPayProfileType</code></td><td>依補收單 Id + 付款方式查詢分攤金額，查無則 fallback 用整筆金額</td></tr>
+      </table>
+
+      <h3>3.4 計算邏輯</h3>
+      <p>僅當 <code>RefundRequest_SourceDef == ReturnGoodsOrderSlave</code> 且補收單存在、狀態非 Void 時才進入此分支：</p>
+      <pre><code>// 1. 取得此付款方式的補收分攤金額（無分攤紀錄則用整筆金額）
+rechargeAmount = GetRechargePayTypeAmountByReceiptIdAndPayProfileType(receiptId, payProfileTypeDef)
+                     ?? RechargeReceipt_RechargeAmount;
+
+// 2. 一致性檢查：退款金額 + 補收金額 必須等於「該付款方式的分攤支付總額」
+totalPayment = refundAmount + rechargeAmount;
+expectedTotalPayment = GetOtherPayTypeAmount(tsCode, payProfileTypeDef)?.Amount
+                           ?? SalesOrderSlave_TotalPayment;
+if (expectedTotalPayment != totalPayment) throw new ApplicationException(...);
+
+// 3. 手續費計算
+rechargeAmountFee  = CalculateFee(rechargeAmount, feeRate);           // 補收單本身應收的手續費
+totalPaymentFee    = CalculateFee(refundAmount + rechargeAmount, feeRate); // 原始交易總額對應手續費
+
+// 4. 最終應退還手續費 = 原交易手續費 - 補收單手續費
+refundApplicationFee = totalPaymentFee - rechargeAmountFee;</code></pre>
+
+      <div class="callout info"><b>CalculateFee 保底規則</b><code>Math.Round(amount × rate, 2, AwayFromZero)</code>；若結果 &le; 0 則保底回傳 <code>0.01</code>，避免傳 0 或負值手續費給 Stripe API。</div>
+
+      <h3>3.5 範例試算</h3>
+      <div class="example">
+        <h4>📐 訂單 100 元、費率 3%、退貨 70 元、補收單 30 元</h4>
+        <table>
+          <tr><th>步驟</th><th>公式</th><th>結果</th></tr>
+          <tr><td>① 一致性檢查</td><td>70 + 30 = 100（等於原總支付金額）</td><td>✅ 通過</td></tr>
+          <tr><td>② 原交易手續費</td><td>CalculateFee(70+30, 3%) = 100 × 3%</td><td><b>3.00</b></td></tr>
+          <tr><td>③ 補收單手續費</td><td>CalculateFee(30, 3%) = 30 × 3%</td><td><b>0.90</b></td></tr>
+          <tr><td>④ 應退還手續費</td><td>③ 原交易手續費 − 補收單手續費 = 3.00 − 0.90</td><td><b>2.10</b></td></tr>
+        </table>
+        <p>意義：訂單原本收了 100 元的 3%＝3 元手續費；換貨後透過補收單重新收了 30 元、對應手續費 0.9 元也已由補收單流程收取，因此僅需退還「差額部分」的手續費 2.10 元，避免手續費被重複退還或漏退。</p>
+      </div>
+
+      <h3>3.6 多付款方式下的分攤</h3>
+      <p>若訂單同時使用信用卡（Stripe）與購物金付款，系統會優先以 <code>RechargeReceiptPayProfileType</code>（分攤表）查出 Stripe 這筆付款方式對應的補收分攤金額，而非直接使用補收單全額，避免將購物金部分的補收金額誤算入 Stripe 手續費退還計算。</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span><span class="badge c">情境 C</span> Application Fee（平台手續費）退還</h2>
+
+      <h3>4.1 適用情境與模式</h3>
+      <p>Application Fee 機制<b>專屬於 DestinationCharge（目的地收費）流程 + Custom 帳戶類型</b>：平台以 Custom Connect 帳戶代收款項後，透過 <code>application_fee_amount</code> 從賣家所得中抽取平台服務費，退款時同步涉及是否／如何退還這筆已扣的服務費。</p>
+      <table>
+        <tr><th>概念</th><th>資金流向</th><th>對應本專案欄位</th></tr>
+        <tr><td>Refund（退款）</td><td>平台 → 顧客</td><td>RefundRequest_Amount</td></tr>
+        <tr><td>Application Fee Refund（手續費退還）</td><td>平台 → 賣家（子帳號）</td><td>application_fee_amount</td></tr>
+      </table>
+
+      <h3>4.2 是否退還手續費的判斷</h3>
+      <pre><code>bool IsRefundApplicationFee(refundRequest, salesOrderSlaveDateTime, shopId)
+{
+    if (refundRequest.SourceDef != SalesOrderFee)   // 非運費退款
+        return true;                                 // → 一律退還手續費
+
+    // 運費退款：需符合日期門檻或商店白名單設定才退手續費
+    return salesOrderSlaveDateTime >= 2020-07-01
+           || shopArray(config: "Charge.SalesOrderFee.Shop").Contains(shopId);
+}</code></pre>
+      <ul>
+        <li>非運費類退款（商品退貨、取消單）：<b>永遠退還 Application Fee</b>。</li>
+        <li>運費類退款：因 2020/07/01 前的歷史政策運費不退手續費，故加上日期與商店白名單雙重判斷。</li>
+      </ul>
+
+      <h3>4.3 手續費金額計算</h3>
+      <div class="formula">一般情境（無補收單）：
+refundApplicationFee = CalculateFee(refundAmount, feeRate)
+                      = Math.Round(refundAmount × feeRate, 2, AwayFromZero)
+                      = 至少 0.01（保底值）
+
+補收單情境：見 §3.4（原交易手續費 − 補收單手續費）</div>
+
+      <h3>4.4 傳遞給 PaymentMiddleware / Stripe 的資訊</h3>
+      <pre><code>{
+  "payment_flow": "DirectCharge | DestinationCharge",
+  "stripe_account": "子帳號 ID（Custom 帳戶時）",
+  "application_fee_amount": 2.10,
+  "is_refund_application_fee": true
+}</code></pre>
+      <p>由 PaymentMiddleware 接手後才實際呼叫 Stripe：</p>
+      <ul>
+        <li><code>POST /v1/refunds</code>（退款本體）</li>
+        <li><code>POST /v1/application_fees/{applicationFeeId}/refunds</code>（若 is_refund_application_fee = true）</li>
+      </ul>
+      <div class="callout warn"><b>注意</b>ERP 端不直接持有 applicationFeeId；payment_flow + stripe_account + TransactionId 由 PaymentMiddleware 用以反查對應的 Application Fee 紀錄。</div>
+
+      <h3>4.5 payment_flow 與 stripe_account 的取得邏輯</h3>
+      <pre><code>GetRefundFlowAndSubAccount(shopId, thirdPartyPaymentInfo)
+{
+    if (thirdPartyPaymentInfo 為空)
+        return ("DirectCharge", ShopDefault.StripeSubAccount);
+
+    info = Deserialize(thirdPartyPaymentInfo);
+    paymentFlow = info.PaymentFlow ?? "DirectCharge";
+    return (paymentFlow, info.SubAccount);
+}</code></pre>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span>手續費費用單的帳戶類型限制</h2>
+      <p>金流手續費要轉為費用單（ExpenseOrderSlave）需同時滿足：</p>
+      <ol>
+        <li>AppSetting: <code>ExpenseOrder.PaymentProcFee.{PayProfileType}.IsEnableCreateExpenseOrder = true</code></li>
+        <li>訂單付款狀態為 Success</li>
+        <li>SalesOrderThirdPartyPayment_Info 非空</li>
+        <li><b>AccountType 必須以 Custom 開頭</b>（Standard 帳戶不會產生手續費費用單，因其手續費由 Stripe 直接向平台收取）</li>
+      </ol>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span>退款狀態機與失敗重試</h2>
+      <h3>6.1 狀態轉換</h3>
+      <p><code>RefundRequest_StatusDef</code>：<code>RefundRequestProcessing</code> → <code>RefundRequestGrouping</code>（若走合併）→ <code>Finish</code> / <code>RefundRequestFail</code>。</p>
+      <ul>
+        <li><b>RefundFinish</b>：標記 Finish、IsClosed = true，並回寫 OrderSlaveFlow（若非運費退款）；來源為 CancelOrderSlave 時，訂單狀態同步為「訂單取消」。</li>
+        <li><b>RefundFail</b>：標記 RefundRequestFail，清空匯款檔名/確認日/預計撥款日，OrderSlaveFlow 打回 RefundProcessing 以便重試。</li>
+      </ul>
+
+      <h3>6.2 Stripe 特有限制</h3>
+      <div class="callout warn">
+        <b>不支援 RefundQuery</b>
+        <code>StripePayChannelService.GetRefundQueryExtendInfo</code> 恆回傳 null，代表 Stripe 通道不支援退款結果查詢，退款結果須靠 PaymentMiddleware 同步回應，無法主動輪詢 Stripe 狀態。
+      </div>
+      <div class="callout warn">
+        <b>不支援自動失敗重試</b>
+        <code>PaymentTypeRetryableErrorCodes</code> 目前僅為 Razer 系列與 KPay 設有「特定錯誤碼 + 3 日內自動轉重試」邏輯，Stripe 不在此清單，退款失敗後需人工介入處理。
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">7</span>對帳報表與 ExpenseOrder</h2>
+      <h3>7.1 手續費 → 費用單</h3>
+      <p><code>PaymentProcessingFeeExpenseOrderSlaveCreateEntityFactory</code>：<code>ItemTypeDef = PaymentProcFee</code>、<code>ChangeAmountType = Negative</code>、<code>ChangeAmount = TotalPayment</code>，並帶入 FixedFee / FeeRate；帳期依日期切為每月 1 日 / 16 日兩期。</p>
+
+      <div class="callout info">
+        <b>FixedFee / FeeRate 來源</b>來自 <code>SalesOrderGroupRepository.GetSalesOrderGroupPaymentProcessingFeeInfo()</code>：
+        <pre><code>FixedFee = salesOrderGroup.SalesOrderGroup_PaymentFixedFee,
+FeeRate  = salesOrderSlave.SalesOrderSlave_SCMCreditCardFeeRate ?? 0.00m</code></pre>
+        <ul>
+          <li><code>FixedFee</code> 來自 <b><code>SalesOrderGroup_PaymentFixedFee</code></b>（購物車訂單主檔欄位）。</li>
+          <li><code>FeeRate</code> 來自 <b><code>SalesOrderSlave_SCMCreditCardFeeRate</code></b>（銷售子單欄位）。</li>
+        </ul>
+        兩者都是<b>訂單成立當下寫入的快照值</b>（代表當時商店與金流商議定的手續費率/固定手續費），退款/對帳時直接讀這筆歷史快照，<b>不會</b>在退款當下重新查詢最新費率設定，確保費率不會因為日後費率調整而追溯影響已完成訂單的計算。
+      </div>
+
+      <h3>7.2 Stripe 帳務對帳報表</h3>
+      <p><code>StripeExpenseOrderReportExportService</code> 彙總退款來源（<code>ReturnOrderRefund / CancelOrderRefund / AbnormalOrderRefund / OrderFeeRefund</code>）與手續費來源（<code>CreditCardOnce_Stripe / ApplePay / GooglePay</code>）：</p>
+      <table>
+        <tr><th>欄位</th><th>意義</th></tr>
+        <tr><td>TotalStripeFee 等</td><td>各支付方式系統手續費彙總</td></tr>
+        <tr><td>TotalStripePaymentProcessingFee 等</td><td>各支付方式的金流處理手續費彙總</td></tr>
+        <tr><td>FirstSystemFee</td><td>正流程為負、逆流程為正，依 SourceDef 分正逆流程計算手續費符號</td></tr>
+        <tr><td>totalExclScFee</td><td>排除購物金退款後的手續費總額（購物金退款 FirstSystemFee 固定為 0）</td></tr>
+      </table>
+      <p><code>CalculateFee(sourceDef, amount, feeRateNote)</code> 對 Stripe 類來源使用 <code>StripeFeeEntity</code>（FeeRate + FixedFee）計算：<code>Math.Round(amount × FeeRate + FixedFee, 小數位, AwayFromZero)</code>。</p>
+
+      <div class="callout info">
+        <b>是否為獨立報表？</b>是<b>兩個獨立的報表類型</b>，但共用同一套 ERP 匯出框架。兩者都在 <code>BatchUploadTaskProcessSetting.cs</code> 註冊為 <code>BatchUploadTypeEnum</code>：
+        <pre><code>.RegisterBatchUploadTaskService&lt;StripePayoutReconciliationReportExportService&gt;(builder, BatchUploadTypeEnum.ExportStripePayoutReport)     //// Stripe 入帳明細匯出
+.RegisterBatchUploadTaskService&lt;StripeExpenseOrderReportExportService&gt;(builder, BatchUploadTypeEnum.ExportStripeExpenseOrderReport)   //// Stripe 對帳明細匯出</code></pre>
+        兩者都繼承 <code>BatchUploadBaseService&lt;T&gt;</code>，跟 ERP 後台其他「批次匯出」報表（商品匯出、訂單匯出等）走同一套非同步匯出機制（建立 BatchUpload 任務 → NMQ 背景處理 → 產檔供下載），但<b>資料來源與計算邏輯完全獨立</b>：本節報表讀 ERP 內部 <code>ExpenseOrderSlave</code> 退款/手續費資料；下方 §7.3 的 Payout 對帳報表則讀 <b>Stripe Reporting API</b> 的資料。
+      </div>
+
+      <h3>7.3 Payout 對帳下載</h3>
+      <p><code>StripePayoutReconciliationReportExportService</code> 呼叫 Stripe Reporting API 產生/下載 Payout 對帳報告，用於核對 Stripe 實際撥款金額與系統紀錄是否一致，是退款/手續費計算正確性的最終防線。</p>
+
+      <div class="callout warn">
+        <b>什麼時候會執行？</b>是使用者在 ERP 後台<b>手動觸發</b>的匯出任務，<b>不是排程 Cron Job</b>。流程（<code>StripePayoutReconciliationReportExportService.DoProcess</code>）：
+        <ol>
+          <li>使用者在 ERP 後台選店家、指定 <code>StripeReportRunId</code>（已在 Stripe 建立的 Report Run）並送出匯出請求。</li>
+          <li>系統呼叫 Stripe API 查詢該 Report Run 狀態：
+            <pre><code>if (reportRun.Status == "pending" || stripeFile == null || ...)
+{
+    Thread.Sleep(TimeSpan.FromMinutes(5));
+    return;   // 尚未完成，5 分鐘後由 NMQ 重試
+}</code></pre>
+          </li>
+          <li>Report Run 完成後才下載檔案、壓縮加密，供使用者下載。</li>
+        </ol>
+        也就是「使用者按下匯出 → 系統輪詢等 Stripe 那邊報表跑完 → 才真正下載」，執行時機取決於使用者操作 + Stripe Reporting API 產生報表的速度（非固定排程）。
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span>Email 通知機制</h2>
+      <p><code>RefundRequestFinishV2MailService</code>：依 TradesOrderGroupCode 撈出已完成退款單，<b>退款總額為 0 時不寄信</b>；信件包含退款方式、商品明細、退款金額、訂單資訊，運費退款會作為獨立項目列示。</p>
+
+      <div class="callout info">
+        <b>寄信條件（需同時滿足 3 項）</b>
+        <ol>
+          <li><b>商店未關閉此類通知</b>（<code>IsSendMail()</code> line 431）：
+            <pre><code>if (salesOrderItem != null && base.IsShopNeedSendMail(salesOrderItem.SalesOrder_ShopId, ShopCustomDisableMailSettingEnum.DisableRefundFinish) == false)
+    return false;</code></pre>
+            商店可透過 <code>ShopCustomDisableMailSettingEnum.DisableRefundFinish</code> 自訂關閉退款完成信。
+          </li>
+          <li><b>會員本身有訂閱該類通知</b>：<code>IVipMemberEmailNotificationService.IsSendMail(memberId, shopId, EmailNotificationEnum.TradesOrder)</code>——會員個人的訂單通知偏好設定。</li>
+          <li><b>這批退款單加總金額不為 0</b>（<code>DoMailDataProcess</code> line 144）：
+            <pre><code>var sum = refundRequestList.Sum(x => x.RefundRequest_Amount);
+if (sum == 0)
+{
+    this.ProceedSendMail = false;   // 0 元退款不寄信
+    return;
+}</code></pre>
+          </li>
+        </ol>
+        三者缺一都不會寄出退款完成通知信。
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">9</span>關鍵程式碼索引表</h2>
+      <table>
+        <tr><th>主題</th><th>檔案路徑</th></tr>
+        <tr><td>退款骨架</td><td class="file-path">ERP\Backend\BLV2\PayChannel\AbstractPayChannelService.cs</td></tr>
+        <tr><td>Stripe 退款邏輯</td><td class="file-path">ERP\Backend\BLV2\PayChannel\StripePayChannelService.cs</td></tr>
+        <tr><td>退款單狀態機</td><td class="file-path">ERP\Backend\BLV2\RefundRequests\RefundRequestService.cs</td></tr>
+        <tr><td>取消/退貨退款單建立</td><td class="file-path">ERP\Backend\BLV2\RefundRequests\ThirdPartyRefundRequestService.cs</td></tr>
+        <tr><td>PaymentMiddleware 呼叫與回寫</td><td class="file-path">ERP\Backend\BLV2\ThirdPartyPayments\PaymentMiddleWareRefundRequestService.cs</td></tr>
+        <tr><td>手續費 → 費用單工廠</td><td class="file-path">ERP\Backend\BLV2\ExpenseOrders\PaymentProcessingFeeExpenseOrderSlaveCreateEntityFactory.cs</td></tr>
+        <tr><td>費用來源列舉</td><td class="file-path">ERP\Backend\BE\ExpenseOrder\ExpenseOrderSlaveSourceDefEnum.cs</td></tr>
+        <tr><td>Stripe 手續費 DTO</td><td class="file-path">ERP\Backend\BE\ExpenseOrder\FeeRateNotes\StripeFeeEntity.cs</td></tr>
+        <tr><td>補收單狀態列舉</td><td class="file-path">ERP\Backend\BE\RechargeReceipt\RechargeReceiptStatusEnum.cs</td></tr>
+        <tr><td>補收單分攤查詢</td><td class="file-path">ERP\DA\ERPReadDBV2\Repositories\RechargeReceiptRepository.cs</td></tr>
+        <tr><td>Stripe 常數</td><td class="file-path">ERP\Backend\BE\Stripes\Constants\StripePaymentFlowConstants.cs, StripeAccountTypeConstants.cs</td></tr>
+        <tr><td>Stripe API Key 取得</td><td class="file-path">ERP\Backend\BLV2\Stripes\StripeApiKeyRetriever.cs</td></tr>
+        <tr><td>第三方付款資訊 DTO</td><td class="file-path">ERP\Backend\BE\SalesOrderThirdPartyPayment\Info\StripeSalesOrderThirdPartyPaymentInfoEntity.cs</td></tr>
+        <tr><td>取消訂單觸發退款入口</td><td class="file-path">SCM\Frontend\NMQV2\CancelOrder\ThirdPartyCancelOrderProcess.cs</td></tr>
+        <tr><td>Stripe 帳務對帳報表</td><td class="file-path">SCM\Frontend\BLV2\BatchUpload\StripeExpenseOrderReportExportService.cs</td></tr>
+        <tr><td>Stripe Payout 對帳下載</td><td class="file-path">SCM\Frontend\BLV2\BatchUpload\StripePayoutReconciliationReportExportService.cs</td></tr>
+        <tr><td>退款完成通知信</td><td class="file-path">ERP\Backend\BLV2\Email\RefundRequestFinishV2MailService.cs</td></tr>
+      </table>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span>風險與待確認事項</h2>
+      <ol class="risk-list">
+        <li><b>Stripe 無 RefundQuery：</b>一旦 PaymentMiddleware 呼叫逾時或網路異常，系統無法主動查詢 Stripe 實際退款結果，需仰賴人工於 Stripe Dashboard 核對，或等待 Payout 對帳報告比對。</li>
+        <li><b>Stripe 無自動失敗重試：</b>PaymentTypeRetryableErrorCodes 未涵蓋 Stripe，退款失敗後需人工重新觸發，可能影響退款時效與客服應對。</li>
+        <li><b>補收單一致性檢查若失敗會拋例外：</b>「退款金額 + 補收金額 != 分攤支付總額」時整筆退款流程中斷，需確保上游取消/換貨流程金額計算與此處假設完全一致，否則會造成退款卡住。</li>
+        <li><b>運費手續費退還之日期/白名單雙軌判斷：</b>2020/07/01 分界 + Charge.SalesOrderFee.Shop 設定為歷史相容邏輯，新商店上線時需留意此設定是否已正確配置，否則運費手續費可能未被退還。</li>
+        <li><b>CalculateFee 保底 0.01 邏輯：</b>當計算結果 &le; 0 時一律回傳 0.01，代表極小額退款情境下手續費退還金額並非嚴格比例計算，屬人為設計的保底規則，非 Stripe 官方規範，異動費率設定時應留意此例外分支。</li>
+      </ol>
+    </section>
+
+    <footer>
+      文件產生依據：程式碼靜態分析（nineyi.scm.nmqv2 repository）。如上游邏輯異動，請同步更新本文件。<br>
+      對應 Markdown 版本：<code>12-Stripe退款機制完整分析.md</code>
+    </footer>
+  </main>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>

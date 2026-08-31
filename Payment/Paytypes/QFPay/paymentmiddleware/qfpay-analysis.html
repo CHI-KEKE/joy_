@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QFPay × PaymentMiddleware 串接分析</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --card2: #20243a;
+      --border: #2e3250;
+      --accent: #5b7fff;
+      --accent2: #7c5bff;
+      --success: #22c55e;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --info: #38bdf8;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --code-bg: #12151f;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', 'Noto Sans TC', sans-serif;
+      line-height: 1.7;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #1e2340 0%, #0d1326 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 36px 48px 28px;
+    }
+    header .badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    header h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+    header p { color: var(--muted); font-size: 14px; }
+    header .meta { margin-top: 14px; display: flex; gap: 20px; flex-wrap: wrap; }
+    header .meta span {
+      font-size: 12px; color: var(--muted);
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+    header .meta span b { color: var(--text); }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 36px 48px 80px; }
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 40px;
+    }
+    .toc h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+    .toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+    .toc-grid a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: rgba(91,127,255,.08);
+      transition: background .15s;
+    }
+    .toc-grid a:hover { background: rgba(91,127,255,.18); }
+    .toc-grid a .num { opacity: .5; margin-right: 6px; }
+
+    section { margin-bottom: 48px; }
+    section h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    section h2 .icon {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+    h3 { font-size: 15px; font-weight: 700; margin: 24px 0 10px; color: var(--info); }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      text-align: center;
+    }
+    .stat-card .val { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+    .stat-card .lbl { font-size: 12px; color: var(--muted); }
+
+    /* ── FLOW ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      position: relative;
+    }
+    .flow-step:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 18px;
+      top: 38px;
+      bottom: -2px;
+      width: 2px;
+      background: var(--border);
+    }
+    .flow-dot {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--card2);
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .flow-body {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      flex: 1;
+      margin-bottom: 12px;
+    }
+    .flow-body .title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .flow-body .desc { font-size: 13px; color: var(--muted); }
+    .flow-body .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* ── CODE ── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-size: 12.5px;
+      line-height: 1.65;
+      margin: 10px 0;
+    }
+    code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; }
+    .hl-key   { color: #79c0ff; }
+    .hl-val   { color: #a5f3a5; }
+    .hl-str   { color: #f0c07a; }
+    .hl-cmt   { color: #6b7a99; font-style: italic; }
+    .hl-err   { color: #ef4444; }
+    .hl-ok    { color: #22c55e; }
+    .hl-warn  { color: #f59e0b; }
+    .hl-fn    { color: #c084fc; }
+
+    /* ── TABLE ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: var(--card2);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #1e2238;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* ── BADGE ── */
+    .badge-success { background: rgba(34,197,94,.15); color: #22c55e; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .badge-warn    { background: rgba(245,158,11,.15); color: #f59e0b; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .badge-danger  { background: rgba(239,68,68,.15);  color: #ef4444; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .badge-info    { background: rgba(56,189,248,.15); color: #38bdf8; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .badge-muted   { background: rgba(148,163,184,.1); color: var(--muted); padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+
+    /* ── ISSUE CARDS ── */
+    .issue-list { display: flex; flex-direction: column; gap: 14px; }
+    .issue-card {
+      border-radius: 10px;
+      padding: 16px 20px;
+      border-left: 4px solid;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .issue-card.critical { border-left-color: #ef4444; }
+    .issue-card.high     { border-left-color: #f59e0b; }
+    .issue-card.medium   { border-left-color: #38bdf8; }
+    .issue-card.low      { border-left-color: #6b7a99; }
+    .issue-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .issue-head .sev { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+    .sev-critical { background: rgba(239,68,68,.2); color: #ef4444; }
+    .sev-high     { background: rgba(245,158,11,.2); color: #f59e0b; }
+    .sev-medium   { background: rgba(56,189,248,.2); color: #38bdf8; }
+    .sev-low      { background: rgba(148,163,184,.15); color: var(--muted); }
+    .issue-head .title { font-weight: 700; font-size: 14px; }
+    .issue-body { font-size: 13px; color: var(--muted); }
+    .issue-body p { margin-bottom: 6px; }
+    .issue-body .fix { color: var(--success); font-size: 12.5px; margin-top: 8px; }
+    .issue-body .fix::before { content: '✅ 建議修正：'; font-weight: 700; }
+
+    /* ── ARCH DIAGRAM ── */
+    .arch {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+      padding: 24px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .arch-node {
+      background: var(--card2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      text-align: center;
+      min-width: 120px;
+    }
+    .arch-node .name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .arch-node .sub  { font-size: 11px; color: var(--muted); }
+    .arch-arr {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 12px;
+    }
+    .arch-arr .arrow { font-size: 20px; color: var(--accent); }
+    .arch-arr .label { font-size: 10px; color: var(--muted); text-align: center; max-width: 90px; }
+
+    /* ── SIGNAL ALGO ── */
+    .sig-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .sig-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .sig-step .num {
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .sig-step .body { flex: 1; }
+    .sig-step .body code { background: rgba(255,255,255,.07); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">PAYMENT MIDDLEWARE</div>
+  <h1>QFPay 串接分析</h1>
+  <p>PaymentMiddleware 的 QFPay Plugin 完整技術解析 · 含串接流程、實作細節與缺點評估</p>
+  <div class="meta">
+    <span>📁 <b>NineYi.PaymentMiddleware.Plugins.QFPay</b></span>
+    <span>🌐 <b>適用地區：HK</b></span>
+    <span>💳 <b>付款頁面型（Hosted PayPage）</b></span>
+    <span>📅 <b>分析日期：2026-07-01</b></span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>目錄</h2>
+    <div class="toc-grid">
+      <a href="#overview"><span class="num">1</span>架構總覽</a>
+      <a href="#pay"><span class="num">2</span>付款流程（Pay）</a>
+      <a href="#query"><span class="num">3</span>查詢流程（Query）</a>
+      <a href="#refund"><span class="num">4</span>退款流程（Refund）</a>
+      <a href="#cancel"><span class="num">5</span>取消流程（Cancel）</a>
+      <a href="#sign"><span class="num">6</span>簽名機制</a>
+      <a href="#codes"><span class="num">7</span>ReturnCode 對照表</a>
+      <a href="#issues"><span class="num">8</span>⚠️ 缺點分析</a>
+      <a href="#api"><span class="num">9</span>API 端點總覽</a>
+    </div>
+  </div>
+
+  <!-- 1. 架構總覽 -->
+  <section id="overview">
+    <h2><span class="icon" style="background:rgba(91,127,255,.15)">🏗</span> 架構總覽</h2>
+
+    <div class="card-grid">
+      <div class="stat-card">
+        <div class="val" style="color:var(--accent)">5</div>
+        <div class="lbl">實作介面數</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" style="color:var(--success)">3</div>
+        <div class="lbl">QFPay API 端點</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" style="color:var(--warn)">Hosted</div>
+        <div class="lbl">付款模式</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" style="color:var(--info)">SHA256</div>
+        <div class="lbl">簽名算法</div>
+      </div>
+    </div>
+
+    <div class="arch">
+      <div class="arch-node" style="border-color:var(--accent)">
+        <div class="name">PaymentMiddleware</div>
+        <div class="sub">API Gateway</div>
+      </div>
+      <div class="arch-arr">
+        <div class="arrow">→</div>
+        <div class="label">Plugin 呼叫</div>
+      </div>
+      <div class="arch-node" style="border-color:var(--accent2)">
+        <div class="name">QFPayPlugin</div>
+        <div class="sub">5 個 Interface</div>
+      </div>
+      <div class="arch-arr">
+        <div class="arrow">→</div>
+        <div class="label">Refit HTTP</div>
+      </div>
+      <div class="arch-node" style="border-color:var(--info)">
+        <div class="name">QFPay API</div>
+        <div class="sub">HK 金流服務</div>
+      </div>
+      <div class="arch-arr">
+        <div class="arrow">→</div>
+        <div class="label">Hosted Page</div>
+      </div>
+      <div class="arch-node" style="border-color:var(--success)">
+        <div class="name">Consumer</div>
+        <div class="sub">瀏覽器</div>
+      </div>
+    </div>
+
+    <h3>介面實作清單</h3>
+    <div class="card">
+      <table>
+        <thead><tr><th>Interface</th><th>功能</th><th>對應 QFPay API</th></tr></thead>
+        <tbody>
+          <tr><td><code>IPayable</code></td><td>建立付款</td><td>產生 PayPage URL（不直接呼叫 API）</td></tr>
+          <tr><td><code>IQueryable</code></td><td>查詢付款狀態</td><td>POST /trade/v1/query</td></tr>
+          <tr><td><code>IRefundable</code></td><td>退款</td><td>POST /trade/v1/refund</td></tr>
+          <tr><td><code>IRefundQueryable</code></td><td>查詢退款狀態</td><td>POST /trade/v1/query（與付款查詢共用）</td></tr>
+          <tr><td><code>ICancellable</code></td><td>取消交易</td><td>POST /trade/v1/reversal</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>DI 設定（QFPayModule）</h3>
+    <div class="card">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">使用 Refit + Polly WaitAndRetry 做 HTTP 重試，retry 次數與間隔由 config 控制。</p>
+      <pre><code><span class="hl-cmt">// QFPayModule.Register()</span>
+services.<span class="hl-fn">AddPaymentMiddlewarePlugins</span>&lt;QFPayPlugin&gt;();
+services.<span class="hl-fn">AddScoped</span>&lt;IClientFactory, ClientFactory&gt;();
+
+services.<span class="hl-fn">AddRefitClient</span>&lt;IQFPayHttpClient&gt;()
+  .<span class="hl-fn">AddHttpMessageHandler</span>&lt;RawResponseMessageLoggingDelegatingHandler&gt;()
+  .<span class="hl-fn">AddTransientHttpErrorPolicy</span>(b =&gt;
+      b.<span class="hl-fn">WaitAndRetryAsync</span>(retryCount, _ =&gt; TimeSpan.FromMilliseconds(retryInterval)));
+
+<span class="hl-cmt">// Config Keys</span>
+<span class="hl-str">"_N1CONFIG:Plugins:QFPay:HttpClient:RetryCount"</span>
+<span class="hl-str">"_N1CONFIG:Plugins:QFPay:HttpClient:RetryInterval"</span>
+<span class="hl-str">"_N1CONFIG:Plugins:QFPay:HttpClient:BaseUrl"</span>
+<span class="hl-str">"_N1CONFIG:Plugins:QFPay:HttpClient:LivingTestBaseUrl"</span>
+<span class="hl-str">"_N1CONFIG:Plugins:QFPay:Method:PayPage:Url"</span></code></pre>
+    </div>
+  </section>
+
+  <!-- 2. PAY -->
+  <section id="pay">
+    <h2><span class="icon" style="background:rgba(34,197,94,.15)">💳</span> 付款流程（Pay）</h2>
+
+    <div class="card" style="border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.04)">
+      <b style="color:var(--success)">📌 核心設計：Hosted Payment Page（付款頁面型）</b><br>
+      <span style="font-size:13px;color:var(--muted)">
+        QFPay 採用 PayPage 模式。PaymentMiddleware 不直接向 QFPay 發送付款 API，而是<b style="color:var(--text)">產生一個帶有簽名的 URL</b>，
+        把 Consumer 重導向到 QFPay 的托管付款頁面。付款完成後由 QFPay 非同步 Notify 或由 ReCheck Job 主動查詢。
+      </span>
+    </div>
+
+    <h3>付款流程步驟</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-dot">1</div>
+        <div class="flow-body">
+          <div class="title">SMSCart 呼叫 POST /api/v1.0/Pay/QFPay/{TGCode}</div>
+          <div class="desc">帶入 X-Api-Key、X-Api-Code Header，Body 含金額、幣別、ExtendInfo（ReturnUrl、FailedUrl、NotifyUrl 等）</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">2</div>
+        <div class="flow-body">
+          <div class="title">組裝 QFPayCreatePaymentRequestEntity</div>
+          <div class="desc">AppCode, SignType, PaySource="91App_checkout", TxAmt(×100), CurrencyCode, out_trade_no(TGCode), txdtm, return_url, failed_url, notify_url, goods_name, lang, expired_time…</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">3</div>
+        <div class="flow-body">
+          <div class="title">GetPayloadToDictionary() → 依 JsonPropertyName 反射所有屬性，按 Key 字母排序</div>
+          <div class="desc">null / 空值欄位在後續 GetPayloadString 中會被過濾排除</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">4</div>
+        <div class="flow-body">
+          <div class="title">GenerateSha256Signature(payloadString_未UrlEncode, apiKey)</div>
+          <div class="desc">簽名只用未 URL Encode 的字串進行；URL 中的 payload 則使用 UrlEncoded 版本</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">5</div>
+        <div class="flow-body">
+          <div class="title">回傳 PaymentResponseEntity：Action = Redirect，WebPaymentUrl = payPageUrl + &sign=xxx</div>
+          <div class="desc">ReturnCode = WaitingToPay，TransactionId = <b style="color:var(--warn)">空字串</b>（付款頁面型，尚未取得）</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Pay 請求參數（QFPayCreatePaymentRequestEntity）</h3>
+    <div class="card">
+      <table>
+        <thead><tr><th>欄位（json_key）</th><th>說明</th><th>必填</th></tr></thead>
+        <tbody>
+          <tr><td><code>appcode</code></td><td>QFPay 分配的 API 憑證（X-Api-Code）</td><td><span class="badge-danger">必填</span></td></tr>
+          <tr><td><code>sign_type</code></td><td>固定 "sha256"</td><td><span class="badge-danger">必填</span></td></tr>
+          <tr><td><code>paysource</code></td><td>固定 "91App_checkout"</td><td><span class="badge-danger">必填</span></td></tr>
+          <tr><td><code>txamt</code></td><td>付款金額（×100，單位分）</td><td><span class="badge-danger">必填</span></td></tr>
+          <tr><td><code>txcurrcd</code></td><td>幣別（如 HKD）</td><td><span class="badge-danger">必填</span></td></tr>
+          <tr><td><code>out_trade_no</code></td><td>TGCode（最長128）</td><td><span class="badge-danger">必填</span></td></tr>
+          <tr><td><code>txdtm</code></td><td>訂單時間（yyyy-MM-dd hh:mm:ss）<span class="badge-warn" style="margin-left:8px">⚠️ hh 格式 Bug</span></td><td><span class="badge-danger">必填</span></td></tr>
+          <tr><td><code>return_url</code></td><td>付款成功重導向</td><td><span class="badge-danger">必填</span></td></tr>
+          <tr><td><code>failed_url</code></td><td>付款失敗重導向</td><td><span class="badge-danger">必填</span></td></tr>
+          <tr><td><code>notify_url</code></td><td>非同步 Webhook 通知 URL</td><td><span class="badge-warn">選填</span></td></tr>
+          <tr><td><code>mchntid</code></td><td>代理商商戶 ID</td><td><span class="badge-warn">選填</span></td></tr>
+          <tr><td><code>goods_name</code></td><td>商品名稱（不得含特殊字符）</td><td><span class="badge-warn">選填</span></td></tr>
+          <tr><td><code>txzone</code></td><td>時區（預設 +0800）</td><td><span class="badge-warn">選填</span></td></tr>
+          <tr><td><code>expired_time</code></td><td>QRCode 到期（分鐘，5~120）</td><td><span class="badge-warn">選填</span></td></tr>
+          <tr><td><code>checkout_expired_time</code></td><td>結帳到期（毫秒）</td><td><span class="badge-warn">選填</span></td></tr>
+          <tr><td><code>lang</code></td><td>UI 語言（zh-hk / zh-cn / en）</td><td><span class="badge-warn">選填</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. QUERY -->
+  <section id="query">
+    <h2><span class="icon" style="background:rgba(56,189,248,.15)">🔍</span> 查詢流程（QueryPayment）</h2>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-dot">1</div>
+        <div class="flow-body">
+          <div class="title">POST /trade/v1/query</div>
+          <div class="desc">傳入 out_trade_no（TGCode） 或 syssn（TransactionId）；支援分頁（Page, PageSize 最大100）</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">2</div>
+        <div class="flow-body">
+          <div class="title">驗證 apiResponse.ResponseCode == "0000"</div>
+          <div class="desc">非 0000 → throw ApplicationException（無區分錯誤類型）</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">3</div>
+        <div class="flow-body">
+          <div class="title">篩選成功付款紀錄</div>
+          <div class="desc">
+            <code>OrderType == "payment" && ResponseCode == "0000" && TradeOrderCode == OrderCode</code>
+            取最早一筆（OrderBy TransactionId）
+          </div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">4</div>
+        <div class="flow-body">
+          <div class="title">SuccessCount 計算</div>
+          <div class="desc">統計同一 TG 成功付款筆數，若 &gt; 1 → ExtendInfo 中帶回 SuccessCount，Payment Console Alert 告警</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">5</div>
+        <div class="flow-body">
+          <div class="title">Fallback 邏輯</div>
+          <div class="desc">若無成功付款紀錄 → 取任一筆符合 TradeOrderCode 的紀錄作為 orderData；ReturnCode = WaitingToPay</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Query 請求參數（QFPayQueryRequestEntity）</h3>
+    <div class="card">
+      <table>
+        <thead><tr><th>欄位</th><th>說明</th><th>備注</th></tr></thead>
+        <tbody>
+          <tr><td><code>syssn</code></td><td>QFPay 交易編號</td><td>與 out_trade_no 擇一</td></tr>
+          <tr><td><code>out_trade_no</code></td><td>TGCode 或 TSCode</td><td></td></tr>
+          <tr><td><code>pay_type</code></td><td>支付類型篩選（逗號分隔）</td><td>選填</td></tr>
+          <tr><td><code>respcd</code></td><td>回應碼篩選</td><td>選填</td></tr>
+          <tr><td><code>start_time / end_time</code></td><td>時間區間查詢</td><td>跨月查詢必填；提供 syssn/out_trade_no 時忽略</td></tr>
+          <tr><td><code>page / page_size</code></td><td>分頁（最大頁碼 8，最大 100 筆）</td><td>選填</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 4. REFUND -->
+  <section id="refund">
+    <h2><span class="icon" style="background:rgba(239,68,68,.15)">🔄</span> 退款流程（Refund）</h2>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-dot">1</div>
+        <div class="flow-body">
+          <div class="title">POST /trade/v1/refund</div>
+          <div class="desc">傳入 syssn（原交易 TransactionId）、out_trade_no（TSCode）、txamt（退款金額 ×100）、txdtm（退款時間）</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">2</div>
+        <div class="flow-body">
+          <div class="title">Response Code Switch 轉換 ReturnCode</div>
+          <div class="desc">依 QFPay ResponseCode 轉換為 PaymentMiddleware ReturnCode（見下表）</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">3</div>
+        <div class="flow-body">
+          <div class="title">FPS 特殊處理</div>
+          <div class="desc">
+            若 apiResponse.ResponseDescription <b style="color:var(--warn)">包含中文字串</b>
+            "該筆訂單被禁止退款，已經超出可退款時限" → 強制設為 Failed（FPS 只能退 29 天內的交易）
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>退款 ReturnCode 對照</h3>
+    <div class="card">
+      <table>
+        <thead><tr><th>QFPay Code</th><th>說明</th><th>PaymentMiddleware ReturnCode</th></tr></thead>
+        <tbody>
+          <tr><td><code>0000</code></td><td>成功</td><td><span class="badge-success">Success</span></td></tr>
+          <tr><td><code>1124</code></td><td>同日不允許部分退款</td><td><span class="badge-info">RefundPending</span></td></tr>
+          <tr><td><code>1269</code></td><td>可退款餘額不足</td><td><span class="badge-info">RefundPending</span></td></tr>
+          <tr><td><code>1265</code></td><td>帳期 11:30PM~12:30AM 禁止退款</td><td><span class="badge-info">RefundPending</span></td></tr>
+          <tr><td><code>1250</code></td><td>PayMe 超出退款期限</td><td><span class="badge-warn">RefundPeriodExceeded</span></td></tr>
+          <tr><td><code>1297</code></td><td>AliPay 超出退款期限</td><td><span class="badge-warn">RefundPeriodExceeded</span></td></tr>
+          <tr><td><code>1145</code></td><td>處理中</td><td><span class="badge-info">RefundPending</span></td></tr>
+          <tr><td><code>1143</code></td><td>訂單狀態不確定</td><td><span class="badge-info">RefundPending</span></td></tr>
+          <tr><td><code>1181</code></td><td>訂單已過期</td><td><span class="badge-danger">RefundFailed</span></td></tr>
+          <tr><td><code>1265</code> (FPS 中文訊息)</td><td>FPS 超出 29 天可退款時限</td><td><span class="badge-danger">Failed（特判）</span></td></tr>
+          <tr><td>其他</td><td>未定義錯誤</td><td><span class="badge-danger">Failed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 5. CANCEL -->
+  <section id="cancel">
+    <h2><span class="icon" style="background:rgba(245,158,11,.15)">❌</span> 取消流程（Cancel）</h2>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-dot">1</div>
+        <div class="flow-body">
+          <div class="title">POST /trade/v1/reversal（撤銷）</div>
+          <div class="desc">注意：是 reversal（撤銷），而非一般 cancel API。用於同日交易撤銷。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">2</div>
+        <div class="flow-body">
+          <div class="title">傳入參數：syssn, out_trade_no, txamt（×100）, txdtm（交易時間）, udid</div>
+          <div class="desc">TransactionDatetime 同樣有 hh 格式 Bug</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">3</div>
+        <div class="flow-body">
+          <div class="title">Response Code == "0000" → Success；其他 → Failed</div>
+          <div class="desc">Cancel 的回應判斷比退款簡單，只有 Success / Failed 兩種</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. SIGN -->
+  <section id="sign">
+    <h2><span class="icon" style="background:rgba(124,91,255,.15)">🔐</span> 簽名機制（SHA256）</h2>
+
+    <div class="sig-box">
+      <div class="sig-step">
+        <div class="num">1</div>
+        <div class="body">反射 Request Entity 所有屬性，以 <code>JsonPropertyName</code> 取得 json key</div>
+      </div>
+      <div class="sig-step">
+        <div class="num">2</div>
+        <div class="body">過濾 null / empty 欄位</div>
+      </div>
+      <div class="sig-step">
+        <div class="num">3</div>
+        <div class="body">依 <b style="color:var(--accent)">Key 字母排序（A→Z）</b> 組成 <code>key=value&key=value&...</code></div>
+      </div>
+      <div class="sig-step">
+        <div class="num">4</div>
+        <div class="body"><b style="color:var(--warn)">不做 URL Encode</b>（簽名用 raw string）；URL 中的 payload 才做 URL Encode</div>
+      </div>
+      <div class="sig-step">
+        <div class="num">5</div>
+        <div class="body"><code>SHA256(payloadStringWithoutEncode + apiKey)</code> → hex lowercase</div>
+      </div>
+      <div class="sig-step">
+        <div class="num">6</div>
+        <div class="body">Query/Refund/Cancel：<code>X-QF-SIGN: {signature}</code> in Header<br>Pay：附加在 URL query string <code>&sign={signature}</code></div>
+      </div>
+    </div>
+
+    <pre style="margin-top:16px"><code><span class="hl-cmt">// GenerateSha256Signature</span>
+<span class="hl-fn">private static string</span> GenerateSha256Signature(string data, string apiKey)
+{
+    using var sha256 = SHA256.<span class="hl-fn">Create</span>();
+    byte[] hash = sha256.<span class="hl-fn">ComputeHash</span>(Encoding.UTF8.<span class="hl-fn">GetBytes</span>(<span class="hl-str">$"{data}{apiKey}"</span>));
+    return Convert.<span class="hl-fn">ToHexString</span>(hash).<span class="hl-fn">ToLower</span>();
+}
+
+<span class="hl-cmt">// QFPay API Header</span>
+{
+  <span class="hl-str">"Content-Type"</span>: <span class="hl-str">"application/x-www-form-urlencoded"</span>,
+  <span class="hl-str">"X-QF-APPCODE"</span>: apiCode,
+  <span class="hl-str">"X-QF-SIGN"</span>: signature,
+  <span class="hl-str">"X-QF-SIGNTYPE"</span>: <span class="hl-str">"SHA256"</span>
+}</code></pre>
+  </section>
+
+  <!-- 7. CODES -->
+  <section id="codes">
+    <h2><span class="icon" style="background:rgba(56,189,248,.15)">📊</span> ReturnCode 對照表</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>QFPay respcd</th><th>說明</th><th>常數名</th></tr></thead>
+        <tbody>
+          <tr><td><code class="hl-ok">0000</code></td><td>✅ 成功</td><td>Success</td></tr>
+          <tr><td><code class="hl-warn">1124</code></td><td>同日不可部分退款</td><td>SameDayPartialRefundRejected</td></tr>
+          <tr><td><code class="hl-warn">1143</code></td><td>訂單狀態不確定（請繼續 Query）</td><td>OrderStatusUncertain</td></tr>
+          <tr><td><code class="hl-warn">1145</code></td><td>退款/撤銷處理中（請繼續 Query）</td><td>RequestProcessing</td></tr>
+          <tr><td><code class="hl-warn">1181</code></td><td>訂單已過期</td><td>OrderExpired</td></tr>
+          <tr><td><code class="hl-warn">1250</code></td><td>PayMe 超出退款期限</td><td>PayMeExceedRefundPeriod</td></tr>
+          <tr><td><code class="hl-warn">1264</code></td><td>交易已退款或已過期</td><td>TransactionClosed</td></tr>
+          <tr><td><code class="hl-warn">1265</code></td><td>帳期內禁止退款（11:30PM~12:30AM）</td><td>RefundNotAllowedDuringBillingPeriod</td></tr>
+          <tr><td><code class="hl-warn">1269</code></td><td>可退餘額不足</td><td>InsufficientRefundableBalance</td></tr>
+          <tr><td><code class="hl-warn">1297</code></td><td>AliPay 超出退款期限</td><td>AliPayExceedRefundPeriod</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 8. ISSUES -->
+  <section id="issues">
+    <h2><span class="icon" style="background:rgba(239,68,68,.15)">⚠️</span> 缺點分析</h2>
+
+    <div class="issue-list">
+
+      <!-- CRITICAL -->
+      <div class="issue-card critical">
+        <div class="issue-head">
+          <span class="sev sev-critical">CRITICAL</span>
+          <span class="title">時間格式 Bug：hh（12小時制）應為 HH（24小時制）</span>
+        </div>
+        <div class="issue-body">
+          <p>Pay、Refund、Cancel 三個流程都有相同 Bug：</p>
+          <pre><code><span class="hl-err">// ❌ 錯誤：hh 是 12小時制，下午時間會錯</span>
+OrderDatetime = extendInfo.OrderDateTime.<span class="hl-fn">ToString</span>(<span class="hl-str">"yyyy-MM-dd <b>hh</b>:mm:ss"</span>);
+EventDatetime = extendInfo.RequestDatetime.<span class="hl-fn">ToString</span>(<span class="hl-str">"yyyy-MM-dd <b>hh</b>:mm:ss"</span>);
+TransactionDatetime = extendInfo.TransactionDatetime.<span class="hl-fn">ToString</span>(<span class="hl-str">"yyyy-MM-dd <b>hh</b>:mm:ss"</span>);
+
+<span class="hl-ok">// ✅ 正確：HH 是 24小時制</span>
+OrderDatetime = extendInfo.OrderDateTime.<span class="hl-fn">ToString</span>(<span class="hl-str">"yyyy-MM-dd <b>HH</b>:mm:ss"</span>);</code></pre>
+          <p>HK 下午 13:00~23:59 的交易，傳給 QFPay 的時間會變成 01:00~11:59，導致 QFPay 可能驗證失敗或交易時間記錄錯誤。</p>
+          <p class="fix">全部改為 <code>HH</code>（大寫）24小時制格式。影響檔案：QFPayPlugin.cs 中 Pay、Refund、Cancel 三處。</p>
+        </div>
+      </div>
+
+      <!-- HIGH #1 -->
+      <div class="issue-card high">
+        <div class="issue-head">
+          <span class="sev sev-high">HIGH</span>
+          <span class="title">Pay 流程無 Webhook 接收：依賴 NotifyUrl（非必填）或 ReCheck Job</span>
+        </div>
+        <div class="issue-body">
+          <p>QFPay 的 <code>notify_url</code> 在 ExtendInfo 為<b>選填</b>，若上游沒傳入，付款完成後 PaymentMiddleware 不會收到任何通知。
+          系統需仰賴定時 ReCheck Job 主動查詢付款狀態，造成付款完成到系統確認之間有時間延遲。</p>
+          <p>Pay 回傳的 <code>TransactionId</code> 永遠是空字串，後續的 Query 必須靠 TGCode 查詢，無法以 TransactionId 快速定位。</p>
+          <p class="fix">強制要求 NotifyUrl 必填（移到必填欄位），並在 QFPay 呼叫前做 validate。</p>
+        </div>
+      </div>
+
+      <!-- HIGH #2 -->
+      <div class="issue-card high">
+        <div class="issue-head">
+          <span class="sev sev-high">HIGH</span>
+          <span class="title">QueryPayment 無法區分「未付款」與「付款失敗」</span>
+        </div>
+        <div class="issue-body">
+          <p>當查無成功付款紀錄時，系統一律回傳 <code>ReturnCode = WaitingToPay</code>。
+          但 QFPay 的 Data 陣列可能包含 Failed 狀態的記錄，目前代碼無法分辨訂單是「還在等待付款」還是「已經付款失敗」。
+          導致 ReCheck Job 可能對一筆已失敗的訂單持續重試查詢。</p>
+          <pre><code><span class="hl-cmt">// 現在的判斷：所有非成功一律 WaitingToPay</span>
+var responseCode = orderData != null && orderData?.ResponseCode == <span class="hl-str">"0000"</span>
+    ? ReturnCodes.Success
+    : ReturnCodes.WaitingToPay; <span class="hl-err">// ← 無法區分 Failed</span></code></pre>
+          <p class="fix">增加 Failed 狀態判斷：若 orderData.ResponseCode 不為 null 且不是 Pending 狀態 Code，則回傳 <code>ReturnCodes.Failed</code>。</p>
+        </div>
+      </div>
+
+      <!-- MEDIUM #1 -->
+      <div class="issue-card medium">
+        <div class="issue-head">
+          <span class="sev sev-medium">MEDIUM</span>
+          <span class="title">RefundQuery 未過濾 OrderType == "refund"</span>
+        </div>
+        <div class="issue-body">
+          <p><code>QueryPayment</code> 正確過濾了 <code>OrderType == "payment"</code>，但 <code>RefundQuery</code> 共用同一個 <code>/trade/v1/query</code> API，
+          卻只用 <code>TradeOrderCode == OrderCode</code> 過濾，未加 <code>OrderType == "refund"</code>。</p>
+          <p>這導致退款查詢可能取到付款紀錄而非退款紀錄，造成 ReturnCode 判斷錯誤。</p>
+          <pre><code><span class="hl-err">// ❌ RefundQuery 缺少 OrderType 過濾</span>
+var orderData = apiResponse.Data
+    .<span class="hl-fn">FirstOrDefault</span>(i => i.TradeOrderCode == extendInfo.OrderCode); <span class="hl-cmt">// 缺 && i.OrderType == "refund"</span></code></pre>
+          <p class="fix">加上 <code>&amp;&amp; i.OrderType == "refund"</code> 過濾條件。</p>
+        </div>
+      </div>
+
+      <!-- MEDIUM #2 -->
+      <div class="issue-card medium">
+        <div class="issue-head">
+          <span class="sev sev-medium">MEDIUM</span>
+          <span class="title">GetPayloadToDictionary 使用反射，效能較差且欄位順序依賴屬性宣告順序</span>
+        </div>
+        <div class="issue-body">
+          <p>每次簽名都使用反射（<code>GetType().GetProperties()</code>）取得屬性並排序。
+          雖然透過字母排序確保順序一致，但反射本身有效能損耗，且若未來新增繼承或 interface 屬性可能有意外行為。</p>
+          <p>另外，<code>null</code> 值屬性會先轉成空字串再過濾，代表邏輯分散在兩個方法中，不夠內聚。</p>
+          <p class="fix">考慮緩存反射結果或改用 Source Generator 方式；或將過濾邏輯統一移入 GetPayloadToDictionary。</p>
+        </div>
+      </div>
+
+      <!-- MEDIUM #3 -->
+      <div class="issue-card medium">
+        <div class="issue-head">
+          <span class="sev sev-medium">MEDIUM</span>
+          <span class="title">IsUsingLiveTest 混入 Request ExtendInfo（環境設定應與請求資料分離）</span>
+        </div>
+        <div class="issue-body">
+          <p>每個 ExtendInfo Entity 都有 <code>IsUsingLiveTest</code> 欄位，由呼叫端傳入決定要打正式環境還是 Live Test 環境。
+          這是典型的環境設定（infrastructure concern）混入業務資料（request payload）的設計問題。</p>
+          <p>理想的設計應由商店層級的設定（如 ShopStaticSetting 或 ShopSecret）決定環境，不應由 caller 動態傳入。</p>
+          <p class="fix">將環境判斷移到 Plugin 初始化層，依 ShopId 或 API Key 的 env 前綴判斷，從 ExtendInfo 移除 IsUsingLiveTest。</p>
+        </div>
+      </div>
+
+      <!-- MEDIUM #4 -->
+      <div class="issue-card medium">
+        <div class="issue-head">
+          <span class="sev sev-medium">MEDIUM</span>
+          <span class="title">FPS 退款限制靠中文字串比對：脆弱且易壞</span>
+        </div>
+        <div class="issue-body">
+          <p>當 QFPay 回傳 1265 且為 FPS 超出退款時限時，判斷邏輯依賴：</p>
+          <pre><code>apiResponse.ResponseDescription.<span class="hl-fn">Contains</span>(<span class="hl-str">"該筆訂單被禁止退款，已經超出可退款時限"</span>)</code></pre>
+          <p>若 QFPay 修改回應訊息（更新措辭、語系、標點符號），這個判斷會直接失效，導致 FPS 超期退款被誤判為 RefundPending 而持續重試。</p>
+          <p class="fix">向 QFPay 確認是否有更穩定的 sub-code 或錯誤碼可識別此情境，改用 code-based 判斷取代字串比對。</p>
+        </div>
+      </div>
+
+      <!-- LOW #1 -->
+      <div class="issue-card low">
+        <div class="issue-head">
+          <span class="sev sev-low">LOW</span>
+          <span class="title">QueryPayments 未實作（NotImplementedException）</span>
+        </div>
+        <div class="issue-body">
+          <p><code>IQueryable</code> 介面的 <code>QueryPayments</code>（複數查詢）方法直接 throw NotImplementedException，
+          若有任何上層邏輯誤呼叫此方法會造成 500 錯誤。</p>
+          <p class="fix">如確認不需要實作，改 return 空集合或加明確的 TODO 說明；或從 Interface 實作中移除。</p>
+        </div>
+      </div>
+
+      <!-- LOW #2 -->
+      <div class="issue-card low">
+        <div class="issue-head">
+          <span class="sev sev-low">LOW</span>
+          <span class="title">SuccessCount > 1 只記錄 Alert，無自動防呆機制</span>
+        </div>
+        <div class="issue-body">
+          <p>當同一 TGCode 有多筆成功付款記錄時（SuccessCount > 1），目前只靠 Payment Console Alert 通知商家協助退款，
+          系統不會自動阻擋或觸發退款流程。這在網路重試場景下可能造成多扣款。</p>
+          <p class="fix">增加自動觸發退款的保護機制，或在偵測到 SuccessCount > 1 時直接回傳 Failed 阻止後續流程。</p>
+        </div>
+      </div>
+
+      <!-- LOW #3 -->
+      <div class="issue-card low">
+        <div class="issue-head">
+          <span class="sev sev-low">LOW</span>
+          <span class="title">無 Circuit Breaker，僅有 Retry</span>
+        </div>
+        <div class="issue-body">
+          <p>QFPayModule 只配置了 Polly WaitAndRetry Policy，沒有 Circuit Breaker。
+          當 QFPay 服務異常時，系統會持續重試所有請求，可能對 QFPay 造成不必要的壓力，也延長每筆請求的 timeout。</p>
+          <p class="fix">搭配 <code>AddCircuitBreakerPolicy</code> 使用，在連續失敗達閾值時暫停呼叫。</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 9. API -->
+  <section id="api">
+    <h2><span class="icon" style="background:rgba(34,197,94,.15)">🌐</span> API 端點總覽</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>流程</th><th>PM 端點</th><th>QFPay 端點</th><th>HTTP Method</th><th>Content-Type</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Pay</td>
+            <td><code>POST /api/v1.0/Pay/QFPay/{TGCode}</code></td>
+            <td>產生 PayPage URL（不直接呼叫）</td>
+            <td>-</td>
+            <td>-</td>
+          </tr>
+          <tr>
+            <td>Query</td>
+            <td><code>POST /api/v1.0/QueryPayment/QFPay</code></td>
+            <td><code>POST /trade/v1/query</code></td>
+            <td>POST</td>
+            <td>application/x-www-form-urlencoded</td>
+          </tr>
+          <tr>
+            <td>Refund</td>
+            <td><code>POST /api/v1.0/Refund/QFPay/{TSCode}</code></td>
+            <td><code>POST /trade/v1/refund</code></td>
+            <td>POST</td>
+            <td>application/x-www-form-urlencoded</td>
+          </tr>
+          <tr>
+            <td>RefundQuery</td>
+            <td><code>POST /api/v1.0/RefundQuery/QFPay</code></td>
+            <td><code>POST /trade/v1/query</code>（共用）</td>
+            <td>POST</td>
+            <td>application/x-www-form-urlencoded</td>
+          </tr>
+          <tr>
+            <td>Cancel</td>
+            <td><code>POST /api/v1.0/Cancel/QFPay/{TransactionId}</code></td>
+            <td><code>POST /trade/v1/reversal</code></td>
+            <td>POST</td>
+            <td>application/x-www-form-urlencoded</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>環境說明</h3>
+    <div class="card">
+      <table>
+        <thead><tr><th>環境</th><th>Config Key</th><th>切換方式</th></tr></thead>
+        <tbody>
+          <tr><td>正式 / Sandbox</td><td><code>_N1CONFIG:Plugins:QFPay:HttpClient:BaseUrl</code></td><td>IsUsingLiveTest = false（預設）</td></tr>
+          <tr><td>Live Test（QA）</td><td><code>_N1CONFIG:Plugins:QFPay:HttpClient:LivingTestBaseUrl</code></td><td>ExtendInfo.IsUsingLiveTest = true</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12px;color:var(--muted);margin-top:12px">⚠️ IsUsingLiveTest 由呼叫端傳入，屬環境設定混入請求資料的設計問題（見缺點#4）。</p>
+    </div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section>
+    <h2><span class="icon" style="background:rgba(91,127,255,.15)">📋</span> 缺點總結</h2>
+    <div class="card-grid">
+      <div class="stat-card" style="border-color:rgba(239,68,68,.4)">
+        <div class="val" style="color:#ef4444">1</div>
+        <div class="lbl">CRITICAL（時間格式 Bug）</div>
+      </div>
+      <div class="stat-card" style="border-color:rgba(245,158,11,.4)">
+        <div class="val" style="color:#f59e0b">2</div>
+        <div class="lbl">HIGH（Webhook / Query 邏輯）</div>
+      </div>
+      <div class="stat-card" style="border-color:rgba(56,189,248,.4)">
+        <div class="val" style="color:#38bdf8">4</div>
+        <div class="lbl">MEDIUM（設計問題）</div>
+      </div>
+      <div class="stat-card" style="border-color:rgba(148,163,184,.3)">
+        <div class="val" style="color:var(--muted)">3</div>
+        <div class="lbl">LOW（可改善）</div>
+      </div>
+    </div>
+    <div class="card">
+      <p style="font-size:14px;line-height:1.8">
+        QFPay 整體串接架構清晰，採用 Hosted PayPage 模式、Refit 作為 HTTP Client、Polly 做 Retry，符合 PaymentMiddleware 的 Plugin 規範。<br>
+        最需要立即修正的是 <b style="color:#ef4444">時間格式 Bug（hh→HH）</b>，這會影響所有 HK 下午時段的付款、退款、取消交易。<br>
+        其次建議補強 <b style="color:#f59e0b">RefundQuery 的 OrderType 過濾</b> 與 <b style="color:#f59e0b">QueryPayment 的 Failed 狀態區分</b>，
+        避免查詢結果誤判導致 ReCheck Job 重複執行。
+      </p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

@@ -56,3 +56,34 @@ limit 10;
     and _msg like '%duplicate%'
     limit 500;
 ```
+
+
+## 算 job name 數量
+
+
+```sql
+-- date
+select job_name,count(*) from "nmqv3_hk"."archive_task" 
+where date = '2026/04/06'
+and "group" in ('91app-live.group1','91app-live.group2','91app-live.group3')
+--and job_name = 'CreateTransactionInfo'
+--and data like '%duplicate%'
+--and id = '3b10b691-1c22-405c-bb3f-ac447009dc4a'
+group by job_name
+limit 10;
+
+
+
+--create time
+select * from "nmqv3_hk"."archive_task" 
+where date = '2026/04/06'
+and "group" in ('91app-live.group1','91app-live.group2','91app-live.group3')
+  and task_create_time >= timestamp '2026-04-06 00:00:00'
+  and task_create_time <  timestamp '2026-04-07 00:00:00'
+
+--and job_name = 'CreateTransactionInfo'
+--and data like '%duplicate%'
+--and id = '3b10b691-1c22-405c-bb3f-ac447009dc4a'
+--group by job_name
+limit 10;
+```

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>情境二・商品卡點選 / 客服協助加車 — Livebuy</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1d29;
+    --paper: #f7f5f0;
+    --accent: #2f6f5e;
+    --accent-dark: #1f4d40;
+    --line: #dcd7cc;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:"Segoe UI","Noto Sans TC",sans-serif; background:var(--paper); color:var(--ink); }
+  .topbar { padding:20px 8vw; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+  .topbar a { color:#6a6c75; text-decoration:none; font-size:13px; }
+  .topbar a:hover { color:var(--accent); }
+  header.hero { padding:12px 8vw 36px; }
+  header.hero .tag { display:inline-block; font-size:11px; letter-spacing:1px; padding:3px 10px; border-radius:20px; background:rgba(47,111,94,0.12); color:var(--accent); font-weight:600; margin-bottom:14px; }
+  header.hero h1 { margin:0 0 10px; font-size:30px; }
+  header.hero p { max-width:760px; color:#5a5c66; line-height:1.8; font-size:15px; margin:0; }
+
+  section { padding:20px 8vw 40px; }
+  section h2 { font-size:20px; border-left:4px solid var(--accent); padding-left:12px; margin-bottom:20px; }
+  .diagram-wrap { background:#fff; border:1px solid var(--line); border-radius:6px; padding:24px; overflow-x:auto; }
+
+  .tabs { display:flex; gap:10px; margin-bottom:18px; }
+  .tab-btn { border:1px solid var(--line); background:#fff; padding:8px 16px; border-radius:20px; font-size:13px; cursor:pointer; color:#5a5c66; }
+  .tab-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  .flow { display:flex; flex-wrap:wrap; gap:14px; align-items:stretch; }
+  .step { flex:1 1 150px; background:#fff; border:1px solid var(--line); border-radius:6px; padding:16px 14px; position:relative; min-width:150px; }
+  .step .num { position:absolute; top:-10px; left:14px; background:var(--accent); color:#fff; font-size:12px; font-weight:700; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  .step h3 { margin:8px 0 6px; font-size:14px; }
+  .step p { margin:0; font-size:12.5px; color:#6a6c75; line-height:1.6; }
+  .step code { display:block; margin-top:8px; font-size:11px; background:#f0efe6; padding:5px 7px; border-radius:4px; color:var(--accent-dark); word-break:break-all; }
+  .arrow { align-self:center; color:#c4c0b4; font-size:20px; }
+
+  .mock-row { display:flex; gap:24px; flex-wrap:wrap; }
+  .phone { width:280px; border:10px solid #22242c; border-radius:34px; background:#000; overflow:hidden; flex-shrink:0; }
+  .phone .screen { background:#0d0f14; color:#fff; min-height:520px; position:relative; display:flex; flex-direction:column; }
+  .live-video { height:200px; background:linear-gradient(160deg,#2a4a42,#141b18); display:flex; align-items:center; justify-content:center; color:#8fb3a6; font-size:12px; position:relative; flex-shrink:0; }
+  .live-badge { position:absolute; top:10px; left:10px; background:var(--accent); font-size:10px; font-weight:700; padding:3px 8px; border-radius:3px; }
+  .product-list { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px; }
+  .product-card { display:flex; gap:8px; background:#181a22; border-radius:8px; padding:8px; align-items:center; }
+  .product-card .thumb { width:44px; height:44px; border-radius:6px; background:#3a3d4a; flex-shrink:0; }
+  .product-card .info { flex:1; }
+  .product-card .info .name { font-size:11.5px; margin-bottom:3px; }
+  .product-card .info .price { font-size:11px; color:#ffcf6b; }
+  .product-card button { background:var(--accent); border:none; color:#fff; font-size:11px; border-radius:14px; padding:5px 10px; white-space:nowrap; }
+  .product-card.added button { background:#3a3d4a; color:#8fb3a6; }
+
+  .console-wrap { background:#161821; border-radius:10px; padding:16px; color:#e6e6e6; font-size:12px; }
+  .console-wrap h4 { margin:0 0 10px; font-size:13px; color:#9ecbff; }
+  .console-row { display:flex; justify-content:space-between; align-items:center; background:#1f2230; border-radius:6px; padding:8px 10px; margin-bottom:8px; }
+  .console-row .msg { flex:1; }
+  .console-row .msg b { color:#ffcf6b; }
+  .console-row button { background:var(--accent); border:none; color:#fff; font-size:11px; border-radius:6px; padding:5px 10px; }
+  .console-row.done { opacity:0.55; }
+  .console-row.done button { background:#333; }
+
+  .note-card { flex:1; min-width:260px; background:#fff; border:1px solid var(--line); border-radius:6px; padding:20px; }
+  .note-card h3 { margin-top:0; font-size:15px; }
+  .note-card ul { padding-left:18px; margin:10px 0 0; font-size:13px; color:#4a4c55; line-height:1.9; }
+  .note-card code { background:#f0efe6; padding:1px 5px; border-radius:3px; color:var(--accent-dark); font-size:12px; }
+
+  .api-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .api-table th, .api-table td { text-align:left; padding:10px 14px; font-size:13px; border-bottom:1px solid var(--line); }
+  .api-table th { background:#f0efe6; font-size:12px; letter-spacing:0.5px; color:#6a6c75; }
+  .api-table td code { background:#f0efe6; padding:2px 6px; border-radius:4px; color:var(--accent-dark); font-size:12px; }
+  .method { font-weight:700; font-size:11px; padding:2px 7px; border-radius:4px; }
+  .m-get { background:#e5f0ff; color:#1c62c9; }
+  .m-post { background:#e6f6ec; color:#1f8a4c; }
+
+  footer { padding:24px 8vw 60px; font-size:12px; color:#9a9ba3; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="./index.html">← 返回情境總覽</a>
+  <span style="font-size:12px;color:#9a9ba3;">Livebuy Web API 情境示意</span>
+</div>
+
+<header class="hero">
+  <span class="tag">邊看邊買・情境二</span>
+  <h1>商品卡點選加車／客服協助加車</h1>
+  <p>除了留言關鍵字，觀眾也能直接在直播畫面下方的商品清單點選「加入購物車」；同時客服／小編可在後台管理台看到留言者名單，針對詢問度高但未觸發關鍵字的觀眾，手動批次代為加入購物車（人工客服輔助下單）。</p>
+</header>
+
+<section>
+  <h2>End to End 流程圖</h2>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="a">A. 消費者自行點選</button>
+    <button class="tab-btn" data-tab="b">B. 客服人員代為加車</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-a">
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+sequenceDiagram
+    participant U as 觀眾 (前台)
+    participant FE as Livebuy 前台頁
+    participant LS as LiveSessionsController
+    participant CART as LiveCartController
+    participant ORD as SalesOrdersController
+
+    U->>FE: 觀看直播
+    FE->>LS: GET {liveSessionId}/products (取得商品清單)
+    LS-->>FE: 回傳商品卡（含庫存/價格）
+    U->>FE: 點擊商品卡「加入購物車」
+    FE->>CART: POST addSku
+    CART-->>FE: 加車成功，更新購物車數量
+    FE-->>U: 商品卡按鈕變為「已加入」
+    U->>FE: 點擊購物車圖示前往結帳
+    FE->>ORD: POST salesorders/get
+    FE-->>U: 導向結帳頁完成付款
+      </pre>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-b">
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+sequenceDiagram
+    participant U as 觀眾 (留言詢問)
+    participant FE as Livebuy 前台頁
+    participant LC as LiveCommentsController
+    participant CS as 客服/小編後台
+    participant CART as LiveCartController
+    participant PM as PrivateMessagesController
+
+    U->>FE: 留言詢問「這件M號還有嗎？」（非關鍵字格式）
+    FE->>LC: POST comments/main
+    LC-->>CS: 留言即時同步至客服後台
+    CS->>CS: 檢視留言者名單，勾選需加車對象
+    CS->>CART: POST agentAddSkus (批次代為加入購物車)
+    CART-->>CS: 加車結果回傳（成功/缺貨清單）
+    CS->>PM: POST comments/{commentId}/private-messages (私訊通知已加車)
+    PM-->>U: 收到私訊「已為您加入購物車，請於30分鐘內完成付款」
+    U->>FE: 開啟購物車確認並結帳
+      </pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>畫面示意</h2>
+  <div class="mock-row">
+    <div>
+      <div class="phone">
+        <div class="screen">
+          <div class="live-video"><span class="live-badge">LIVE</span>直播影像播放區</div>
+          <div class="product-list">
+            <div class="product-card"><div class="thumb"></div><div class="info"><div class="name">秋季針織外套</div><div class="price">NT$ 1,280</div></div><button>加入購物車</button></div>
+            <div class="product-card added"><div class="thumb"></div><div class="info"><div class="name">率性牛仔褲</div><div class="price">NT$ 990</div></div><button>已加入 ✓</button></div>
+            <div class="product-card"><div class="thumb"></div><div class="info"><div class="name">保暖圍巾組</div><div class="price">NT$ 450</div></div><button>加入購物車</button></div>
+          </div>
+        </div>
+      </div>
+      <p style="text-align:center;font-size:12px;color:#9a9ba3;margin-top:8px;">前台：商品卡點選加車</p>
+    </div>
+
+    <div style="flex:1;min-width:320px;">
+      <div class="console-wrap">
+        <h4>客服後台・留言與加車管理台</h4>
+        <div class="console-row"><div class="msg"><b>Wendy：</b>這件M號還有嗎？</div><button>代加購物車</button></div>
+        <div class="console-row"><div class="msg"><b>Jason：</b>幫我留一件L號</div><button>代加購物車</button></div>
+        <div class="console-row done"><div class="msg"><b>Amy：</b>好想要這個顏色</div><button>已加車</button></div>
+      </div>
+      <p style="text-align:center;font-size:12px;color:#9a9ba3;margin-top:8px;">客服／小編後台：批次代為加車</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>步驟拆解</h2>
+  <div class="flow">
+    <div class="step"><span class="num">1</span><h3>顯示商品清單</h3><p>直播畫面下方展示掛載商品，含即時庫存與價格。</p><code>GET /api/live/sessions/{id}/products</code></div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="num">2</span><h3>觀眾點選 / 客服代加</h3><p>觀眾直接點按鈕，或客服於後台勾選留言者批次代加。</p><code>POST /api/live/cart/addSku|agentAddSkus</code></div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="num">3</span><h3>結果通知</h3><p>代加車情境會透過私訊通知觀眾加購結果與付款期限。</p><code>POST /api/platforms/{platform}/comments/{id}/private-messages</code></div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="num">4</span><h3>確認購物車</h3><p>觀眾開啟購物車頁確認品項與數量。</p><code>POST /api/salesorders/get</code></div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="num">5</span><h3>結帳付款</h3><p>導向結帳流程完成付款，結束購買旅程。</p><code>結帳頁（既有金流）</code></div>
+  </div>
+</section>
+
+<section>
+  <h2>對應 API 一覽</h2>
+  <table class="api-table">
+    <thead><tr><th>步驟</th><th>Method</th><th>Endpoint</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td>取得商品清單</td><td><span class="method m-get">GET</span></td><td><code>/api/live/sessions/{liveSessionId}/products</code></td><td>直播中掛載的商品清單（前台顯示用）</td></tr>
+      <tr><td>單筆加入購物車</td><td><span class="method m-post">POST</span></td><td><code>/api/live/cart/addSku</code></td><td>觀眾自行點選商品卡加入購物車</td></tr>
+      <tr><td>客服批次代加車</td><td><span class="method m-post">POST</span></td><td><code>/api/live/cart/agentAddSkus</code></td><td>客服/小編後台針對多位觀眾批次代為加車</td></tr>
+      <tr><td>留言同步後台</td><td><span class="method m-post">POST</span></td><td><code>/api/live/comments/main</code></td><td>觀眾留言即時同步至客服管理台</td></tr>
+      <tr><td>私訊通知</td><td><span class="method m-post">POST</span></td><td><code>/api/platforms/{platform}/comments/{commentId}/private-messages</code></td><td>代加車後私訊通知觀眾結果與付款期限</td></tr>
+      <tr><td>確認購物車 / 結帳</td><td><span class="method m-post">POST</span></td><td><code>/api/salesorders/get</code></td><td>取得訂單/購物車內容，導向結帳</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>設計重點</h2>
+  <div class="note-card">
+    <h3>為何需要「客服代加車」路徑</h3>
+    <ul>
+      <li>並非所有觀眾留言都符合關鍵字格式（例如詢問尺寸、顏色），客服後台可人工判讀留言意圖後代為加車，提升轉換率。</li>
+      <li><code>agentAddSkus</code> 支援批次處理多位觀眾、多個 SKU，適合大檔直播的人力調度。</li>
+      <li>代加車後透過私訊（而非公開留言）通知，避免洗版並保護消費者購買資訊隱私。</li>
+      <li>兩條路徑（自助點選 / 客服代加）最終都會匯流到同一組購物車與結帳 API，前端購物車狀態一致。</li>
+    </ul>
+  </div>
+</section>
+
+<footer>Livebuy Web API — 內部技術情境示意（非正式產品畫面），2026/07/01 整理</footer>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "neutral", themeVariables: { fontSize: "13px" } });
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+      mermaid.init(undefined, document.querySelectorAll(".tab-panel.active .mermaid"));
+    });
+  });
+</script>
+</body>
+</html>

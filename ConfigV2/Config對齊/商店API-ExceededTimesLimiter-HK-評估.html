@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ExceededTimesLimiter 精簡版說明</title>
+<style>
+  :root {
+    --bg: #faf6ef;
+    --panel: #fffdf9;
+    --panel-2: #fbf3e6;
+    --accent: #b8752f;
+    --accent-2: #7a8c5c;
+    --warn: #c99a2e;
+    --danger: #b5563a;
+    --text: #3c3529;
+    --text-dim: #8a7f6c;
+    --border: #e7dcc4;
+    --sidebar-bg: #f3ead9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+  }
+  header.hero { text-align: center; padding: 44px 20px 30px; }
+  header.hero .tag {
+    display: inline-block; background: rgba(184,117,47,0.1);
+    border: 1px solid rgba(184,117,47,0.35); color: var(--accent);
+    padding: 6px 16px; border-radius: 999px; font-size: 13px;
+    letter-spacing: 0.05em; margin-bottom: 18px;
+  }
+  header.hero h1 {
+    font-size: clamp(22px, 4vw, 34px); margin: 0 0 12px;
+    color: #6b4a23;
+  }
+  header.hero p { color: var(--text-dim); font-size: 14px; max-width: 680px; margin: 0 auto; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px 30px;
+    margin: 0;
+    box-shadow: 0 8px 22px -14px rgba(120,90,40,0.25);
+  }
+  .card h2 {
+    font-size: 18px; margin: 0 0 16px; display: flex; align-items: center;
+    gap: 10px; color: #6b4a23;
+  }
+  .card h2 .num {
+    background: var(--accent); color: #fff8ec; font-weight: 700;
+    width: 26px; height: 26px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  h3 { color: #8a5a24; font-size: 15.5px; margin-top: 22px; }
+  h4 { color: #6b4a23; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 12px 0; }
+  th, td { border: 1px solid var(--border); padding: 9px 11px; text-align: left; vertical-align: top; }
+  th { background: rgba(184,117,47,0.09); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) td { background: rgba(184,117,47,0.03); }
+  code, .mono {
+    font-family: "Cascadia Code", "Consolas", monospace; background: rgba(122,140,92,0.12);
+    padding: 2px 7px; border-radius: 6px; color: #5f7440; font-size: 12.5px;
+  }
+  pre {
+    background: #f6efdf; border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; overflow-x: auto; font-size: 13px;
+  }
+  pre code { background: none; padding: 0; color: #5c4a2a; }
+  .keys-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px; margin-top: 10px;
+  }
+  .key-item {
+    background: rgba(184,117,47,0.06); border: 1px solid rgba(184,117,47,0.25);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  .key-item .repo {
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--accent-2); margin-bottom: 5px;
+  }
+  .key-item .key { word-break: break-all; font-size: 12.5px; }
+  .note {
+    border-left: 4px solid var(--warn); background: rgba(201,154,46,0.08);
+    padding: 12px 16px; border-radius: 10px; margin: 14px 0; font-size: 13.5px;
+  }
+  .note strong { color: #a17a1e; }
+  .danger-note {
+    border-left: 4px solid var(--danger); background: rgba(181,86,58,0.08);
+    padding: 12px 16px; border-radius: 10px; margin: 14px 0; font-size: 13.5px;
+  }
+  .danger-note strong { color: var(--danger); }
+  .ok-note {
+    border-left: 4px solid var(--accent-2); background: rgba(122,140,92,0.08);
+    padding: 12px 16px; border-radius: 10px; margin: 14px 0; font-size: 13.5px;
+  }
+  .ok-note strong { color: var(--accent-2); }
+  .badge {
+    display: inline-block; font-size: 11.5px; padding: 3px 10px; border-radius: 999px;
+    background: rgba(122,140,92,0.15); color: #5f7440;
+    border: 1px solid rgba(122,140,92,0.35); margin-left: 8px;
+  }
+  .scenario {
+    border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin: 14px 0;
+    background: rgba(184,117,47,0.03);
+  }
+  .scenario h4 { margin: 0 0 8px; font-size: 14.5px; }
+  ol, ul { padding-left: 22px; }
+  ol li, ul li { margin-bottom: 6px; }
+
+  /* ---- Sidebar Navigation Layout ---- */
+  .layout {
+    display: flex; align-items: flex-start; gap: 26px;
+    max-width: 1300px; margin: 0 auto; padding: 0 24px 100px;
+  }
+  .sidebar {
+    position: sticky; top: 24px; flex: 0 0 240px;
+    background: var(--sidebar-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 18px 14px;
+    max-height: calc(100vh - 48px); overflow-y: auto;
+  }
+  .sidebar h3 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-dim); margin: 6px 10px 14px;
+  }
+  .sidebar nav a {
+    display: block; padding: 10px 12px; margin-bottom: 4px; border-radius: 10px;
+    color: #6b5d43; text-decoration: none; font-size: 13.5px; line-height: 1.4;
+    border: 1px solid transparent; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .sidebar nav a:hover { background: rgba(184,117,47,0.08); color: #4a3a1e; }
+  .sidebar nav a.active {
+    background: rgba(184,117,47,0.16); border-color: rgba(184,117,47,0.4);
+    color: var(--accent); font-weight: 600;
+  }
+  .sidebar nav a .n {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(184,117,47,0.12); font-size: 11px; margin-right: 8px;
+  }
+  .sidebar nav a.active .n { background: var(--accent); color: #fff8ec; }
+  .content-area { flex: 1 1 auto; min-width: 0; }
+  .section-panel { display: none; }
+  .section-panel.active { display: block; }
+  .footer-note { text-align: center; color: var(--text-dim); font-size: 12px; margin-top: 30px; }
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    .sidebar { position: static; width: 100%; max-height: none; }
+  }
+</style>
+</head>
+<body>
+
+  <header class="hero">
+    <div class="tag">SCM API — ExceededTimesLimiter · 精簡版</div>
+    <h1>四把 Config Key 限流開關<br/>精簡摘要 + 實際案例情境</h1>
+    <p>聚焦於「Key 對照」「命名規則」「Value 格式」「HK Prod 套用評估」四個既有主題，並新增「實際案例：不同情境下怎麼回應呼叫端」章節。左側點選章節即可切換顯示。</p>
+  </header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h3>章節導覽</h3>
+    <nav id="nav-list">
+      <a href="#" data-target="sec-1"><span class="n">1</span>四把 Key 對照四支 API</a>
+      <a href="#" data-target="sec-2"><span class="n">2</span>Config Key 命名規則</a>
+      <a href="#" data-target="sec-3"><span class="n">3</span>Config Value 格式</a>
+      <a href="#" data-target="sec-4"><span class="n">4</span>HK Prod 套用評估</a>
+      <a href="#" data-target="sec-5"><span class="n">5</span>實際案例情境</a>
+    </nav>
+  </aside>
+
+  <div class="content-area">
+
+  <div id="sec-1" class="section-panel">
+  <section class="card">
+    <h2><span class="num">1</span>四把 Key 對照四支 API</h2>
+    <div class="keys-grid">
+      <div class="key-item">
+        <div class="repo">NineYi.Scm.Api · SalePageLiteController.GetMain</div>
+        <div class="key mono">Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId</div>
+      </div>
+      <div class="key-item">
+        <div class="repo">NineYi.Scm.Api · SalePageLiteController.GetStock</div>
+        <div class="key mono">Prod.ExceededTimesLimiter.SalePageLite.GetStock.SupplierId</div>
+      </div>
+      <div class="key-item">
+        <div class="repo">NineYi.Scm.ApiV2 · SalesOrderGetLiteController.Get</div>
+        <div class="key mono">Prod.ExceededTimesLimiter.SalesOrderGetLite.Get.SupplierId</div>
+      </div>
+      <div class="key-item">
+        <div class="repo">NineYi.Scm.ApiV2 · ShippingOrderController.Get</div>
+        <div class="key mono">Prod.ExceededTimesLimiter.ShippingOrder.Get.SupplierId</div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>API</th><th>所屬 Repo</th><th>對外 Route</th></tr></thead>
+      <tbody>
+        <tr><td>商品頁內容查詢</td><td><span class="mono">C:\91APP\Api\SCM</span></td><td><span class="mono">SalePage/GetMain</span></td></tr>
+        <tr><td>商品即時庫存查詢</td><td><span class="mono">C:\91APP\Api\SCM</span></td><td><span class="mono">SalePage/GetStock</span></td></tr>
+        <tr><td>訂單查詢</td><td><span class="mono">C:\91APP\SCMAPIV2</span></td><td><span class="mono">SalesOrder/Get</span></td></tr>
+        <tr><td>貨運單查詢</td><td><span class="mono">C:\91APP\SCMAPIV2</span></td><td><span class="mono">ShippingOrder/Get</span></td></tr>
+      </tbody>
+    </table>
+    <p class="note"><strong>備註：</strong>Route（對外網址）與 Config Key 用的 <span class="mono">ControllerName</span> 是兩件事——前者由 <span class="mono">[RoutePrefix]/[Route]</span> 決定，後者由「類別名稱去掉 Controller 後綴」決定，兩者互相獨立，因此 <span class="mono">SalesOrder/Get</span> 對應到的 Key 是 <span class="mono">SalesOrderGetLite.Get</span>（實際執行的類別是 <span class="mono">SalesOrderGetLiteController</span>）。</p>
+  </section>
+  </div>
+
+  <div id="sec-2" class="section-panel">
+  <section class="card">
+    <h2><span class="num">2</span>Config Key 命名規則</h2>
+    <p>程式內部固定組字規則：</p>
+    <pre><code>ExceededTimesLimiter.{ControllerName}.{ActionName}.{RecognizeType}</code></pre>
+    <p><span class="mono">ControllerName</span>／<span class="mono">ActionName</span> 由 Attribute 執行當下動態取得；<span class="mono">RecognizeType</span> 目前寫死為 <span class="mono">"SupplierId"</span>。讀取設定時會自動補上環境前綴：</p>
+    <pre><code>{Execmode}.{Key}
+例：Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId</code></pre>
+    <div class="note">
+      <strong>「三階段開關」只是 Config 治理標籤：</strong>管控上版審核流程（Off→灰度→全開），但程式碼本身只認單純布林 <span class="mono">Enabled</span>，一旦設為 <span class="mono">true</span> 即為<b>全量生效</b>，沒有內建百分比灰度邏輯。
+    </div>
+  </section>
+  </div>
+
+  <div id="sec-3" class="section-panel">
+  <section class="card">
+    <h2><span class="num">3</span>Config Value 格式</h2>
+    <pre><code>Enabled|MaxTimes|CacheSeconds|LockedSeconds</code></pre>
+    <table>
+      <thead><tr><th>欄位</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td>Enabled</td><td>是否啟用限流（true / false）</td></tr>
+        <tr><td>MaxTimes</td><td>CacheSeconds 週期內允許的最大呼叫次數</td></tr>
+        <tr><td>CacheSeconds</td><td>計次時間窗口（秒），同時用於整秒對齊分桶（固定窗口計數器，非滑動窗口）</td></tr>
+        <tr><td>LockedSeconds</td><td>超過次數後鎖定該 SupplierId 的秒數（0＝不啟用鎖定層）</td></tr>
+      </tbody>
+    </table>
+    <p>找不到設定時，程式使用內建預設值：<span class="mono">"false|3|1|30"</span>（關閉、3次/1秒、鎖30秒）。</p>
+    <p>目前 TW／OR Prod 實際套用值：<span class="mono">true|200|1|0</span> — 每個供應商每 1 秒最多 200 次，不啟用鎖定層。</p>
+  </section>
+  </div>
+
+  <div id="sec-4" class="section-panel">
+  <section class="card">
+    <h2><span class="num">4</span>HK Prod Config 套用評估 <span class="badge">實際 IIS Log 數據驗證</span></h2>
+    <p>方法：以 Athena SQL 查詢 <span class="mono">hk_prod_osm.osm_api_iislog</span>，針對 <span class="mono">SalePage/GetMain</span>，依「日期＋秒級時間（<span class="mono">time</span> 欄位本身精確到秒）＋供應商 Token」分組計數，取近 3.5 個月（2026/05/01~2026/08/14）最高的 10 筆，藉此還原「某供應商在某一整秒內實際打了幾次」，可直接對照 <span class="mono">MaxTimes=200／CacheSeconds=1</span> 門檻，不需估算換算。</p>
+    <pre><code>SELECT
+    date,
+    time,
+    regexp_extract(cs_uri_query, '(^|&amp;)t=([^&amp;]+)', 2) AS token,
+    COUNT(*) AS request_count
+FROM "hk_prod_osm"."osm_api_iislog"
+WHERE cs_uri_stem = '/scm/V1/SalePage/GetMain'
+  AND date &gt; '2026/05/01'
+  AND date &lt; '2026/08/14'
+GROUP BY regexp_extract(cs_uri_query, '(^|&amp;)t=([^&amp;]+)', 2), date, time
+ORDER BY request_count DESC
+LIMIT 10;</code></pre>
+    <p><b>查詢邏輯重點：</b>用 <span class="mono">regexp_extract</span> 從 <span class="mono">cs_uri_query</span> 這個 Log 欄位裡把驗證用的 <span class="mono">t</span>（Token，識別供應商）參數抓出來，依「日期＋秒級時間＋Token」分組計數，還原「某供應商在那一整秒內實際打了幾次」——與限流器 <span class="mono">CacheSeconds=1</span> 窗口的統計粒度完全對齊（1:1 對應，非估算）。</p>
+    <table>
+      <thead><tr><th>日期</th><th>時間（秒級）</th><th>Token</th><th>當秒請求數</th></tr></thead>
+      <tbody>
+        <tr><td>2026/06/24</td><td>19:59:36</td><td class="mono">30671037</td><td>277</td></tr>
+        <tr><td>2026/06/24</td><td>19:58:36</td><td class="mono">30671037</td><td>265</td></tr>
+        <tr><td>2026/06/24</td><td>19:56:36</td><td class="mono">30671037</td><td>254</td></tr>
+        <tr><td>2026/06/24</td><td>19:59:37</td><td class="mono">30671037</td><td>241</td></tr>
+        <tr><td>2026/06/24</td><td>20:00:37</td><td class="mono">30671037</td><td>236</td></tr>
+        <tr><td>2026/06/24</td><td>19:57:37</td><td class="mono">30671037</td><td>232</td></tr>
+        <tr><td>2026/06/24</td><td>19:57:36</td><td class="mono">30671037</td><td>212</td></tr>
+        <tr><td>2026/06/24</td><td>19:55:36</td><td class="mono">30671037</td><td>199</td></tr>
+        <tr><td>2026/06/24</td><td>19:54:37</td><td class="mono">30671037</td><td>176</td></tr>
+        <tr><td>2026/07/13</td><td>06:32:48</td><td class="mono">30671037</td><td>173</td></tr>
+      </tbody>
+    </table>
+    <p>Token <span class="mono">30671037</span> ＝「香港莎莎網店」，是唯一在近 3.5 個月內出現過高頻呼叫的供應商。</p>
+    <div class="danger-note">
+      <strong>結論：</strong>若 HK Prod 套用與 TW 相同參數（<span class="mono">true|200|1|0</span>），近 3.5 個月內約有 <b>8 個秒級樣本</b>會實際超過或逼近 200 門檻（集中在 2026/06/24 晚間 19:54~20:00 這 6 分鐘），僅「香港莎莎網店」這一個供應商會被限流收到 429，其餘供應商不受影響 — 屬低頻率、可控的偶發風險。建議：上線前確認該供應商呼叫端有 retry 機制、或改用 DB <span class="mono">SupplierStaticSetting</span> 個別設定較寬鬆的 <span class="mono">MaxTimes</span>，並於上線後觀察監控紀錄。
+    </div>
+  </section>
+  </div>
+
+  <div id="sec-5" class="section-panel">
+  <section class="card">
+    <h2><span class="num">5</span>實際案例：不同情境下，限流器怎麼拿設定、回給呼叫端什麼</h2>
+    <p>以 <span class="mono">SalePageLite.GetMain</span>（Token=30671037，SupplierId 對應之供應商）為例，說明 <span class="mono">ExceededTimesLimiterAttribute.OnActionExecuting</span> 攔截點在三種情境下的實際行為與回應內容。</p>
+
+    <h3>前置條件：只攔截透過 API Gateway 的請求</h3>
+    <p>Attribute 一開始會檢查 Request Header 是否帶有 <span class="mono">N1-TRACE-ID</span>；<b>沒帶這個 Header 的請求（例如內部直連）完全不受限流器管控</b>，直接放行進入 Controller 正常執行。以下三種情境皆假設請求有帶此 Header。</p>
+
+    <div class="scenario">
+      <h4>情境 A：正常呼叫（未超過門檻）</h4>
+      <p><b>設定：</b><span class="mono">Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId = true|200|1|0</span></p>
+      <ol>
+        <li>取得設定：DB <span class="mono">SupplierStaticSetting</span> 查無此 SupplierId 的個別設定 → fallback 到 Config，取得 <span class="mono">Enabled=true, MaxTimes=200, CacheSeconds=1, LockedSeconds=0</span>。</li>
+        <li><span class="mono">Enabled=true</span>，繼續往下執行。組出當前 1 秒窗口的 Cache Key（如 <span class="mono">SalePageLite:GetMain-2024102801:SupplierId:30671037:20260624195936</span>），對 Redis <span class="mono">IncrBy(1)</span>，例如回傳 <span class="mono">tryTimes=120</span>。</li>
+        <li><span class="mono">LockedSeconds=0</span> → 略過鎖定檢查；<span class="mono">tryTimes(120) &lt;= MaxTimes(200)</span> → 不拋例外。</li>
+        <li><b>回應呼叫端：</b>Attribute 直接 <span class="mono">return</span>，請求正常放行進入 Controller Action，依原本業務邏輯回傳 <b>HTTP 200</b> + 正常商品資料 JSON。呼叫端完全無感。</li>
+      </ol>
+    </div>
+
+    <div class="scenario">
+      <h4>情境 B：Config 設為 Enabled=false（限流關閉）</h4>
+      <p><b>設定：</b><span class="mono">Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId = false|200|1|0</span>（或該 Key 根本不存在，走內建預設值 <span class="mono">false|3|1|30</span>）</p>
+      <ol>
+        <li>取得設定：<span class="mono">Enabled=false</span>。</li>
+        <li><span class="mono">ExamineTryOverTimesLockApi</span> 內部第一行判斷 <span class="mono">if (settings.Enabled == false) { return; }</span> — <b>連 Redis <span class="mono">IncrBy</span> 計次都不會執行</b>，等於完全不計數、不檢查。</li>
+        <li><b>回應呼叫端：</b>無論實際呼叫頻率多高（即使 1 秒內打了 1000 次），都不會被攔截，全部正常進入 Controller，回傳 <b>HTTP 200</b>。這也是目前 HK／MY／PX Prod 的實際現況（4 把 Key 皆未設定，等同此情境）。</li>
+      </ol>
+    </div>
+
+    <div class="scenario">
+      <h4>情境 C：Config 已開啟且實際超過 MaxTimes 上限</h4>
+      <p><b>設定：</b><span class="mono">Prod.ExceededTimesLimiter.SalePageLite.GetMain.SupplierId = true|200|1|0</span>；情境對應 2026/06/24 19:59:36 這一秒內，香港莎莎網店（Token 30671037）實際發出第 201 次以後的請求（該秒總計 277 次）。</p>
+      <ol>
+        <li>取得設定同情境 A：<span class="mono">Enabled=true, MaxTimes=200, CacheSeconds=1, LockedSeconds=0</span>。</li>
+        <li>同一秒窗口 Cache Key 已被前面 200 次請求陸續 <span class="mono">IncrBy</span> 累加，第 201 次呼叫時 <span class="mono">IncrBy(1)</span> 回傳 <span class="mono">tryTimes=201</span>。</li>
+        <li><span class="mono">LockedSeconds=0</span> → 略過鎖定檢查（不會額外鎖定，下一秒視窗重置後即可恢復正常）；<span class="mono">tryTimes(201) &gt; MaxTimes(200)</span> → 拋出 <span class="mono">ExceededTimesLimiterException</span>。</li>
+        <li>Attribute 的 <span class="mono">catch (ExceededTimesLimiterException ex)</span> 攔截到後，直接組出：
+          <pre><code>actionContext.Response = actionContext.Request.CreateErrorResponse(
+    (HttpStatusCode)429, ex.Message);</code></pre>
+        </li>
+        <li><b>回應呼叫端：</b>
+          <ul>
+            <li>HTTP 狀態碼：<b>429 Too Many Requests</b></li>
+            <li>Body：<span class="mono">ExceptionSource:SalePageLite.GetMain (SupplierId:30671037) TryTimes:201</span></li>
+          </ul>
+          此請求<b>完全不會進入 Controller Action</b>（不查 DB、不跑業務邏輯），在 ActionFilter 階段就被短路攔截並直接回應。該秒內第 202~277 次的請求也會依同樣邏輯逐一收到 429，直到下一秒新窗口 Key 產生、計數歸零為止。
+        </li>
+      </ol>
+      <div class="ok-note">
+        <strong>額外容錯：</strong>若限流器內部呼叫 Redis 逾時（<span class="mono">RedisTimeoutException</span>），Attribute 會直接 <span class="mono">return</span> 放行，不擋請求 — 避免限流元件本身故障時反而造成正常流量中斷（Fail-Open 設計）。
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <p class="footer-note">精簡版摘要 — 完整版請參閱 ExceededTimesLimiter-流程說明.html</p>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var links = document.querySelectorAll('#nav-list a');
+    var panels = document.querySelectorAll('.section-panel');
+
+    function activate(targetId, updateHash) {
+      panels.forEach(function (p) {
+        p.classList.toggle('active', p.id === targetId);
+      });
+      links.forEach(function (a) {
+        a.classList.toggle('active', a.getAttribute('data-target') === targetId);
+      });
+      if (updateHash !== false) {
+        history.replaceState(null, '', '#' + targetId);
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    }
+
+    links.forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        activate(a.getAttribute('data-target'));
+      });
+    });
+
+    var initial = (location.hash || '').replace('#', '');
+    var validIds = Array.prototype.map.call(panels, function (p) { return p.id; });
+    if (!initial || validIds.indexOf(initial) === -1) {
+      initial = 'sec-1';
+    }
+    activate(initial, false);
+  })();
+</script>
+</body>
+</html>

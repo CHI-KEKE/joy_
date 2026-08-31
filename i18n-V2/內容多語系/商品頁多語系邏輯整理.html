@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>商品頁（SalePage）多語系邏輯整理</title>
+<style>
+  body { font-family: "Microsoft JhengHei", "Segoe UI", Arial, sans-serif; line-height: 1.7; color: #222; max-width: 1100px; margin: 40px auto; padding: 0 20px; background: #fafafa; }
+  h1 { border-bottom: 3px solid #2c6ea5; padding-bottom: 10px; color: #1b4a73; }
+  h2 { margin-top: 48px; color: #1b4a73; border-left: 6px solid #2c6ea5; padding-left: 10px; }
+  h3 { margin-top: 28px; color: #2c6ea5; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; background: #fff; }
+  th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; vertical-align: top; font-size: 14px; }
+  th { background: #2c6ea5; color: #fff; }
+  tr:nth-child(even) { background: #f2f7fb; }
+  code, pre { font-family: Consolas, "Courier New", monospace; }
+  code { background: #eef2f6; padding: 2px 5px; border-radius: 3px; color: #b3261e; }
+  pre { background: #1e1e1e; color: #d4d4d4; padding: 14px 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+  .file { color: #555; font-size: 13px; }
+  .tag-ok { color: #2e7d32; font-weight: bold; }
+  .tag-bug { color: #c62828; font-weight: bold; }
+  .note { background: #fff8e1; border-left: 5px solid #f9a825; padding: 10px 14px; margin: 16px 0; }
+  .fix { background: #e8f5e9; border-left: 5px solid #2e7d32; padding: 10px 14px; margin: 16px 0; }
+  .toc { background: #fff; border: 1px solid #ddd; padding: 14px 20px; border-radius: 6px; }
+  .toc a { text-decoration: none; color: #2c6ea5; }
+  footer { margin-top: 60px; color: #888; font-size: 12px; border-top: 1px solid #ddd; padding-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>商品頁（SalePage）多語系邏輯整理</h1>
+<p class="file">來源專案：<code>NineYi.Sms</code> ｜ 主要檔案：<code>BusinessLogic/Services/SalePages/SalePageService.cs</code>、<code>CrossLayer/Utilities/Multilinguals/MultilingualService.cs</code></p>
+
+<div class="toc">
+  <strong>目錄</strong>
+  <ol>
+    <li><a href="#overview">整體架構：涉及哪些多語系資料表</a></li>
+    <li><a href="#core">多語系存取核心方法（DynamoDB）</a></li>
+    <li><a href="#flows">三支 API 的多語系寫入邏輯比較</a></li>
+    <li><a href="#skucheck">CheckSaleProductSkuMultilingualItems 全填/全不填檢查</a></li>
+    <li><a href="#bug">核心問題：SalePageMLItems 沒有「全空跳過」保護</a></li>
+    <li><a href="#fix">建議修正方向</a></li>
+  </ol>
+</div>
+
+<h2 id="overview">1. 整體架構：涉及哪些多語系資料表</h2>
+<p>商品頁相關的多語系資料儲存在 DynamoDB（而非 SQL Server），依用途分為三張表（<code>MultilingualTableNameEnum</code>）：</p>
+<table>
+  <tr><th>資料表 Enum</th><th>對應內容</th><th>Entity</th></tr>
+  <tr><td><code>SalePage</code></td><td>商品頁標題 / SEO 標題 / SEO 關鍵字 / SEO 描述</td><td><code>SalePageMultilingualItemEntity</code></td></tr>
+  <tr><td><code>SaleProductDesc</code></td><td>商品詳細說明（銷售重點 / 商品特色 / 詳細內容 Content）</td><td><code>SaleProductDescMLItemEntity</code></td></tr>
+  <tr><td><code>SaleProductSKU</code></td><td>商品選項（SKU）名稱組合</td><td><code>SaleProductSkuMultilingualEditItemEntity</code></td></tr>
+</table>
+<p>每張表以 <code>(module, id)</code> 為 key，<code>id</code> 為對應的 SalePageId 或 SkuId，內容再依 <code>LangId</code>（如 <code>en-US</code>、<code>zh-CN</code>）分組儲存。</p>
+
+<h2 id="core">2. 多語系存取核心方法（DynamoDB）</h2>
+<p class="file">檔案：<code>CrossLayer/Utilities/Multilinguals/MultilingualService.cs</code></p>
+<pre>public void CreateOrModifyMultilingualItemToDynamo&lt;T&gt;(MultilingualTableNameEnum module, long id, List&lt;T&gt; langItems)
+    where T : MultilingualBaseEntity
+{
+    var contents = langItems.ToDictionary(item =&gt; item.LangId);
+    this._mlAdmin.CreateOrUpdate(module.ToString(), id.ToString(), contents);
+}</pre>
+<div class="note">
+<strong>關鍵行為：</strong>此方法<strong>沒有任何「空值判斷」</strong>。只要某語系的物件存在於傳入的 <code>langItems</code> list，就會被組進 dictionary，直接呼叫 <code>CreateOrUpdate</code>，對 DynamoDB 執行「該語系整包覆蓋」。<br>
+換句話說：<u>呼叫端（Service）自己要負責過濾掉不該寫入 / 全空的語系資料</u>，這個共用方法本身不會幫你判斷。
+</div>
+
+<h2 id="flows">3. 三支 API 的多語系寫入邏輯比較</h2>
+<table>
+  <tr>
+    <th>API / 方法</th>
+    <th>SalePage 多語系（標題/SEO）</th>
+    <th>SaleProductDesc 多語系（詳細說明）</th>
+    <th>SaleProductSKU 多語系（選項名稱）</th>
+  </tr>
+  <tr>
+    <td><code>CreateSalePage</code><br><span class="file">line 557~</span></td>
+    <td>—（建立流程無此欄位處理片段）</td>
+    <td>
+      <span class="tag-ok">有保護</span><br>
+      第 664 行：<code>if (saleProductDescMLItems.Any())</code> 才寫入 Dynamo
+    </td>
+    <td>
+      <span class="tag-ok">有保護</span><br>
+      第 588 行呼叫 <code>CheckSaleProductSkuMultilingualItems</code>，全空語系會被 <code>RemoveAll</code> 移除，不寫入
+    </td>
+  </tr>
+  <tr>
+    <td><code>UpdateSalePageInfoWithSku</code><br><span class="file">line 1605~</span></td>
+    <td>
+      <span class="tag-bug">無保護</span><br>
+      第 1995 行：<code>CreateOrModifyMultilingualItemToDynamo(SalePage, salePage.SalePage_Id, entity.SalePageMLItems)</code><br>
+      不論欄位是否全空，<strong>無條件執行</strong>
+    </td>
+    <td>
+      <span class="tag-ok">部分保護</span><br>
+      第 2014 行無條件寫入，但若 <code>IsAlterSalePageDesc == false</code>，第 1998~2012 行會先把 <code>Content</code> 欄位還原成 Dynamo 原值再寫回（避免內容被清空），其餘欄位仍可能被覆蓋
+    </td>
+    <td>
+      <span class="tag-ok">有保護</span><br>
+      第 1644 行呼叫 <code>CheckSaleProductSkuMultilingualItems</code>，全空語系從 <code>skuNameMLItems</code> 移除；第 1992 行只對「剩下的（非全空）」語系分組寫入
+    </td>
+  </tr>
+  <tr>
+    <td><code>UpdateSalePageSeo</code><br><span class="file">line 2062~</span></td>
+    <td>
+      <span class="tag-bug">無保護</span><br>
+      第 2098 行：<code>CreateOrModifyMultilingualItemToDynamo(SalePage, entity.Id, entity.SalePageMLItems)</code><br>
+      同樣無條件執行，只做字串過濾（<code>RemoveControlChar</code>、<code>RemoveDoubleQuotes</code>），沒有空值判斷
+    </td>
+    <td>N/A（此 API 不處理）</td>
+    <td>N/A（此 API 不處理）</td>
+  </tr>
+</table>
+
+<h2 id="skucheck">4. CheckSaleProductSkuMultilingualItems 全填/全不填檢查</h2>
+<p class="file">檔案：<code>SalePageService.cs</code>，第 5699 行</p>
+<pre>private void CheckSaleProductSkuMultilingualItems(
+    Dictionary&lt;string, List&lt;string&gt;&gt; skuCheckDic,
+    Action allValuedAction,
+    DelegateFunctionWithParameter&lt;string&gt; allEmptyAction)
+{
+    foreach (var dic in skuCheckDic)
+    {
+        if (dic.Value.All(p =&gt; string.IsNullOrEmpty(p) == false))
+        {
+            allValuedAction();              // 全部有值 → 不做事，照常寫入
+        }
+        else if (dic.Value.All(p =&gt; string.IsNullOrEmpty(p)))
+        {
+            allEmptyAction(dic.Key);         // 全部沒值 → 呼叫端移除該語系，不寫入 Dynamo
+        }
+        else
+        {
+            throw new ApplicationException(Translations.Backend.Exception.Message.InvalidData);
+            // 半填半不填 → 視為不合法輸入，直接擋下整個請求
+        }
+    }
+}</pre>
+
+<h3>邏輯流程圖（文字版）</h3>
+<pre>
+輸入：某語系底下所有 SKU 選項名稱的拆解字串
+        │
+        ▼
+  該語系所有值皆「有值」？───是──▶ allValuedAction()：不處理，照常寫入 Dynamo
+        │否
+        ▼
+  該語系所有值皆「空」？─────是──▶ allEmptyAction(lang)：RemoveAll(該語系)，不寫入 Dynamo
+        │否（部分有值、部分空）
+        ▼
+  throw ApplicationException(InvalidData)：擋下請求，要求前端修正
+</pre>
+<p><strong>設計目的：</strong>避免 SKU 多語系名稱出現「英文填了、簡中沒填」這種半調子狀態，導致前台切換語系顯示錯亂；同時也避免使用者「不想填某語系」時，被空字串誤蓋掉既有資料。</p>
+
+<h2 id="bug">5. 核心問題：SalePageMLItems 沒有「全空跳過」保護</h2>
+<div class="note">
+<strong>現況：</strong>
+<ul>
+  <li><code>UpdateSalePageInfoWithSku</code> 與 <code>UpdateSalePageSeo</code> 在寫入 <code>SalePage</code> 多語系（Title / SEOTitle / SEOKeywords / SEODescription）前，<strong>都沒有比照 SKU 的 <code>CheckSaleProductSkuMultilingualItems</code> 做「全空則移除、不寫入」的檢查</strong>。</li>
+  <li>只要前端把 <code>SalePageMLItems</code> 內某語系（如 <code>en-US</code>、<code>zh-CN</code>）所有欄位都傳空字串 <code>""</code>，該語系物件依然會被整包送進 <code>CreateOrModifyMultilingualItemToDynamo</code>，進而 <code>CreateOrUpdate</code> 覆蓋 DynamoDB 既有內容。</li>
+  <li>結果：<strong>原本已存在的多語系 Title / SEO 資料會被覆蓋成空字串，等同被清除</strong>，且此行為不會拋出任何錯誤或警示，使用者可能無感中遺失多語系內容。</li>
+</ul>
+</div>
+
+<h3>實際案例（<code>UpdateSalePageInfoWithSku</code> Request 節錄）</h3>
+<pre>"SalePageMLItems": [
+  { "Title": "", "SEOTitle": "", "SEOKeywords": "", "SEODescription": "", "LangId": "en-US" },
+  { "Title": "", "SEOTitle": "", "SEOKeywords": "", "SEODescription": "", "LangId": "zh-CN" }
+]</pre>
+<p>此請求送出後，第 1995 行 <code>CreateOrModifyMultilingualItemToDynamo(SalePage, salePageId, entity.SalePageMLItems)</code> 會直接把 <code>en-US</code>、<code>zh-CN</code> 兩個語系原本的內容全部覆蓋為空字串。</p>
+
+<h2 id="fix">6. 建議修正方向</h2>
+<div class="fix">
+<ol>
+  <li><strong>比照 SKU 的檢查機制</strong>：在寫入 <code>SalePage</code> / <code>SaleProductDesc</code> 多語系前，針對每個語系判斷「Title / SEOTitle / SEOKeywords / SEODescription 是否全部為空」，全空則從清單中移除（不寫入），維持 Dynamo 既有資料；只有「至少有一欄有值」才寫入該語系。</li>
+  <li><strong>共用邏輯抽出</strong>：可以把 <code>CheckSaleProductSkuMultilingualItems</code> 的全填/全不填判斷邏輯，抽成通用的 <code>CheckMultilingualItemsAllOrNothing&lt;T&gt;</code> 之類的共用方法，讓 <code>SalePageMLItems</code>、<code>SaleProductDescMLItems</code>、SKU 名稱都能重複使用，避免各流程各自實作、邏輯不一致。</li>
+  <li><strong>單元測試補強</strong>：針對「全空語系不應覆蓋既有資料」新增測試案例，確保未來修改不會再次踩雷。</li>
+  <li><strong>短期防呆</strong>：若暫不調整既有商業邏輯，至少可在 API 層（Controller / Model Validation）針對全空的語系物件先行過濾，避免傳到 Service 層才處理。</li>
+</ol>
+</div>
+
+<footer>
+  文件整理日期：2026-07-07　｜　依據程式碼分析自動整理，實際行為請以最新程式碼為準。
+</footer>
+
+</body>
+</html>

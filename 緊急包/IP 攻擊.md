@@ -55,3 +55,25 @@ https://91app.slack.com/archives/G06A3GDC7/p1721874185486219
 HK Prod Shopping 服務受到攻擊
 185.225.234.107 (HK)
 經由 hk.melvita.com 發動，可以阻擋嗎?
+
+
+
+## Athena
+
+
+```sql
+SELECT cs_host,
+   cs_uri_query,
+   split_part(original_ip, ',', 1) AS first_ip,
+   COUNT(1) AS cnt
+FROM "hk_prod_webstore"."webstore_web_iislog"
+WHERE 1=1
+  AND date >= '2026/04/22'
+  AND date <= '2026/04/23'
+  AND cs_uri_stem LIKE '%MyECoupon%'
+  and cs_host = 'hk.melvita.com'
+  -- AND nyshopid = '2190'
+ -- AND cs_uri_query LIKE '%85%'
+GROUP BY cs_host, cs_uri_query,split_part(original_ip, ',', 1)
+ORDER BY cnt DESC
+```

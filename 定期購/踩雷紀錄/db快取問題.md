@@ -1,0 +1,1 @@
+RegularCreateOrder => 1.generate detail => getanddecrypt 這一步直接不送sql!! 結果把加密的內容打api送出去

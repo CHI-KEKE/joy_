@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>OSMPlus 站台 ETL Flow 引擎 — 整體流程與資料表關係分析</title>
+<style>
+  :root {
+    --c-bg: #0f1115;
+    --c-panel: #171a21;
+    --c-panel2: #1e2229;
+    --c-border: #2a2f3a;
+    --c-text: #e6e9ef;
+    --c-muted: #9aa4b2;
+    --c-blue: #4da3ff;
+    --c-green: #35d08a;
+    --c-yellow: #f2c94c;
+    --c-red: #ff6b6b;
+    --c-purple: #b18cff;
+    --c-orange: #ffa14a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    background: var(--c-bg);
+    color: var(--c-text);
+    margin: 0;
+    line-height: 1.7;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 100px; }
+  header.top {
+    padding: 48px 24px;
+    background: linear-gradient(135deg, #1a2036 0%, #10131a 100%);
+    border-bottom: 1px solid var(--c-border);
+  }
+  header.top h1 { font-size: 30px; margin: 0 0 10px; }
+  header.top .meta { color: var(--c-muted); font-size: 14px; }
+  header.top .badges { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    font-size: 12px; border: 1px solid var(--c-border); color: var(--c-blue);
+    background: rgba(77,163,255,0.08);
+  }
+  nav.toc {
+    background: var(--c-panel);
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin: 32px 0;
+  }
+  nav.toc h2 { font-size: 15px; margin: 0 0 10px; color: var(--c-muted); text-transform: uppercase; letter-spacing: .05em;}
+  nav.toc ol { columns: 2; margin: 0; padding-left: 20px; }
+  nav.toc a { color: var(--c-text); text-decoration: none; }
+  nav.toc a:hover { color: var(--c-blue); }
+  section { margin: 56px 0; }
+  h2.sec-title {
+    font-size: 22px; margin: 0 0 20px; padding-bottom: 12px;
+    border-bottom: 2px solid var(--c-border); display: flex; align-items: center; gap: 10px;
+  }
+  h2.sec-title .num {
+    background: var(--c-blue); color: #06121f; width: 30px; height: 30px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;
+  }
+  h3 { font-size: 17px; color: var(--c-blue); margin: 28px 0 12px; }
+  p { color: #cfd6e0; }
+  .card {
+    background: var(--c-panel); border: 1px solid var(--c-border); border-radius: 12px;
+    padding: 20px 24px; margin: 16px 0;
+  }
+  .callout {
+    border-left: 4px solid var(--c-blue); background: rgba(77,163,255,.07);
+    padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 16px 0; color: #d7e3f5;
+  }
+  .callout.warn { border-color: var(--c-orange); background: rgba(255,161,74,.08); }
+  .callout.err { border-color: var(--c-red); background: rgba(255,107,107,.08); }
+  code, .mono {
+    font-family: Consolas, "Cascadia Code", monospace;
+    background: #11141a; border: 1px solid var(--c-border);
+    padding: 1px 6px; border-radius: 4px; font-size: 13px; color: var(--c-green);
+  }
+  pre {
+    background: #0c0e13; border: 1px solid var(--c-border); border-radius: 10px;
+    padding: 18px 20px; overflow-x: auto; font-size: 13px; color: #d6dbe4;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--c-border); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--c-panel2); color: var(--c-blue); font-weight: 600; }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  .status-ready { color: var(--c-muted); font-weight: 600; }
+  .status-running { color: var(--c-blue); font-weight: 600; }
+  .status-finish { color: var(--c-green); font-weight: 600; }
+  .status-pass { color: var(--c-yellow); font-weight: 600; }
+  .status-error { color: var(--c-red); font-weight: 600; }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; align-items: stretch; gap: 0; margin: 24px 0; }
+  .flow-node {
+    align-self: center; min-width: 320px; max-width: 720px;
+    background: var(--c-panel2); border: 1px solid var(--c-border); border-radius: 10px;
+    padding: 12px 20px; text-align: center; position: relative;
+  }
+  .flow-node.entry { border-color: var(--c-purple); box-shadow: 0 0 0 1px rgba(177,140,255,.25) inset; }
+  .flow-node.core { border-color: var(--c-blue); }
+  .flow-node.db { border-color: var(--c-green); }
+  .flow-node .tag { display:block; font-size:11px; color: var(--c-muted); margin-bottom:4px; }
+  .flow-node b { font-size: 14.5px; }
+  .arrow { align-self: center; color: var(--c-muted); font-size: 13px; padding: 6px 0; text-align:center; }
+  .arrow::before { content: "↓"; display:block; font-size: 20px; color: var(--c-muted); }
+
+  .branch-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin: 10px 0 20px; }
+  .branch-row .flow-node { flex: 1; min-width: 220px; }
+
+  /* ER diagram */
+  .er-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 24px 0;
+  }
+  @media (max-width: 900px) { .er-grid { grid-template-columns: 1fr; } }
+  .er-table {
+    background: var(--c-panel2); border: 1px solid var(--c-border); border-radius: 10px; overflow: hidden;
+  }
+  .er-table .er-head {
+    background: rgba(77,163,255,.12); color: var(--c-blue); font-weight: 700; padding: 10px 14px;
+    border-bottom: 1px solid var(--c-border); font-size: 14px;
+  }
+  .er-table ul { list-style: none; margin: 0; padding: 10px 14px; font-size: 12.5px; color: #cfd6e0; }
+  .er-table li { padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,.05); }
+  .er-table li:last-child { border-bottom: none; }
+  .er-table .pk { color: var(--c-yellow); }
+  .er-table .fk { color: var(--c-green); }
+  .er-note { text-align:center; color: var(--c-muted); font-size: 12px; margin-top: 6px;}
+
+  .state-diagram { display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap: wrap; margin: 20px 0; }
+  .state-box { padding: 10px 18px; border-radius: 8px; border: 1px solid var(--c-border); background: var(--c-panel2); font-weight:600; font-size: 13px;}
+  .state-arrow { color: var(--c-muted); font-size: 18px; }
+
+  footer { color: var(--c-muted); font-size: 12px; text-align: center; margin-top: 60px; }
+  .file-index td:first-child { white-space: nowrap; color: var(--c-blue); }
+  .kbd { font-family: Consolas, monospace; background:#11141a; border:1px solid var(--c-border); border-radius:4px; padding:0 4px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap" style="padding:0;">
+    <h1>OSMPlus 站台 — ETL Flow 引擎整體流程與鏈路分析</h1>
+    <div class="meta">分析對象：NineYi.OsmPlus.Console（osmplus 站台）ETL Flow 排程引擎　｜　涉及專案：Console.BL.Service / Console.BL.BE / DA.Repositories / Batch.Run* 系列　｜　資料庫：EtlDB</div>
+    <div class="badges">
+      <span class="badge">EtlFlowControlService</span>
+      <span class="badge">EtlFlowTask</span>
+      <span class="badge">EtlFlowTaskSlave</span>
+      <span class="badge">EtlFlowTaskLog</span>
+      <span class="badge">ShopEtlFlow / ShopEtlFlowStep</span>
+      <span class="badge">csp_BatchCreateEtlFlowTaskByShopEtlFlowId</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h2>目錄</h2>
+  <ol>
+    <li><a href="#sec1">在整個流程中的位置（Big Picture）</a></li>
+    <li><a href="#sec2">觸發條件與進入點</a></li>
+    <li><a href="#sec3">資料表結構與 ER 關係</a></li>
+    <li><a href="#sec4">核心流程（逐步）</a></li>
+    <li><a href="#sec5">分支決策 / 狀態對照</a></li>
+    <li><a href="#sec6">狀態流轉圖</a></li>
+    <li><a href="#sec7">例外處理一覽</a></li>
+    <li><a href="#sec8">關鍵資料說明（InputChainData / OutputChainData）</a></li>
+    <li><a href="#sec9">特殊案例 / 備註</a></li>
+    <li><a href="#sec10">關鍵檔案索引</a></li>
+  </ol>
+</nav>
+
+<section id="sec1">
+  <h2 class="sec-title"><span class="num">1</span>在整個流程中的位置（Big Picture）</h2>
+  <p>OSMPlus 是一套「ETL 排程引擎」型態的後台系統：以 <b>ShopEtlFlow（流程設定）</b> 定義每個商店要跑的批次流程，
+  以 <b>ShopEtlFlowStep（步驟設定）</b> 定義流程中每一步要執行的 ETL Service（例如：下載檔案、轉檔、寫入 ERP、通知等）。
+  排程/訊息觸發後，引擎會依設定「產生一筆執行記錄（Task / TaskSlave）」，再依序呼叫每個步驟的 Service 執行，並把過程寫入 Log。</p>
+
+  <div class="flow">
+    <div class="flow-node entry">
+      <span class="tag">觸發來源（2 種模式）</span>
+      <b>Windows Task Scheduler 定時呼叫 Batch.exe（run-once）　／　常駐程式監聽 RabbitMQ 訊息</b>
+    </div>
+    <div class="arrow"></div>
+    <div class="branch-row">
+      <div class="flow-node"><span class="tag">① Windows Task Scheduler → Batch.RunFlowById.exe</span>依排程時間，帶入 ShopEtlFlowId/Name 啟動，執行完即結束（run-once）</div>
+      <div class="flow-node"><span class="tag">① Windows Task Scheduler → Batch.RunFirstFlowTask.exe</span>撈第一筆到期 Ready Task 或指定 TaskId，執行完即結束</div>
+      <div class="flow-node"><span class="tag">② 常駐程式 Batch.RunFlowByMessageQueue(V2/Concurrency).exe</span>行程不結束，持續監聽 RabbitMQ Queue，收到訊息才觸發一次流程</div>
+    </div>
+    <div class="arrow"></div>
+    <div class="flow-node core">
+      <span class="tag">[NineYi.OsmPlus.Console.BL.Service] 核心引擎</span>
+      <b>EtlFlowControlService</b><br>CreateFlowTask → GetToDoTaskSlave → DoFlowValidation → DoProcess（逐步執行）
+    </div>
+    <div class="arrow"></div>
+    <div class="flow-node">
+      <span class="tag">[Console.BL.Service.EtlServices.*]</span>
+      <b>各 EtlService 實作類別</b>（依 EtlFlowTaskSlave_EtlServiceClassName 反射建立，實作 IEtlFlowService）
+    </div>
+    <div class="arrow"></div>
+    <div class="flow-node db">
+      <span class="tag">[DA.Repositories.EtlFlows / EtlDB]</span>
+      <b>EtlFlowTask ／ EtlFlowTaskSlave ／ EtlFlowTaskLog</b>（狀態與執行紀錄落地）
+    </div>
+    <div class="arrow"></div>
+    <div class="flow-node">
+      <span class="tag">通知</span>
+      <b>SlackService / EmergencyService（電話警示）／ PlusNotify（Redis 快取通知去重）</b>
+    </div>
+  </div>
+
+  <div class="callout">
+    <b>核心概念：</b> ShopEtlFlow / ShopEtlFlowStep 是「設定檔（藍圖）」，永久保存、可重複使用；
+    EtlFlowTask / EtlFlowTaskSlave 是「每次執行的實例（副本）」，一次觸發產生一筆 Task 與多筆 TaskSlave；
+    EtlFlowTaskLog 則是「每一步驟每一次嘗試」的執行歷程留痕，三者是 1（設定）→N（實例）→N（歷程） 的關係。
+  </div>
+</section>
+
+<section id="sec2">
+  <h2 class="sec-title"><span class="num">2</span>觸發條件與進入點</h2>
+  <p>OSMPlus 沒有對外 Web API，所有流程都由背景批次程式觸發，實際佈署上分為兩種截然不同的觸發模式：</p>
+
+  <div class="callout">
+    <b>模式一・Windows Task Scheduler（最主要的觸發方式）：</b>
+    <code>RunFlowById.exe</code> 與 <code>RunFirstFlowTask.exe</code> 都是「執行完即結束」的 Console 執行檔，本身完全不具備排程能力（程式裡沒有任何 Timer/Cron 邏輯）。
+    實務上是在 ETL 執行機器上，透過 <b>Windows 工作排程器（Task Scheduler）</b>依商店/流程各自設定觸發時間（對應 <code>ShopEtlFlow_BookingTime</code> 這個「預期執行時間」欄位），
+    時間到就呼叫一次 exe 並帶入對應參數；exe 執行完流程就結束程序，等下一次排程時間再被叫起來。這部分排程設定屬於**機器/維運層設定，不在此程式碼庫（Git Repo）中**，因此程式碼分析看不到，需要向維運/DevOps 或直接看 ETL Server 的工作排程器設定才能取得完整排程時間表。
+  </div>
+  <div class="callout">
+    <b>模式二・常駐監聽（RabbitMQ）：</b>
+    <code>RunFlowByMessageQueue(V2/Concurrency).exe</code> 啟動後就是一個不會結束的行程（<code>Thread.Sleep(Timeout.Infinite)</code>），用於「事件觸發」而非「時間觸發」的流程。
+    這類常駐程式通常也是掛在 Task Scheduler 上（用「開機時」或「登入時」觸發一次、之後不重跑），或是註冊成 Windows Service 保持常駐，跟模式一的「定時執行、跑完就關」性質不同。
+  </div>
+
+  <table>
+    <tr><th>進入點（Project）</th><th>觸發方式</th><th>用途</th><th>關鍵行為</th></tr>
+    <tr>
+      <td class="mono">NineYi.OsmPlus.Batch.RunFlowById</td>
+      <td><b>Windows Task Scheduler</b> 依排程時間帶入 <code>--flowid</code> 或 <code>--flowname</code> 呼叫；亦支援人工下 <code>--redo &lt;TaskId&gt;</code> 重跑</td>
+      <td>依「流程設定」啟動一次新的執行（最常見、最主要的排程進入點）</td>
+      <td>呼叫 <code>CreateFlowTask(shopEtlFlowId, Running)</code> → 走 <code>DoProcess</code>；失敗時依 <code>RetryCount/RetryInterval</code> 在同一行程內 Sleep 後重試，重試耗盡才讓行程結束（下次仍要等 Task Scheduler 排程時間到才會再被叫起）</td>
+    </tr>
+    <tr>
+      <td class="mono">NineYi.OsmPlus.Batch.RunFirstFlowTask</td>
+      <td><b>Windows Task Scheduler</b> 定時呼叫；無參數＝撈 <code>EtlFlowTask_Status='Ready'</code> 且到期第一筆；有參數＝指定 <code>TaskId</code></td>
+      <td>設計上是處理「已存在但尚未執行」的 Ready Task</td>
+      <td><code>GetFirstToDoTask()</code> → <code>DoProcess</code>，不做重試迴圈</td>
+    </tr>
+    <tr>
+      <td class="mono">NineYi.OsmPlus.Batch.RunFlowByMessageQueue / V2 / Concurrency</td>
+      <td><b>常駐程式</b>（非 Task Scheduler 定時觸發），監聽 RabbitMQ Queue，收到訊息即觸發指定 <code>--flow-id</code></td>
+      <td>事件驅動型流程（例如上游系統丟訊息通知「有新資料」）</td>
+      <td>將 MQ 訊息內容包成 <code>QueueMessageFlowChainEntity</code> 當作第一步的 <code>InputChainData</code> 帶入 <code>DoProcess</code>；ack 後才視為處理完成。Concurrency 版本可多工併發處理多筆訊息</td>
+    </tr>
+  </table>
+
+  <div class="callout warn">
+    <b>重要釐清：建立（Create）與執行（Execute）是在同一個 process 內完成，不是分開兩支程式接力。</b>
+    看 <code>RunFlowById\Program.cs</code> 原始碼可以確認：<code>CreateFlowTask(shopEtlFlowId, <b>EtlFlowTaskStatusEnum.Running</b>)</code> 一開始就直接把 Task 狀態建立成 <span class="status-running">Running</span>（不是 Ready），
+    緊接著在同一個 <code>while(true)</code> 迴圈內立刻呼叫 <code>DoProcess</code> 把每個 TaskSlave 真正執行完畢，整個「建立→跑完所有步驟→收尾」都在這一次 exe 啟動的生命週期內發生，執行完 process 才結束。
+    也就是說：<b>Task Scheduler 觸發 RunFlowById.exe，並不是「寫一筆紀錄進 DB 就結束」，而是「這次啟動就會把整個流程真正跑完」。</b>
+    目前在 <code>RunFlowById</code>／<code>RunFlowByMessageQueue</code>／<code>V2</code>／<code>Concurrency</code> 這 4 個進入點的原始碼中，呼叫 <code>CreateFlowTask</code> 時傳入的狀態<b>全部都是 Running</b>，
+    找不到任何地方會建立 <code>Ready</code> 狀態的 Task；也就是 <code>RunFirstFlowTask.exe</code> 設計上要撈的「Ready 且已存在的 Task」，在目前程式碼庫中<b>找不到對應的產生來源</b>。
+    合理推測：這支 exe 可能是給「人工先用 SQL 塞一筆 Ready 狀態 Task，再排程這支程式去撿」的備援/特殊情境使用，或是舊架構遺留、目前 Production 排程實際上主要掛的是 <code>RunFlowById.exe</code>。
+    <b>此點程式碼無法百分之百確認，建議直接向維運/DevOps 確認 ETL Server 上 Windows Task Scheduler 實際掛載的是哪一支 exe。</b>
+  </div>
+
+  <h3>RunFlowById vs RunFlowByMessageQueue 差異對照</h3>
+  <table>
+    <tr><th></th><th>RunFlowById.exe</th><th>RunFlowByMessageQueue(.exe)</th></tr>
+    <tr><td>觸發方式</td><td>Windows Task Scheduler，<b>定時</b>觸發一次</td><td>常駐程式，<b>監聽 RabbitMQ Queue</b>，訊息一來就觸發</td></tr>
+    <tr><td>Process 生命週期</td><td>啟動 → 跑完一次流程 → <b>process 結束</b>（run-once）</td><td><code>Thread.Sleep(Timeout.Infinite)</code>，<b>process 永不結束</b>，持續等訊息</td></tr>
+    <tr><td>一次啟動能跑幾次流程</td><td>1 次（跑完就關）</td><td><b>無限次</b>（只要有訊息進來就跑一次，跑完繼續等下一則）</td></tr>
+    <tr><td>flowId 從哪來</td><td>啟動時 CLI 參數 <code>--flowid</code>/<code>--flowname</code> 決定，之後每次都是同一個 flowId</td><td>啟動時 <code>--flow-id</code> 固定要跑哪個流程；<b>真正變動的是 InputChainData</b>——每次收到不同 MQ 訊息內容，就包成 <code>QueueMessageFlowChainEntity</code> 當作這次流程第一步的輸入資料</td></tr>
+    <tr><td>觸發的本質</td><td><b>時間驅動</b>（Time-based）：到點就跑，不管有沒有新資料</td><td><b>事件驅動</b>（Event-based）：有新資料/事件通知才跑，資料本身隨訊息帶進來</td></tr>
+    <tr><td>完成後的動作</td><td>直接結束 process</td><td><code>channel.BasicAck()</code> 確認訊息已處理，然後回到 <code>while</code> 迴圈等下一則訊息</td></tr>
+    <tr><td>失敗重試方式</td><td>process 內 <code>while(true)</code> 重試，耗盡才丟出例外讓 process 結束（下次要等 Task Scheduler 排程時間再啟動）</td><td>同樣有 process 內重試；但若最終失敗拋出例外，<b>該訊息不會被 Ack</b>，可能被 RabbitMQ 重新派送給其他 consumer，行為上更接近「訊息隊列的重試機制」而非「排程重試」</td></tr>
+    <tr><td>適合場景</td><td>每天/每小時固定要跑的批次（例如「每日 CRM 同步」）</td><td>上游系統資料一產生就要立刻處理的流程（例如「訂單一建立就要同步到 ERP」）</td></tr>
+  </table>
+  <p class="er-note" style="text-align:left;">一句話總結：<b>RunFlowById 是「時間到就跑一次然後關掉」；RunFlowByMessageQueue 是「常駐等訊息，來一則跑一次，永遠不關」</b>。V2 差異只是改用 Consul 取得連線設定；Concurrency 版本則是同時開多個 Task 平行處理多筆訊息，其餘邏輯相同。</p>
+
+  <h3>前置條件</h3>
+  <ul>
+    <li><code>ShopEtlFlow_IsEnabled = 1</code> 且 <code>ShopEtlFlow_ValidFlag = 1</code>：流程設定必須啟用中</li>
+    <li>對應 <code>EtlServer_IsEnabled = 1</code> 且 <code>ValidFlag = 1</code>：執行伺服器必須有效</li>
+    <li><code>ShopEtlFlowStep_ValidFlag = 1</code>：至少要有一個有效步驟，否則 <code>DoProcess</code> 會直接判斷「Task 沒有 TaskSlave」而丟 <code>ApplicationException</code> 並將 Task 標記為 Error</li>
+  </ul>
+</section>
+
+<section id="sec3">
+  <h2 class="sec-title"><span class="num">3</span>資料表結構與 ER 關係</h2>
+  <p>整個引擎圍繞 5 張核心表：2 張「設定表」＋ 3 張「執行/歷程表」。以下為欄位摘要與關聯：</p>
+
+  <div class="er-grid">
+    <div class="er-table">
+      <div class="er-head">ShopEtlFlow（流程設定・藍圖）</div>
+      <ul>
+        <li class="pk">ShopEtlFlow_Id (PK)</li>
+        <li>ShopEtlFlow_ShopId</li>
+        <li>ShopEtlFlow_Name / Description</li>
+        <li>ShopEtlFlow_IsEnabled</li>
+        <li>ShopEtlFlow_BookingTime（每日排程時間, HH:mm）</li>
+        <li class="fk">ShopEtlFlow_EtlServerId → EtlServer</li>
+        <li>ShopEtlFlow_RetryCount / RetryInterval</li>
+        <li class="fk">ShopEtlFlow_EtlCategoryId → EtlCategory</li>
+        <li>ShopEtlFlow_AlertGroups（Slack 警示對象）</li>
+      </ul>
+    </div>
+    <div class="er-table">
+      <div class="er-head">ShopEtlFlowStep（流程步驟設定・藍圖）</div>
+      <ul>
+        <li class="pk">ShopEtlFlowStep_Id (PK)</li>
+        <li class="fk">ShopEtlFlowStep_ShopEtlFlowId → ShopEtlFlow</li>
+        <li class="fk">ShopEtlFlowStep_EtlServiceId → EtlService（對應 ClassName）</li>
+        <li>ShopEtlFlowStep_InitialData（該步驟初始參數 JSON）</li>
+        <li>ShopEtlFlowStep_Sort（執行順序）</li>
+        <li>ShopEtlFlowStep_DefaultInputChainData</li>
+      </ul>
+    </div>
+    <div class="er-table">
+      <div class="er-head">EtlFlowTask（流程「執行主檔」・實例）</div>
+      <ul>
+        <li class="pk">EtlFlowTask_Id (PK)</li>
+        <li>EtlFlowTask_ShopId</li>
+        <li class="fk">EtlFlowTask_ShopEtlFlowId → ShopEtlFlow</li>
+        <li>EtlFlowTask_Status（Ready/Running/Finish/Pass/Error）</li>
+        <li>EtlFlowTask_BookingDateTime / StartDateTime / EndDateTime</li>
+        <li>EtlFlowTask_ExecutionCount（重試次數計數）</li>
+        <li class="fk">EtlFlowTask_EtlServerId → EtlServer</li>
+      </ul>
+    </div>
+    <div class="er-table">
+      <div class="er-head">EtlFlowTaskSlave（流程步驟「執行子檔」・實例）</div>
+      <ul>
+        <li class="pk">EtlFlowTaskSlave_Id (PK)</li>
+        <li>EtlFlowTaskSlave_ShopId</li>
+        <li class="fk">EtlFlowTaskSlave_EtlFlowTaskId → EtlFlowTask</li>
+        <li class="fk">EtlFlowTaskSlave_ShopEtlFlowStepId → ShopEtlFlowStep</li>
+        <li>EtlFlowTaskSlave_Status（Ready/Running/Finish/Pass/Error）</li>
+        <li>EtlFlowTaskSlave_Sort（複製自 Step，執行順序）</li>
+        <li>EtlFlowTaskSlave_InitialData（複製自 Step，可被 Redo/檔案覆寫）</li>
+        <li>EtlFlowTaskSlave_InputChainData（上一步輸出/外部輸入序列化 JSON）</li>
+      </ul>
+    </div>
+    <div class="er-table">
+      <div class="er-head">EtlFlowTaskLog（執行歷程・每次嘗試的留痕）</div>
+      <ul>
+        <li class="pk">EtlFlowTaskLog_Id (PK)</li>
+        <li>EtlFlowTaskLog_ShopId</li>
+        <li class="fk">EtlFlowTaskLog_EtlFlowTaskId → EtlFlowTask</li>
+        <li class="fk">EtlFlowTaskLog_EtlFlowTaskSlaveId → EtlFlowTaskSlave</li>
+        <li>EtlFlowTaskLog_Status（Pass/Finish/Error）</li>
+        <li>EtlFlowTaskLog_StartDateTime / EndDateTime</li>
+        <li>EtlFlowTaskLog_ExecutionSequence（對應 Task 的第幾次重試）</li>
+      </ul>
+    </div>
+    <div class="er-table">
+      <div class="er-head">關聯總覽（Cardinality）</div>
+      <ul>
+        <li>ShopEtlFlow　1 ——* EtlFlowTask</li>
+        <li>ShopEtlFlowStep　1 —* EtlFlowTaskSlave</li>
+        <li>EtlFlowTask　1 —* EtlFlowTaskSlave</li>
+        <li>EtlFlowTask　1 —* EtlFlowTaskLog（Task 層級 Log，TaskSlaveId 為 0/略）</li>
+        <li>EtlFlowTaskSlave　1 —* EtlFlowTaskLog（每次嘗試一筆）</li>
+      </ul>
+      <div class="er-note">每次呼叫 DoProcess 皆為「同一 Task」，即使重試也不會新增 Task／TaskSlave，只會新增 Log</div>
+    </div>
+  </div>
+
+  <h3>三張表的關係白話說明</h3>
+  <table>
+    <tr><th>Table</th><th>角色</th><th>誰產生它</th><th>1 次流程觸發會有幾筆</th><th>用途</th></tr>
+    <tr>
+      <td class="mono">EtlFlowTask</td>
+      <td>流程「執行主檔」，代表「這次要跑這個 ShopEtlFlow」這件事本身</td>
+      <td><code>csp_BatchCreateEtlFlowTaskByShopEtlFlowId</code>（由 <code>EtlFlowControlService.CreateFlowTask</code> 呼叫）</td>
+      <td>每次觸發 1 筆</td>
+      <td>追蹤整體流程狀態（Ready→Running→Finish/Pass/Error）、重試次數、起訖時間</td>
+    </tr>
+    <tr>
+      <td class="mono">EtlFlowTaskSlave</td>
+      <td>流程「步驟執行子檔」，是 ShopEtlFlowStep 在這次 Task 下的「執行副本」，一個步驟一筆</td>
+      <td>同一個預存程序，在建立 Task 的同一個 Transaction 內依 ShopEtlFlowStep 逐筆複製產生</td>
+      <td>每次觸發 N 筆（N＝流程步驟數）</td>
+      <td>紀錄每個步驟各自的狀態、InitialData（可被覆寫）、InputChainData（步驟間傳遞資料）</td>
+    </tr>
+    <tr>
+      <td class="mono">EtlFlowTaskLog</td>
+      <td>「執行歷程」留痕表，不是狀態機的一部分，只負責記錄事件</td>
+      <td><code>EtlFlowControlService.InsertTaskLog</code>（在 DoProcess 中，Task 開始/結束、每個 TaskSlave 開始/結束都會各寫一筆）</td>
+      <td>每次觸發（含重試）至少 2 筆起：1 筆 Task 層級 + N 筆 TaskSlave 層級；若中途發生 Error 重試，重試次數越多 Log 越多</td>
+      <td>作為 Console 後台查詢「每次執行明細/除錯」的依據，狀態值只有 Pass/Finish/Error 三種（沒有 Ready/Running，因為 Log 只在「動作結束」時才寫入）</td>
+    </tr>
+  </table>
+</section>
+
+<section id="sec4">
+  <h2 class="sec-title"><span class="num">4</span>核心流程（逐步）</h2>
+  <p>以 <b>Batch.RunFlowById</b> 進入點為例（其餘進入點只是觸發方式不同，核心邏輯完全共用 <code>EtlFlowControlService</code>）：</p>
+
+  <table>
+    <tr><th>#</th><th>步驟</th><th>對應程式</th><th>說明</th></tr>
+    <tr>
+      <td>1</td><td>建立 Task（+ 所有 TaskSlave）</td>
+      <td class="mono">EtlFlowControlService.CreateFlowTask()</td>
+      <td>呼叫預存程序 <code>csp_BatchCreateEtlFlowTaskByShopEtlFlowId</code>，一次交易內依 ShopEtlFlow/ShopEtlFlowStep 產生 1 筆 EtlFlowTask（狀態 Running）與 N 筆 EtlFlowTaskSlave（狀態 Ready）</td>
+    </tr>
+    <tr>
+      <td>2</td><td>（選用）RunTime 覆寫 InitialData</td>
+      <td class="mono">RunTimeReplaceInitialData()</td>
+      <td>若呼叫端帶了 <code>--initdatapath</code> 檔案內容，依 ShopEtlFlowStepId 對應覆寫某些 TaskSlave 的 InitialData（常用於人工排錯/重跑帶不同參數）</td>
+    </tr>
+    <tr>
+      <td>3</td><td>解析 Slack 通知設定</td>
+      <td class="mono">ShopProfileRepository.GetShopProfile</td>
+      <td>先查 <code>SlackUrlByFlowId</code>，找不到再查 <code>SlackUrlByFlowCategory</code>，組成 <code>IAlertService</code></td>
+    </tr>
+    <tr>
+      <td>4</td><td>輪詢 Task 狀態，執行 DoProcess</td>
+      <td class="mono">GetTask() → DoProcess()</td>
+      <td>每次重試前都重新 <code>GetTask</code> 讀最新狀態；若已是 Finish 則直接結束</td>
+    </tr>
+    <tr>
+      <td>5</td><td>Task 狀態改為 Running，建立 Task 層級 Log 物件</td>
+      <td class="mono">UpdateTaskStatusToRunning + taskLog</td>
+      <td>taskLog 先在記憶體建立，等整體流程結束才 Insert</td>
+    </tr>
+    <tr>
+      <td>6</td><td>撈出所有 TaskSlave（含步驟/服務資訊）</td>
+      <td class="mono">GetToDoTaskSlave() = EtlFlowTaskRepository.GetTaskSlave()</td>
+      <td>INNER JOIN ShopEtlFlowStep / ShopEtlFlow / EtlService / EtlCategory，依 <code>Sort</code> 排序</td>
+    </tr>
+    <tr>
+      <td>7</td><td>Flow Validation</td>
+      <td class="mono">DoFlowValidation()</td>
+      <td>用反射建立每個步驟的 Service 假實例，檢查前一步 OutputChainType 是否可指派給下一步 InputChainType（型別鏈必須銜接），不通過則整批判 Error</td>
+    </tr>
+    <tr>
+      <td>8</td><td>逐一執行每個 TaskSlave</td>
+      <td class="mono">foreach (flowTaskSlave in flowServiceTasks)</td>
+      <td>
+        已 Finish → 補記 Pass Log 並跳過；<br>
+        流程已被前面步驟中斷（isFlowStopped）→ 標記 Pass 並跳過；<br>
+        否則：反射建立 Service（<code>CreateFlowService</code>）→ 狀態改 Running → 執行
+        <code>flowService.DoProcess(taskSlave, inputChain, flowVariables, alertService)</code> → 依回傳的
+        <code>OutputChainEntity.IsStopFlowProcess</code> 決定是否中斷後續步驟 → 狀態改 Finish 並寫 Log
+      </td>
+    </tr>
+    <tr>
+      <td>9</td><td>步驟間資料傳遞</td>
+      <td class="mono">inputChainEntity = outputChainEntity</td>
+      <td>上一步的輸出物件直接作為下一步的輸入物件（見第 8 節）</td>
+    </tr>
+    <tr>
+      <td>10</td><td>收尾：整體 Task 狀態判定</td>
+      <td class="mono">UpdateTaskStatusToFinish / ToPass</td>
+      <td>若流程被中途 Stop（isFlowStopped）→ Task 狀態為 <span class="status-pass">Pass</span>；否則為 <span class="status-finish">Finish</span>，並寫入 Task 層級 Log</td>
+    </tr>
+    <tr>
+      <td>11</td><td>完成通知</td>
+      <td class="mono">alertService.Info(...)</td>
+      <td>僅在非 Debug、未被步驟要求靜音（IsMuteSlackNotificationWhileFinish）、且 <code>ShopEtlFlow_IsNotifyWhenFinish=1</code> 時才發送 Slack 完成通知</td>
+    </tr>
+  </table>
+
+  <div class="callout">
+    <b>錯誤重試（僅限 RunFlowById / RunFlowByMessageQueue 進入點）：</b>
+    當 <code>DoProcess</code> 拋出例外，外層 while 迴圈依 <code>ExecutionCount - 1 &lt; RetryCount</code> 判斷是否重試；
+    是則 <code>Thread.Sleep(RetryInterval秒)</code> 後重新 <code>GetTask</code> 再跑一次 <code>DoProcess</code>（同一 Task/TaskSlave，狀態會被覆寫，但每次嘗試都會新增一筆 EtlFlowTaskLog）；
+    超過重試次數則對外拋出例外、行程結束（交由外部排程系統決定是否再次啟動整個 Batch）。
+  </div>
+</section>
+
+<section id="sec5">
+  <h2 class="sec-title"><span class="num">5</span>分支決策 / 狀態對照</h2>
+
+  <h3>EtlFlowTask 產生條件（csp_BatchCreateEtlFlowTaskByShopEtlFlowId）</h3>
+  <table>
+    <tr><th>條件</th><th>結果</th></tr>
+    <tr><td>ShopEtlFlow_IsEnabled=0 或 ValidFlag=0</td><td>不會被撈入 #tmpTaskBase → 不會產生 Task/TaskSlave（等於 no-op）</td></tr>
+    <tr><td>EtlServer_IsEnabled=0 或 ValidFlag=0</td><td>同上，不會產生</td></tr>
+    <tr><td>ShopEtlFlowStep_ValidFlag=0（全部步驟皆停用）</td><td>會建立 1 筆 EtlFlowTask，但 0 筆 EtlFlowTaskSlave → DoProcess 判斷「Task has no taskSlave」直接丟例外、Task 狀態轉 Error</td></tr>
+    <tr><td>正常情況</td><td>1 筆 EtlFlowTask（狀態依呼叫端傳入，通常 Running）＋ N 筆 EtlFlowTaskSlave（狀態 Ready）</td></tr>
+  </table>
+
+  <h3>Flow Validation 結果</h3>
+  <table>
+    <tr><th>條件</th><th>行為</th><th>最終結果</th></tr>
+    <tr><td>TaskSlave 數量 = 0</td><td>validFailMessage 直接設為錯誤訊息</td><td>Task/Log 皆標記 Error，丟 ApplicationException</td></tr>
+    <tr><td>前一步 OutputChainType 與下一步 InputChainType 無繼承關係</td><td>組出「無法串接」訊息</td><td>同上，整批視為驗證失敗，不執行任何步驟</td></tr>
+    <tr><td>驗證通過</td><td>不動作，直接進入逐步執行</td><td>正常往下走</td></tr>
+  </table>
+
+  <h3>單一 TaskSlave 執行分支</h3>
+  <table>
+    <tr><th>條件</th><th>行為</th></tr>
+    <tr><td>TaskSlave.Status == Finish（代表重試時此步驟先前已成功）</td><td>寫入 Pass Log，<code>continue</code> 跳過，不重跑</td></tr>
+    <tr><td>isFlowStopped == true（前面某步驟輸出要求中斷）</td><td>該 TaskSlave 直接標記為 Pass，並寫 Pass Log，不呼叫 Service</td></tr>
+    <tr><td>正常執行拋出 <code>EtlFlowTaskDoNotSendSlackException</code></td><td>TaskSlave/Task 皆標記 Error、寫 Error Log，但<b>不發送 Slack 告警</b>，直接往外拋出</td></tr>
+    <tr><td>正常執行拋出其他 Exception</td><td>TaskSlave/Task 皆標記 Error、寫 Error Log；非 Debug 模式下組裝團隊 @提及 並發送 Slack 告警（必要時撥打緊急電話），呼叫 <code>PlusNotify</code> 避免重複通知，最終往外拋出</td></tr>
+    <tr><td>Service 執行成功，OutputChainEntity.IsStopFlowProcess = true</td><td>該步驟仍標記 Finish，但將 <code>isFlowStopped</code> 設為 true，後續步驟全部改走「Pass」分支</td></tr>
+  </table>
+</section>
+
+<section id="sec6">
+  <h2 class="sec-title"><span class="num">6</span>狀態流轉圖</h2>
+
+  <h3>EtlFlowTask_Status（流程主檔）</h3>
+  <div class="state-diagram">
+    <div class="state-box status-ready">Ready<br><span style="font-weight:400;font-size:11px;color:var(--c-muted)">預先建立、待排程撈取</span></div>
+    <div class="state-arrow">→</div>
+    <div class="state-box status-running">Running</div>
+    <div class="state-arrow">→</div>
+    <div class="state-box status-finish">Finish<br><span style="font-weight:400;font-size:11px;color:var(--c-muted)">全部步驟正常完成</span></div>
+  </div>
+  <div class="state-diagram">
+    <div class="state-box status-running">Running</div>
+    <div class="state-arrow">→</div>
+    <div class="state-box status-pass">Pass<br><span style="font-weight:400;font-size:11px;color:var(--c-muted)">某步驟主動中斷後續流程</span></div>
+  </div>
+  <div class="state-diagram">
+    <div class="state-box status-running">Running</div>
+    <div class="state-arrow">→</div>
+    <div class="state-box status-error">Error<br><span style="font-weight:400;font-size:11px;color:var(--c-muted)">任一步驟拋出例外且重試次數已耗盡</span></div>
+    <div class="state-arrow">→ (Redo/--redo)</div>
+    <div class="state-box status-running">Running</div>
+  </div>
+
+  <h3>EtlFlowTaskSlave_Status（步驟子檔）</h3>
+  <div class="state-diagram">
+    <div class="state-box status-ready">Ready</div>
+    <div class="state-arrow">→</div>
+    <div class="state-box status-running">Running</div>
+    <div class="state-arrow">→</div>
+    <div class="state-box status-finish">Finish</div>
+  </div>
+  <div class="state-diagram">
+    <div class="state-box status-ready">Ready</div>
+    <div class="state-arrow">→ (前步驟已 Stop 或已完成)</div>
+    <div class="state-box status-pass">Pass</div>
+  </div>
+  <div class="state-diagram">
+    <div class="state-box status-running">Running</div>
+    <div class="state-arrow">→ (拋出例外)</div>
+    <div class="state-box status-error">Error</div>
+  </div>
+
+  <h3>EtlFlowTaskLog_Status（僅為事件記錄，非狀態機）</h3>
+  <p>只會在動作「結束的當下」寫入 <span class="status-pass">Pass</span> / <span class="status-finish">Finish</span> / <span class="status-error">Error</span> 三種之一，不存在 Ready/Running（因為開始執行時不寫 Log，只在 DoProcess 開頭於記憶體建立物件，結束時才 Insert）。</p>
+</section>
+
+<section id="sec7">
+  <h2 class="sec-title"><span class="num">7</span>例外處理一覽</h2>
+  <table>
+    <tr><th>例外類型</th><th>觸發時機</th><th>資料庫影響</th><th>通知行為</th></tr>
+    <tr>
+      <td class="mono">ApplicationException("Task has no taskSlave!")</td>
+      <td>Task 建立後撈不到任何有效 TaskSlave</td>
+      <td>Task→Error，寫 1 筆 Task Error Log</td>
+      <td>一律發送 Slack 告警</td>
+    </tr>
+    <tr>
+      <td class="mono">ApplicationException(validFailMessage)</td>
+      <td>DoFlowValidation 檢查步驟間型別無法串接</td>
+      <td>Task→Error，寫 1 筆 Task Error Log</td>
+      <td>一律發送 Slack 告警</td>
+    </tr>
+    <tr>
+      <td class="mono">EtlFlowTaskDoNotSendSlackException</td>
+      <td>個別 Service 內部主動拋出（表示此錯誤不需驚動團隊，例如已知的商業邏輯例外）</td>
+      <td>TaskSlave/Task→Error，各寫 1 筆 Error Log</td>
+      <td><b>不</b>發送 Slack；直接往外拋出交由外層重試機制處理</td>
+    </tr>
+    <tr>
+      <td class="mono">一般 Exception（含 Service 內部任何未攔截例外）</td>
+      <td>個別 Service 執行 DoProcess 過程中拋出</td>
+      <td>TaskSlave/Task→Error，各寫 1 筆 Error Log</td>
+      <td>組裝 AlertGroups（@個人或@Slack Usergroup）發送告警；<code>isEmergency=true</code> 時另撥打緊急電話；呼叫 PlusNotify 做 Redis 去重通知</td>
+    </tr>
+    <tr>
+      <td class="mono">外層重試耗盡後往外拋出（Batch.RunFlowById / RunFlowByMessageQueue）</td>
+      <td><code>ExecutionCount - 1 >= RetryCount</code></td>
+      <td>沿用最後一次 DoProcess 內的狀態（Error）</td>
+      <td>Console 端額外輸出 errorMessage 並 Alert 一次，行程異常結束（有 Program Exception Log 落地檔案，Prod 模式並發全頻道 @channel 告警）</td>
+    </tr>
+    <tr>
+      <td class="mono">未進入 DoProcess 前的例外（如 CLI 參數錯誤）</td>
+      <td><code>isExecuteFlow == false</code> 時捕捉</td>
+      <td>不影響任何 Etl 表</td>
+      <td>寫入本機 ProgramException 檔案 log；Prod 模式下 Slack <code>@channel</code> 告警</td>
+    </tr>
+  </table>
+</section>
+
+<section id="sec8">
+  <h2 class="sec-title"><span class="num">8</span>關鍵資料說明：InputChainData / OutputChainData</h2>
+  <p><b>Chain Entity（繼承自 <code>BaseEtlFlowChainEntity</code>）</b> 是貫穿整條流程、步驟與步驟之間唯一的資料傳遞媒介，其生命週期如下：</p>
+  <ol>
+    <li><b>產生：</b> 第一個 TaskSlave 若本身沒有 <code>InputChainData</code>（來自 ShopEtlFlowStep 設定的 DefaultInputChainData），則用呼叫端傳入的 <code>inputChainData</code>（例如 RabbitMQ 訊息內容包成 <code>QueueMessageFlowChainEntity</code>，或 <code>--initdatapath</code> 檔案內容）補上。</li>
+    <li><b>傳遞：</b> 每個 Service 執行完 <code>DoProcess()</code> 回傳 <code>OutputChainEntity</code>，該物件會被序列化並存回下一筆 TaskSlave 的 <code>InputChainData</code> 欄位（DB 落地，供中斷後重跑時可還原現場），同時在記憶體中直接指派給下一輪迴圈的 <code>inputChainEntity</code> 繼續往下傳。</li>
+    <li><b>型別契約檢查：</b> <code>DoFlowValidation</code> 在真正執行前，先用反射建立每個 Service 檢查 <code>GetFlowOutputChainType()</code> 是否可指派給下一個 Service 的 <code>GetFlowInputChainType()</code>，確保鏈可以串起來（例如 <code>FileBaseFlowChainEntity</code> 系列彼此相容）。</li>
+    <li><b>特殊旗標：</b> Chain Entity 上帶有 <code>IsStopFlowProcess</code>（要求中斷後續步驟）與 <code>IsMuteSlackNotificationWhileFinish</code>（完成時不發送 Slack 通知）兩個旗標，由個別 Service 依商業邏輯決定是否設置，直接影響第 5、6 節的狀態流轉。</li>
+    <li><b>消費：</b> <code>FlowVariables</code>（Dictionary，跨步驟共享的執行期變數，如 <code>FILESROWCOUNT</code>、<code>ERRORFILES</code>、<code>EXECUTE_NOTE</code>）與 Chain Entity 一起在告警/完成通知訊息中被組裝顯示。</li>
+  </ol>
+</section>
+
+<section id="sec9">
+  <h2 class="sec-title"><span class="num">9</span>特殊案例 / 備註</h2>
+  <ul>
+    <li><b>Redo（人工重跑既有 Task）：</b> <code>--redo &lt;TaskId&gt;</code> 或 <code>RunFirstFlowTask</code> 帶入 TaskId，皆直接 <code>GetTask(taskId)</code> 後呼叫 <code>DoProcess</code>，沿用同一筆 Task/TaskSlave（已 Finish 的步驟會被跳過只補 Pass Log，未完成/Error 的步驟才會真正重跑），不會建立新的 Task。</li>
+    <li><b>Debug Mode（<code>--debug</code>）：</b> 僅在 <code>Execmode=Dev</code> 時允許 <code>FlowDebugHelper.DoFlowModification</code> 動態調整要執行的步驟；Debug 模式下發生錯誤不會觸發外層重試迴圈與 Slack 錯誤告警。</li>
+    <li><b>Emergency（<code>--emergency</code> / <code>isEmergency</code>）：</b> 發生一般 Exception 時，除了 Slack 告警外，額外透過 <code>EmergencyService</code> 撥打設定於 <code>Emergency.CellPhone</code> 的電話號碼，用於極重要流程的即時示警。</li>
+    <li><b>PlusNotify（Redis 去重通知）：</b> 每次 Task/TaskSlave 發生錯誤都會呼叫 <code>PlusNotify</code>，透過 Redis Cache 判斷同一 Shop/Flow 是否已通知過，避免重試風暴造成 Slack 洗版。</li>
+    <li><b>NOLOCK 查詢：</b> 幾乎所有讀取 SQL 皆使用 <code>WITH (NOLOCK)</code>，追求排程查詢效能，但需留意讀到暫時性不一致資料的可能性（例如剛建立尚未 Commit 的 Task）。</li>
+    <li><b>ExecutionSeconds / ExecutionSequence：</b> Task 與 TaskSlave 皆有唯讀計算欄位 <code>ExecutionSeconds</code>（Start/End 相減），Log 表則多一個 <code>ExecutionSequence</code> 對應「這是第幾次執行嘗試（等同外層重試次數）」，可用於在 Console 後台把同一次真正的執行流程與重試流程分開檢視。</li>
+    <li><b>RabbitMQ 進入點的 Ack 時機：</b> <code>RunFlowByMessageQueue</code> 系列在 <code>ExecuteFlowId</code>（含其內部重試）全部完成後才 <code>BasicAck</code>，若行程中因重試耗盡而拋出例外，該訊息不會被 Ack，可能被 MQ 重新派送（需留意流程冪等性設計）。</li>
+  </ul>
+</section>
+
+<section id="sec10">
+  <h2 class="sec-title"><span class="num">10</span>關鍵檔案索引</h2>
+  <table class="file-index">
+    <tr><th>角色</th><th>路徑</th></tr>
+    <tr><td>核心引擎 Service</td><td class="mono">NineYi.OsmPlus.Console.BL.Service\EtlFlows\EtlFlowControlService.cs</td></tr>
+    <tr><td>核心引擎介面</td><td class="mono">NineYi.OsmPlus.Console.BL.Service\EtlFlows\IEtlFlowControlService.cs</td></tr>
+    <tr><td>Repository（EtlFlowTask/Slave/Log CRUD）</td><td class="mono">NineYi.OsmPlus.DA.Repositories\EtlFlows\EtlFlowTaskRepository.cs</td></tr>
+    <tr><td>Repository 介面</td><td class="mono">NineYi.OsmPlus.DA.Repositories\EtlFlows\IEtlFlowTaskRepository.cs</td></tr>
+    <tr><td>EtlFlowTask Entity</td><td class="mono">NineYi.OsmPlus.Console.BL.BE\EtlFlows\EtlFlowTaskEntity.cs</td></tr>
+    <tr><td>EtlFlowTaskSlave Entity</td><td class="mono">NineYi.OsmPlus.Console.BL.BE\EtlFlows\EtlFlowTaskSlaveEntity.cs</td></tr>
+    <tr><td>EtlFlowTaskLog Entity</td><td class="mono">NineYi.OsmPlus.Console.BL.BE\EtlFlows\EtlFlowTaskLogEntity.cs</td></tr>
+    <tr><td>ShopEtlFlow / ShopEtlFlowStep Entity</td><td class="mono">NineYi.OsmPlus.Console.BL.BE\EtlFlows\ShopEtlFlowEntity.cs、ShopEtlFlowStepEntity.cs</td></tr>
+    <tr><td>狀態列舉</td><td class="mono">NineYi.OsmPlus.Console.BL.BE\EtlFlows\EtlFlowTaskStatusEnum.cs、EtlFlowTaskSlaveStatusEnum.cs、EtlFlowTaskLogStatusEnum.cs</td></tr>
+    <tr><td>Chain Entity 基底</td><td class="mono">NineYi.OsmPlus.Console.BL.Service\EtlFlowChains\BaseEtlFlowChainEntity.cs（及各衍生 Chain）</td></tr>
+    <tr><td>ETL Service 介面</td><td class="mono">NineYi.OsmPlus.Console.BL.Service\EtlServices\Commons\IEtlFlowService.cs</td></tr>
+    <tr><td>各 ETL 業務 Service 實作</td><td class="mono">NineYi.OsmPlus.Console.BL.Service\EtlServices\*（依 EtlService_ClassName 反射載入）</td></tr>
+    <tr><td>建立 Task/TaskSlave 預存程序</td><td class="mono">DB Repo：databases\EtlDB\Programmability\StoredProcedures\csp_BatchCreateEtlFlowTaskByShopEtlFlowId.sql</td></tr>
+    <tr><td>進入點：依 FlowId/Name 執行</td><td class="mono">NineYi.OsmPlus.Batch.RunFlowById\Program.cs</td></tr>
+    <tr><td>進入點：撈第一筆 Ready Task</td><td class="mono">NineYi.OsmPlus.Batch.RunFirstFlowTask\Program.cs</td></tr>
+    <tr><td>進入點：MQ 觸發（單執行緒）</td><td class="mono">NineYi.OsmPlus.Batch.RunFlowByMessageQueue\Program.cs</td></tr>
+    <tr><td>進入點：MQ 觸發（V2，走 Consul）</td><td class="mono">NineYi.OsmPlus.Batch.RunFlowByMessageQueueV2\Program.cs</td></tr>
+    <tr><td>進入點：MQ 觸發（併發版）</td><td class="mono">NineYi.OsmPlus.Batch.RunFlowByMessageQueueConcurrency\Program.cs</td></tr>
+    <tr><td>Slack 告警</td><td class="mono">NineYi.OsmPlus.Console.BL.Service\EtlFlows\SlackService.cs、IAlertService.cs</td></tr>
+    <tr><td>緊急電話告警</td><td class="mono">NineYi.OsmPlus.Console.BL.Service\EtlFlows\EmergencyService.cs</td></tr>
+  </table>
+</section>
+
+<div class="callout warn">
+  <b>本次文件缺少的元素（回報 Allen）：</b>
+  <ul style="margin:8px 0 0;">
+    <li>未涵蓋各別 <code>EtlServices\*</code> 業務 Service 的內部細節（如 Muji / Adidas WMS 等特定商店客製流程），因數量龐大、屬於「葉節點」邏輯，非本次「整體流程」範疇。</li>
+    <li>未取得排程系統（誰在什麼時間點呼叫 Batch.RunFlowById.exe）的外部排程設定內容，僅能從程式碼推論觸發方式；若需要完整排程時間表，需另外提供排程系統（如 Control-M/Windows工作排程器）設定截圖或清單。</li>
+    <li>Console 後台網頁（若存在管理 ShopEtlFlow/ShopEtlFlowStep 的 UI）未在此次分析範圍內。</li>
+  </ul>
+  若需要，我可以針對以上任一項目繼續深入分析並補充文件。
+</div>
+
+<footer>OSMPlus ETL Flow 引擎鏈路分析 · 依 tech-analysis skill 標準結構產出</footer>
+
+</div>
+</body>
+</html>

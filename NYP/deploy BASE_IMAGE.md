@@ -1,0 +1,1 @@
+## sdeploy BASE_IMAGE 版本是正確 aspnet 版本

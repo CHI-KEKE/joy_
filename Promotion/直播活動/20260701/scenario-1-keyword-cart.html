@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>情境一・留言關鍵字加車 — Livebuy</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1d29;
+    --paper: #f7f5f0;
+    --accent: #d94f3d;
+    --accent-dark: #b23e2f;
+    --line: #dcd7cc;
+    --bubble: #fff8ec;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:"Segoe UI","Noto Sans TC",sans-serif; background:var(--paper); color:var(--ink); }
+  .topbar { padding:20px 8vw; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+  .topbar a { color:#6a6c75; text-decoration:none; font-size:13px; }
+  .topbar a:hover { color:var(--accent); }
+  header.hero { padding:12px 8vw 36px; }
+  header.hero .tag { display:inline-block; font-size:11px; letter-spacing:1px; padding:3px 10px; border-radius:20px; background:rgba(217,79,61,0.1); color:var(--accent); font-weight:600; margin-bottom:14px; }
+  header.hero h1 { margin:0 0 10px; font-size:30px; }
+  header.hero p { max-width:760px; color:#5a5c66; line-height:1.8; font-size:15px; margin:0; }
+
+  section { padding:20px 8vw 40px; }
+  section h2 { font-size:20px; border-left:4px solid var(--accent); padding-left:12px; margin-bottom:20px; }
+  .diagram-wrap { background:#fff; border:1px solid var(--line); border-radius:6px; padding:24px; overflow-x:auto; }
+
+  .flow {
+    display:flex; flex-wrap:wrap; gap:14px; align-items:stretch;
+  }
+  .step {
+    flex:1 1 150px; background:#fff; border:1px solid var(--line); border-radius:6px;
+    padding:16px 14px; position:relative; min-width:150px;
+  }
+  .step .num { position:absolute; top:-10px; left:14px; background:var(--accent); color:#fff; font-size:12px; font-weight:700; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  .step h3 { margin:8px 0 6px; font-size:14px; }
+  .step p { margin:0; font-size:12.5px; color:#6a6c75; line-height:1.6; }
+  .step code { display:block; margin-top:8px; font-size:11px; background:#f2f0ea; padding:5px 7px; border-radius:4px; color:var(--accent-dark); word-break:break-all; }
+  .arrow { align-self:center; color:#c4c0b4; font-size:20px; }
+
+  .mock-row { display:flex; gap:24px; flex-wrap:wrap; }
+  .phone {
+    width:280px; border:10px solid #22242c; border-radius:34px; background:#000; padding:0; overflow:hidden; flex-shrink:0;
+  }
+  .phone .screen { background:#0d0f14; color:#fff; min-height:520px; position:relative; display:flex; flex-direction:column; }
+  .live-video { flex:1; background:linear-gradient(160deg,#3a3f52,#181a22); display:flex; align-items:center; justify-content:center; color:#7d8296; font-size:12px; position:relative; }
+  .live-badge { position:absolute; top:10px; left:10px; background:var(--accent); font-size:10px; font-weight:700; padding:3px 8px; border-radius:3px; }
+  .viewers { position:absolute; top:10px; right:10px; font-size:10px; background:rgba(0,0,0,0.5); padding:3px 8px; border-radius:3px; }
+  .comment-panel { background:#14151b; padding:10px 12px; font-size:11px; max-height:190px; overflow-y:auto; }
+  .comment { display:flex; gap:6px; margin-bottom:8px; }
+  .comment .avatar { width:20px; height:20px; border-radius:50%; background:#4a4e5e; flex-shrink:0; }
+  .comment .txt b { color:#9ecbff; }
+  .comment.success .txt { color:#7be0a0; }
+  .comment.self .txt b { color:#ffcf6b; }
+  .input-bar { display:flex; gap:6px; padding:8px 10px; background:#0d0f14; border-top:1px solid #22242c; }
+  .input-bar input { flex:1; background:#1c1e26; border:1px solid #2c2f3a; border-radius:16px; color:#fff; font-size:11px; padding:6px 10px; }
+  .input-bar button { background:var(--accent); border:none; color:#fff; font-size:11px; border-radius:16px; padding:6px 12px; }
+
+  .note-card { flex:1; min-width:260px; background:#fff; border:1px solid var(--line); border-radius:6px; padding:20px; }
+  .note-card h3 { margin-top:0; font-size:15px; }
+  .note-card ul { padding-left:18px; margin:10px 0 0; font-size:13px; color:#4a4c55; line-height:1.9; }
+  .note-card code { background:#f2f0ea; padding:1px 5px; border-radius:3px; color:var(--accent-dark); font-size:12px; }
+
+  .api-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .api-table th, .api-table td { text-align:left; padding:10px 14px; font-size:13px; border-bottom:1px solid var(--line); }
+  .api-table th { background:#f2f0ea; font-size:12px; letter-spacing:0.5px; color:#6a6c75; }
+  .api-table td code { background:#f2f0ea; padding:2px 6px; border-radius:4px; color:var(--accent-dark); font-size:12px; }
+  .method { font-weight:700; font-size:11px; padding:2px 7px; border-radius:4px; }
+  .m-get { background:#e5f0ff; color:#1c62c9; }
+  .m-post { background:#e6f6ec; color:#1f8a4c; }
+
+  footer { padding:24px 8vw 60px; font-size:12px; color:#9a9ba3; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="./index.html">← 返回情境總覽</a>
+  <span style="font-size:12px;color:#9a9ba3;">Livebuy Web API 情境示意</span>
+</div>
+
+<header class="hero">
+  <span class="tag">邊看邊買・情境一</span>
+  <h1>留言關鍵字自動加入購物車</h1>
+  <p>觀眾在觀看直播（Nine1 IVS 或 Facebook 直播）過程中，於留言區輸入小編設定的關鍵字（例如商品編號或「+1」），系統即時比對關鍵字設定並自動將對應商品加入購物車，同時在留言區回覆加車結果，讓觀眾無需離開直播畫面即可完成加購。</p>
+</header>
+
+<section>
+  <h2>End to End 流程圖</h2>
+  <div class="diagram-wrap">
+    <pre class="mermaid">
+sequenceDiagram
+    participant U as 觀眾 (前台)
+    participant FE as Livebuy 前台頁
+    participant WS as WebSocketController
+    participant LC as LiveCommentsController
+    participant SP as SalepageController (關鍵字設定)
+    participant CART as LiveCartController
+    participant ORD as SalesOrdersController
+
+    U->>FE: 開啟直播頁 / 登入 (AuthController)
+    FE->>WS: 建立前端連線 (frontend-connections)
+    FE->>LC: 取得聊天室 Token / 留言串 (chat-token, main)
+    Note over U,FE: 直播中，畫面同步顯示商品清單與關鍵字
+    U->>FE: 留言輸入關鍵字「+1」
+    FE->>LC: POST comments/main (送出留言)
+    LC->>SP: 比對關鍵字設定 (keywords)
+    alt 關鍵字命中且庫存足夠
+        LC->>CART: POST addSku (加入購物車)
+        CART-->>LC: 加車成功
+        LC->>LC: POST sendAddedToCartComment (回覆加車成功留言)
+        LC-->>WS: 推播加車成功訊息
+        WS-->>FE: 即時通知加車結果
+        FE-->>U: 顯示「已加入購物車」提示
+    else 關鍵字未命中 / 缺貨
+        LC-->>FE: 回覆一般留言 (不觸發加車)
+    end
+    U->>FE: 點擊購物車圖示
+    FE->>ORD: POST salesorders/get (確認購物車內容)
+    FE-->>U: 導向結帳頁完成付款
+    </pre>
+  </div>
+</section>
+
+<section>
+  <h2>步驟拆解</h2>
+  <div class="flow">
+    <div class="step"><span class="num">1</span><h3>登入與進場</h3><p>手機號碼登入，建立前台 WebSocket 連線並取得直播聊天 Token。</p><code>POST /api/auth/callback</code></div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="num">2</span><h3>觀看直播</h3><p>播放直播串流，畫面下方同步顯示商品清單與留言區。</p><code>GET /api/live/sessions/{id}/products</code></div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="num">3</span><h3>留言關鍵字</h3><p>觀眾輸入小編預設關鍵字（如「+1」或商品代碼）送出留言。</p><code>POST /api/live/comments/main</code></div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="num">4</span><h3>系統比對加車</h3><p>比對關鍵字設定，命中即自動加入購物車。</p><code>POST /api/live/cart/addSku</code></div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="num">5</span><h3>回覆通知</h3><p>留言區出現加車成功回覆，即時透過 WebSocket 推播。</p><code>POST /api/live/comments/sendAddedToCartComment</code></div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="num">6</span><h3>結帳</h3><p>觀眾點擊購物車確認品項並前往結帳完成訂單。</p><code>POST /api/salesorders/get</code></div>
+  </div>
+</section>
+
+<section>
+  <h2>畫面示意</h2>
+  <div class="mock-row">
+    <div class="phone">
+      <div class="screen">
+        <div class="live-video">
+          <span class="live-badge">LIVE</span>
+          <span class="viewers">👁 1,204</span>
+          直播影像播放區
+        </div>
+        <div class="comment-panel">
+          <div class="comment"><div class="avatar"></div><div class="txt"><b>Wendy：</b>這件外套好好看</div></div>
+          <div class="comment self"><div class="avatar"></div><div class="txt"><b>我：</b>+1</div></div>
+          <div class="comment success"><div class="avatar"></div><div class="txt">🛒 系統：已將「秋季針織外套」加入購物車！</div></div>
+          <div class="comment"><div class="avatar"></div><div class="txt"><b>Jason：</b>+1 M號</div></div>
+        </div>
+        <div class="input-bar">
+          <input placeholder="輸入留言或關鍵字..." />
+          <button>送出</button>
+        </div>
+      </div>
+    </div>
+    <div class="note-card">
+      <h3>關鍵設計重點</h3>
+      <ul>
+        <li>關鍵字與商品的對應關係由小編在直播設定頁預先建立（<code>SalepageController</code> keywords 系列 API）。</li>
+        <li>留言送出後，<code>LiveCommentsController</code> 會即時比對關鍵字，命中才呼叫 <code>LiveCartController.addSku</code>。</li>
+        <li>加車結果透過留言回覆 + WebSocket 雙重通知，確保觀眾在直播畫面內就能看到回饋，不需離開頁面。</li>
+        <li>若同一關鍵字被大量留言洗版（搶購情境），系統依序處理並檢查庫存，缺貨時留言區會回覆「已售完」提示（非加車成功訊息）。</li>
+        <li>匿名觀眾（未登入）仍可觀看與留言，但加車與結帳需先完成手機號碼登入。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>對應 API 一覽</h2>
+  <table class="api-table">
+    <thead><tr><th>步驟</th><th>Method</th><th>Endpoint</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td>登入</td><td><span class="method m-post">POST</span></td><td><code>/api/auth/callback</code></td><td>會員登入 / 換發權杖</td></tr>
+      <tr><td>建立即時連線</td><td><span class="method m-post">POST</span></td><td><code>/api/websocket/frontend-connections</code></td><td>前台建立 WebSocket 連線接收即時推播</td></tr>
+      <tr><td>取得聊天 Token</td><td><span class="method m-get">GET</span></td><td><code>/api/live/sessions/{liveSessionId}/chat-token</code></td><td>取得 IVS Chat JWT 供聊天室 SDK 使用</td></tr>
+      <tr><td>取得商品清單</td><td><span class="method m-get">GET</span></td><td><code>/api/live/sessions/{liveSessionId}/products</code></td><td>直播中掛載的商品清單</td></tr>
+      <tr><td>送出留言</td><td><span class="method m-post">POST</span></td><td><code>/api/live/comments/main</code></td><td>觀眾送出直播留言（含關鍵字比對觸發點）</td></tr>
+      <tr><td>加入購物車</td><td><span class="method m-post">POST</span></td><td><code>/api/live/cart/addSku</code></td><td>依關鍵字比對結果加入指定 SKU</td></tr>
+      <tr><td>回覆加車通知</td><td><span class="method m-post">POST</span></td><td><code>/api/live/comments/sendAddedToCartComment</code></td><td>於留言區回覆加車結果</td></tr>
+      <tr><td>確認購物車 / 結帳</td><td><span class="method m-post">POST</span></td><td><code>/api/salesorders/get</code></td><td>取得訂單/購物車內容，導向結帳</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>Livebuy Web API — 內部技術情境示意（非正式產品畫面），2026/07/01 整理</footer>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "neutral", themeVariables: { fontSize: "13px" } });
+</script>
+</body>
+</html>
